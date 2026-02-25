@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { fetchUserProfile, login } from '@/src/services/authService';
+import { fetchUserProfile, login, register } from '@/src/services/authService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +41,8 @@ export default function LoginScreen() {
     const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
         try {
+            // register
+            await register(data.email, data.password, 'Kevin Viasus', 'professional');
             const authData = await login(data.email, data.password);
             setSession(authData.session);
 

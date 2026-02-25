@@ -5,4 +5,10 @@ const config = getDefaultConfig(__dirname);
 
 config.resolver.assetExts.push('wasm');
 
+config.resolver.unstable_conditionNames = [
+    "browser",
+    "require",
+    "react-native",
+];
+
 module.exports = config;

@@ -65,8 +65,7 @@ Responde ÚNICAMENTE con un JSON válido con este esquema (sin texto adicional):
 Genera entre 5 y 8 ejercicios. Prioriza ejercicios seguros sin equipamiento.`;
 
     try {
-        const result = await geminiModel.generateContent(prompt);
-        const responseText = result.response.text();
+        const responseText = await geminiModel.sendSync(prompt);
 
         let parsed: GeminiExercisePlanResponse;
         try {
