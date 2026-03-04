@@ -10,6 +10,7 @@ export interface Patient {
     birth_date: string;
     gender: Gender;
     pathologies?: string;
+    caregiver_email?: string;  // Email del cuidador asignado
     created_at: string;
     updated_at: string;
 }
@@ -22,14 +23,7 @@ export interface PatientFormData {
     birth_date: Date;
     gender: Gender;
     pathologies?: string;
-}
-
-export interface CaregiverPatient {
-    id: string;
-    caregiver_id: string;
-    patient_id: string;
-    assigned_by: string;
-    created_at: string;
+    caregiver_email?: string;  // Email del cuidador asignado
 }
 
 export interface SectionedPatients {

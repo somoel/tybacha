@@ -49,6 +49,7 @@ CREATE TABLE public.patients (
   birth_date       DATE NOT NULL,
   gender           TEXT NOT NULL CHECK (gender IN ('male', 'female', 'other')),
   pathologies      TEXT,
+  caregiver_email  TEXT REFERENCES auth.users(email),  -- Email del cuidador asignado
   created_at       TIMESTAMPTZ DEFAULT now(),
   updated_at       TIMESTAMPTZ DEFAULT now()
 );
@@ -59,38 +60,28 @@ ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Professional sees own patients" ON patients
   FOR ALL USING (auth.uid() = created_by);
 
--- ─────────────────────────────────────────────────────────
--- Table: caregiver_patients (RF-03, RF-07)
--- ─────────────────────────────────────────────────────────
-
-CREATE TABLE public.caregiver_patients (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  caregiver_id  UUID NOT NULL REFERENCES profiles(id),
-  patient_id    UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
-  assigned_by   UUID NOT NULL REFERENCES profiles(id),
-  created_at    TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(caregiver_id, patient_id)
-);
-
-ALTER TABLE caregiver_patients ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Professional manages assignments" ON caregiver_patients
-  FOR ALL USING (auth.uid() = assigned_by);
-
-CREATE POLICY "Caregiver manages own assignments" ON caregiver_patients
-  FOR SELECT USING (auth.uid() = caregiver_id);
-
-CREATE POLICY "Caregiver can unlink" ON caregiver_patients
-  FOR DELETE USING (auth.uid() = caregiver_id);
-
--- Policy on patients that depends on caregiver_patients
+-- Policy for caregivers to see patients assigned to them by email
 CREATE POLICY "Caregiver sees assigned patients" ON patients
   FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM caregiver_patients cp
-      WHERE cp.patient_id = patients.id AND cp.caregiver_id = auth.uid()
+    auth.uid() IN (
+      SELECT id FROM auth.users 
+      WHERE email = patients.caregiver_email
     )
   );
+
+-- Policy for caregivers to update patients assigned to them
+CREATE POLICY "Caregiver can update assigned patients" ON patients
+  FOR UPDATE USING (
+    auth.uid() IN (
+      SELECT id FROM auth.users 
+      WHERE email = patients.caregiver_email
+    )
+  );
+
+-- ─────────────────────────────────────────────────────────
+-- NOTA: Ya no se necesita la tabla caregiver_patients
+-- Ahora el enlace se hace directamente con caregiver_email en patients
+-- ─────────────────────────────────────────────────────────
 
 -- ─────────────────────────────────────────────────────────
 -- Table: sft_batteries (RF-08)
@@ -172,9 +163,12 @@ CREATE POLICY "Professional manages plans" ON exercise_plans
 CREATE POLICY "Caregiver sees patient plans" ON exercise_plans
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM caregiver_patients cp
-      WHERE cp.patient_id = exercise_plans.patient_id
-        AND cp.caregiver_id = auth.uid()
+      SELECT 1 FROM patients p
+      WHERE p.id = exercise_plans.patient_id
+        AND auth.uid() IN (
+          SELECT id FROM auth.users 
+          WHERE email = p.caregiver_email
+        )
     )
   );
 
@@ -203,6 +197,20 @@ CREATE POLICY "Professional sees patient logs" ON exercise_logs
     EXISTS (
       SELECT 1 FROM exercise_plans ep
         JOIN patients p ON ep.patient_id = p.id
-      WHERE ep.id = exercise_logs.plan_id AND p.created_by = auth.uid()
+      WHERE ep.id = exercise_logs.plan_id 
+        AND p.created_by = auth.uid()
+    )
+  );
+
+CREATE POLICY "Caregiver sees patient logs" ON exercise_logs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM exercise_plans ep
+        JOIN patients p ON ep.patient_id = p.id
+      WHERE ep.id = exercise_logs.plan_id
+        AND auth.uid() IN (
+          SELECT id FROM auth.users 
+          WHERE email = p.caregiver_email
+        )
     )
   );

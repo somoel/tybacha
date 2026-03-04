@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 /**
  * Fetch all patients for the current user (professional or caregiver).
  * Professional: fetches patients they created.
- * Caregiver: fetches patients assigned to them via caregiver_patients.
+ * Caregiver: fetches patients assigned to them via caregiver_email.
  */
 export async function fetchPatients(
     userId: string,
@@ -23,15 +23,30 @@ export async function fetchPatients(
             if (error) throw new Error('Error al obtener pacientes: ' + error.message);
             return (data ?? []) as Patient[];
         } else {
-            // Caregiver: join through caregiver_patients
+            // Caregiver: fetch patients where caregiver_email matches their email
+            const { data: userData, error: userError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('id', userId)
+                .single();
+            
+            if (userError) throw new Error('Error obteniendo datos del cuidador: ' + userError.message);
+            
+            // Get user email from auth.users
+            const { data: authData, error: authError } = await supabase.auth.getUser();
+            if (authError) throw new Error('Error obteniendo email del usuario: ' + authError.message);
+            
+            const userEmail = authData.user?.email;
+            if (!userEmail) throw new Error('No se encontró el email del cuidador');
+            
             const { data, error } = await supabase
-                .from('caregiver_patients')
-                .select('patient_id, patients(*)')
-                .eq('caregiver_id', userId);
+                .from('patients')
+                .select('*')
+                .eq('caregiver_email', userEmail)
+                .order('created_at', { ascending: false });
 
             if (error) throw new Error('Error al obtener pacientes asignados: ' + error.message);
-
-            return (data ?? []).map((row) => row.patients).filter(Boolean).flat() as Patient[];
+            return (data ?? []) as Patient[];
         }
     } catch (error) {
         if (error instanceof Error) throw error;
@@ -59,6 +74,7 @@ export async function createPatient(
         second_lastname: formData.second_lastname || null,
         birth_date: format(formData.birth_date, 'yyyy-MM-dd'),
         gender: formData.gender,
+        caregiver_email: formData.caregiver_email || null,
         pathologies: formData.pathologies || null,
     };
 
@@ -87,7 +103,7 @@ export async function createPatient(
                     patientData.second_lastname,
                     patientData.birth_date,
                     patientData.gender,
-                    patientData.pathologies,
+                    patientData.caregiver_email,
                 ]
             );
 
@@ -123,7 +139,7 @@ export async function updatePatient(
         second_lastname: formData.second_lastname || null,
         birth_date: format(formData.birth_date, 'yyyy-MM-dd'),
         gender: formData.gender,
-        pathologies: formData.pathologies || null,
+        caregiver_email: formData.caregiver_email || null,
         updated_at: new Date().toISOString(),
     };
 
@@ -149,7 +165,7 @@ export async function updatePatient(
                     updateData.second_lastname,
                     updateData.birth_date,
                     updateData.gender,
-                    updateData.pathologies,
+                    updateData.caregiver_email,
                     updateData.updated_at,
                     patientId,
                 ]
@@ -258,24 +274,32 @@ export async function searchCaregivers(query: string) {
 }
 
 /**
- * Assign a caregiver to a patient (RF-03).
+ * Assign a caregiver to a patient using email.
  */
 export async function assignCaregiver(
-    caregiverId: string,
+    caregiverEmail: string,
     patientId: string,
     assignedBy: string
 ): Promise<void> {
     try {
-        const { error } = await supabase.from('caregiver_patients').insert({
-            caregiver_id: caregiverId,
-            patient_id: patientId,
-            assigned_by: assignedBy,
-        });
+        // Verify that the caregiver exists and has role 'caregiver'
+        const { data: caregiverData, error: caregiverError } = await supabase
+            .rpc('verify_caregiver_by_email', { 
+                caregiver_email: caregiverEmail 
+            });
+            
+        if (caregiverError || !caregiverData) {
+            throw new Error('No se encontró un cuidador con ese email.');
+        }
+        
+        // Update patient with caregiver email
+        const { error } = await supabase
+            .from('patients')
+            .update({ caregiver_email: caregiverEmail })
+            .eq('id', patientId)
+            .eq('created_by', assignedBy); // Only professional can assign
 
         if (error) {
-            if (error.code === '23505') {
-                throw new Error('Este cuidador ya está asignado a este paciente.');
-            }
             throw new Error('Error al asignar cuidador: ' + error.message);
         }
     } catch (error) {
@@ -285,18 +309,18 @@ export async function assignCaregiver(
 }
 
 /**
- * Remove a caregiver assignment (RF-07).
+ * Remove a caregiver assignment from a patient.
  */
 export async function unassignCaregiver(
-    caregiverId: string,
-    patientId: string
+    patientId: string,
+    assignedBy: string
 ): Promise<void> {
     try {
         const { error } = await supabase
-            .from('caregiver_patients')
-            .delete()
-            .eq('caregiver_id', caregiverId)
-            .eq('patient_id', patientId);
+            .from('patients')
+            .update({ caregiver_email: null })
+            .eq('id', patientId)
+            .eq('created_by', assignedBy); // Only professional can unassign
 
         if (error) throw new Error('Error al desasociar cuidador: ' + error.message);
     } catch (error) {
@@ -306,44 +330,54 @@ export async function unassignCaregiver(
 }
 
 /**
- * Fetch caregivers assigned to a patient.
+ * Fetch caregiver email assigned to a patient.
  */
-export async function fetchAssignedCaregivers(patientId: string) {
+export async function fetchAssignedCaregiver(patientId: string) {
     try {
         const { data, error } = await supabase
-            .from('caregiver_patients')
-            .select(`
-                id, 
-                caregiver_id, 
-                profiles!caregiver_patients_caregiver_id_fkey(
-                    id,
-                    full_name
-                )
-            `)
-            .eq('patient_id', patientId);
+            .from('patients')
+            .select('caregiver_email')
+            .eq('id', patientId)
+            .single();
 
         if (error) {
-            console.error('Error fetching assigned caregivers:', error);
-            throw new Error('Error al obtener cuidadores asignados: ' + error.message);
+            console.error('Error fetching assigned caregiver:', error);
+            throw new Error('Error al obtener cuidador asignado: ' + error.message);
         }
         
-        return data ?? [];
+        if (!data?.caregiver_email) {
+            return null;
+        }
+        
+        // Get caregiver details from email
+        const { data: caregiverData, error: caregiverError } = await supabase
+            .rpc('get_caregiver_details_by_email', { 
+                caregiver_email: data.caregiver_email 
+            });
+            
+        if (caregiverError) {
+            console.warn('Caregiver not found in profiles, returning email only');
+            return { email: data.caregiver_email, full_name: 'Cuidador' };
+        }
+        
+        return { email: data.caregiver_email, ...caregiverData };
     } catch (error) {
-        console.error('Error in fetchAssignedCaregivers:', error);
+        console.error('Error in fetchAssignedCaregiver:', error);
         if (error instanceof Error) throw error;
-        throw new Error('Error inesperado al obtener cuidadores asignados.');
+        throw new Error('Error inesperado al obtener cuidador asignado.');
     }
 }
 
 /**
- * Fetch patients assigned to a caregiver (for profile screen RF-07).
+ * Fetch patients assigned to a caregiver (for profile screen).
  */
-export async function fetchCaregiverAssignments(caregiverId: string) {
+export async function fetchCaregiverAssignments(caregiverEmail: string) {
     try {
         const { data, error } = await supabase
-            .from('caregiver_patients')
-            .select('id, patient_id, patients(first_name, first_lastname)')
-            .eq('caregiver_id', caregiverId);
+            .from('patients')
+            .select('id, first_name, first_lastname')
+            .eq('caregiver_email', caregiverEmail)
+            .order('created_at', { ascending: false });
 
         if (error) throw new Error('Error al obtener asignaciones: ' + error.message);
         return data ?? [];
