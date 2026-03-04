@@ -52,13 +52,32 @@ export default function AssignCaregiverScreen() {
     }, [id]);
 
     const handleSearch = async () => {
-        if (searchQuery.length < 2) return;
+        if (searchQuery.length < 2) {
+            setSnackbar({ 
+                visible: true, 
+                message: 'Escribe al menos 2 caracteres para buscar', 
+                type: 'error' 
+            });
+            return;
+        }
+        
         setIsSearching(true);
         try {
+            console.log('Searching caregivers with query:', searchQuery);
             const data = await searchCaregivers(searchQuery);
+            console.log('Search results:', data);
             setResults(data);
+            
+            if (data.length === 0) {
+                setSnackbar({ 
+                    visible: true, 
+                    message: 'No se encontraron cuidadores con ese nombre o email', 
+                    type: 'error' 
+                });
+            }
         } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Error buscando.';
+            console.error('Search error:', error);
+            const msg = error instanceof Error ? error.message : 'Error buscando cuidadores.';
             setSnackbar({ visible: true, message: msg, type: 'error' });
         } finally {
             setIsSearching(false);
@@ -66,26 +85,52 @@ export default function AssignCaregiverScreen() {
     };
 
     const handleAssign = async (caregiverId: string) => {
-        if (!id || !user) return;
+        if (!id || !user) {
+            setSnackbar({ 
+                visible: true, 
+                message: 'Error: datos de sesión incompletos', 
+                type: 'error' 
+            });
+            return;
+        }
+        
         try {
+            console.log('Assigning caregiver:', caregiverId, 'to patient:', id, 'by:', user.id);
             await assignCaregiver(caregiverId, id, user.id);
-            setSnackbar({ visible: true, message: 'Cuidador asignado ✓', type: 'success' });
+            setSnackbar({ visible: true, message: 'Cuidador asignado correctamente ✓', type: 'success' });
+            
+            // Refresh assigned caregivers
             const data = await fetchAssignedCaregivers(id);
             setAssigned(data as unknown as AssignedCaregiver[]);
+            
+            // Clear search results
+            setResults([]);
+            setSearchQuery('');
         } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Error asignando.';
+            console.error('Assignment error:', error);
+            const msg = error instanceof Error ? error.message : 'Error asignando cuidador.';
             setSnackbar({ visible: true, message: msg, type: 'error' });
         }
     };
 
     const handleUnassign = async (caregiverId: string) => {
-        if (!id) return;
+        if (!id) {
+            setSnackbar({ 
+                visible: true, 
+                message: 'Error: ID de paciente no encontrado', 
+                type: 'error' 
+            });
+            return;
+        }
+        
         try {
+            console.log('Unassigning caregiver:', caregiverId, 'from patient:', id);
             await unassignCaregiver(caregiverId, id);
             setAssigned((prev) => prev.filter((a) => a.caregiver_id !== caregiverId));
-            setSnackbar({ visible: true, message: 'Cuidador removido ✓', type: 'success' });
+            setSnackbar({ visible: true, message: 'Cuidador desasignado correctamente ✓', type: 'success' });
         } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Error removiendo.';
+            console.error('Unassignment error:', error);
+            const msg = error instanceof Error ? error.message : 'Error desasignando cuidador.';
             setSnackbar({ visible: true, message: msg, type: 'error' });
         }
     };

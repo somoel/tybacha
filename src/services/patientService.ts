@@ -208,33 +208,44 @@ export async function fetchPatientById(patientId: string): Promise<Patient | nul
 }
 
 /**
- * Search caregivers by email for assignment.
+ * Search caregivers by email or name for assignment.
  */
-export async function searchCaregivers(email: string) {
+export async function searchCaregivers(query: string) {
     try {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .eq('role', 'caregiver')
-            .ilike('id', `%${email}%`)
-            .limit(10);
+        // First try to search by email in auth.users
+        const { data: emailData, error: emailError } = await supabase
+            .rpc('search_caregivers_by_email', { 
+                search_query: query.toLowerCase() 
+            });
 
-        if (error) throw new Error('Error buscando cuidadores: ' + error.message);
+        // If RPC doesn't exist, search by name in profiles
+        if (emailError) {
+            console.warn('RPC search_caregivers_by_email not available, searching by name only');
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name')
+                .eq('role', 'caregiver')
+                .ilike('full_name', `%${query}%`)
+                .limit(10);
 
-        // Also search by matching in auth users via a Supabase function or by full_name
+            if (error) throw new Error('Error buscando cuidadores: ' + error.message);
+            return data as Array<{ id: string; full_name: string }>;
+        }
+
+        // Also search by name in profiles
         const { data: nameData, error: nameError } = await supabase
             .from('profiles')
             .select('id, full_name')
             .eq('role', 'caregiver')
-            .ilike('full_name', `%${email}%`)
+            .ilike('full_name', `%${query}%`)
             .limit(10);
 
         if (nameError) {
-            return (data ?? []) as Array<{ id: string; full_name: string }>;
+            return (emailData ?? []) as Array<{ id: string; full_name: string }>;
         }
 
         // Merge and deduplicate
-        const merged = [...(data ?? []), ...(nameData ?? [])];
+        const merged = [...(emailData ?? []), ...(nameData ?? [])];
         const unique = merged.filter(
             (item, index, self) => self.findIndex((t) => t.id === item.id) === index
         );
@@ -301,14 +312,26 @@ export async function fetchAssignedCaregivers(patientId: string) {
     try {
         const { data, error } = await supabase
             .from('caregiver_patients')
-            .select('id, caregiver_id, profiles!caregiver_patients_caregiver_id_fkey(full_name)')
+            .select(`
+                id, 
+                caregiver_id, 
+                profiles!caregiver_patients_caregiver_id_fkey(
+                    id,
+                    full_name
+                )
+            `)
             .eq('patient_id', patientId);
 
-        if (error) throw new Error('Error al obtener cuidadores: ' + error.message);
+        if (error) {
+            console.error('Error fetching assigned caregivers:', error);
+            throw new Error('Error al obtener cuidadores asignados: ' + error.message);
+        }
+        
         return data ?? [];
     } catch (error) {
+        console.error('Error in fetchAssignedCaregivers:', error);
         if (error instanceof Error) throw error;
-        throw new Error('Error inesperado al obtener cuidadores.');
+        throw new Error('Error inesperado al obtener cuidadores asignados.');
     }
 }
 
