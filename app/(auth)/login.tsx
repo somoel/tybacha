@@ -42,7 +42,7 @@ export default function LoginScreen() {
         setIsLoading(true);
         try {
             // register
-            await register(data.email, data.password, 'Kevin Viasus', 'professional');
+            // await register(data.email, data.password, 'Kevin Viasus', 'professional');
             const authData = await login(data.email, data.password);
             setSession(authData.session);
 
