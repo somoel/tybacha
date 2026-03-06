@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: 24,
     },
     headerContent: {
-        paddingTop: 0,
+        paddingTop: 24,
         paddingBottom: 32,
         paddingHorizontal: 24,
     },
