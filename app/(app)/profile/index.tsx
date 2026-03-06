@@ -24,7 +24,7 @@ export default function ProfileScreen() {
     const theme = useTheme();
     const router = useRouter();
     const { user, profile, role, logout } = useAuthStore();
-    const { isProfessional, isCaregiver } = usePermissions();
+    const { isCaregiver } = usePermissions();
     const { isOnline, isSyncing, pendingCount, syncNow } = useSyncQueue();
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
                 </View>
             </AppCard>
 
-            {/* Caregiver: assigned patients with unlink (RF-07) */}
+            {/* Caregiver: assigned patients with unlinking (RF-07) */}
             {isCaregiver && assignments.length > 0 && (
                 <>
                     <Text style={styles.sectionTitle}>Mis pacientes asignados</Text>

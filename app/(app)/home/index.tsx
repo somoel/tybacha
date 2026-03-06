@@ -49,7 +49,7 @@ export default function HomeScreen() {
                 setLoading(false);
             }
         };
-        loadPatients();
+        void loadPatients();
     }, [user, isProfessional, setPatients, setLoading]);
 
     const userName = profile?.full_name ?? 'Usuario';

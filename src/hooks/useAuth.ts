@@ -32,7 +32,7 @@ export function useAuth() {
             }
         };
 
-        initSession();
+        void initSession();
 
         // Listen for auth state changes
         const { data: listener } = supabase.auth.onAuthStateChange(
