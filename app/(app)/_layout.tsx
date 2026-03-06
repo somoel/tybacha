@@ -3,6 +3,7 @@ import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 
@@ -16,6 +17,7 @@ export default function AppLayout() {
 
     return (
         <View style={styles.container}>
+            <StatusBar style="dark" />
             <OfflineBanner visible={!isOnline} />
             <Tabs
                 screenOptions={{
@@ -47,7 +49,7 @@ export default function AppLayout() {
                     name="home/index"
                     options={{
                         title: 'Inicio',
-                        headerTitle: 'Tybachá',
+                      headerShown: false,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
                                 name={focused ? 'home' : 'home-outline'}

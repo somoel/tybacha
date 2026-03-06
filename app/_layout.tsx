@@ -12,7 +12,6 @@ import {
 } from '@expo-google-fonts/montserrat';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { PaperProvider } from 'react-native-paper';
 
@@ -55,7 +54,6 @@ export default function RootLayout() {
 
     return (
         <PaperProvider theme={TybachaTheme}>
-            <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="(auth)" />

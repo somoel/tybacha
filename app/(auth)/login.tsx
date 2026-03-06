@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { fetchUserProfile, login, register } from '@/src/services/authService';
+import { fetchUserProfile, login } from '@/src/services/authService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,7 +79,7 @@ export default function LoginScreen() {
                     end={{ x: 1, y: 1 }}
                 >
                     <MaterialCommunityIcons name="heart-pulse" size={48} color="white" />
-                    <Text style={styles.appName}>Tybachá</Text>
+                    <Text style={styles.appName}>Tybacha</Text>
                     <Text style={styles.subtitle}>Senior Fitness Test</Text>
                 </LinearGradient>
 

@@ -9,8 +9,10 @@ import { usePatientsStore } from '@/src/stores/patientsStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { FAB, Text, useTheme } from 'react-native-paper';
 
 /**
@@ -58,6 +60,7 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
+            <StatusBar style="light" />
             <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
                 {/* Gradient header */}
                 <LinearGradient
@@ -66,14 +69,16 @@ export default function HomeScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                 >
-                    <Text style={styles.greeting}>{greeting},</Text>
-                    <Text style={styles.userName}>{userName}</Text>
-                    {isProfessional && (
-                        <Text style={styles.roleLabel}>Profesional</Text>
-                    )}
-                    {isCaregiver && (
-                        <Text style={styles.roleLabel}>Cuidador</Text>
-                    )}
+                    <SafeAreaView edges={['top']} style={styles.headerContent}>
+                        <Text style={styles.greeting}>{greeting},</Text>
+                        <Text style={styles.userName}>{userName}</Text>
+                        {isProfessional && (
+                            <Text style={styles.roleLabel}>Profesional</Text>
+                        )}
+                        {isCaregiver && (
+                            <Text style={styles.roleLabel}>Cuidador</Text>
+                        )}
+                    </SafeAreaView>
                 </LinearGradient>
 
                 <View style={styles.content}>
@@ -169,11 +174,13 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        paddingTop: 24,
-        paddingBottom: 32,
-        paddingHorizontal: 24,
         borderBottomLeftRadius: 24,
         borderBottomRightRadius: 24,
+    },
+    headerContent: {
+        paddingTop: 0,
+        paddingBottom: 32,
+        paddingHorizontal: 24,
     },
     greeting: {
         fontFamily: 'Montserrat_500Medium',

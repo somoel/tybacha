@@ -10,7 +10,7 @@ export default function IndexScreen() {
     const { session, isLoading } = useAuthStore();
 
     if (isLoading) {
-        return <AppLoader message="Cargando Tybachá..." />;
+        return <AppLoader message="Cargando Tybacha..." />;
     }
 
     if (session) {

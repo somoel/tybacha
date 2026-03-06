@@ -1,4 +1,4 @@
-# Tybachá
+# Tybacha
 
 Aplicación móvil para profesionales en educación física y cuidadores que evalúan y registran pruebas físicas funcionales (Senior Fitness Test - SFT de Rikli & Jones, 2001) en adultos mayores.
 
