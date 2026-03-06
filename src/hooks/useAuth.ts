@@ -9,7 +9,7 @@ import { useEffect } from 'react';
  * Should be called once in the root layout.
  */
 export function useAuth() {
-    const { setSession, setRole, setLoading, session, role, user, isLoading } = useAuthStore();
+    const { setSession, setRole, setProfile, setLoading, session, role, user, isLoading } = useAuthStore();
 
     useEffect(() => {
         // Get initial session
@@ -22,6 +22,7 @@ export function useAuth() {
                     const profile = await fetchUserProfile(data.session.user.id);
                     if (profile) {
                         setRole(profile.role);
+                        setProfile(profile);
                     }
                 }
             } catch (error) {
@@ -42,11 +43,13 @@ export function useAuth() {
                     const profile = await fetchUserProfile(newSession.user.id);
                     if (profile) {
                         setRole(profile.role);
+                        setProfile(profile);
                     }
                 }
 
                 if (event === 'SIGNED_OUT') {
                     setRole('professional'); // Reset will be overridden by store reset
+                    setProfile(null);
                 }
             }
         );
@@ -54,7 +57,7 @@ export function useAuth() {
         return () => {
             listener?.subscription.unsubscribe();
         };
-    }, [setSession, setRole, setLoading]);
+    }, [setSession, setRole, setLoading, setProfile]);
 
     return { session, role, user, isLoading };
 }

@@ -23,7 +23,7 @@ import { FAB, Text, useTheme } from 'react-native-paper';
 export default function HomeScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { user } = useAuthStore();
+    const { user, profile } = useAuthStore();
     const { isProfessional, isCaregiver } = usePermissions();
     const { patients, setPatients, setLoading, isLoading } = usePatientsStore();
     const { pendingCount } = useSyncQueue();
@@ -52,7 +52,7 @@ export default function HomeScreen() {
         loadPatients();
     }, [user, isProfessional, setPatients, setLoading]);
 
-    const userName = user?.user_metadata?.full_name ?? 'Usuario';
+    const userName = profile?.full_name ?? 'Usuario';
 
     if (isLoading) {
         return <AppLoader message="Cargando datos..." />;

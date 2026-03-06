@@ -23,7 +23,7 @@ interface Assignment {
 export default function ProfileScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { user, role, logout } = useAuthStore();
+    const { user, profile, role, logout } = useAuthStore();
     const { isProfessional, isCaregiver } = usePermissions();
     const { isOnline, isSyncing, pendingCount, syncNow } = useSyncQueue();
 
@@ -87,7 +87,7 @@ export default function ProfileScreen() {
         }
     };
 
-    const userName = user?.user_metadata?.full_name ?? 'Usuario';
+    const userName = profile?.full_name ?? 'Usuario';
     const roleLabel = role === 'professional' ? 'Profesional' : 'Cuidador';
 
     return (

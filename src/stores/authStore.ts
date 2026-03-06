@@ -1,5 +1,5 @@
 import { supabase } from '@/src/lib/supabase';
-import type { UserRole } from '@/src/types/auth.types';
+import type { Profile, UserRole } from '@/src/types/auth.types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
@@ -8,11 +8,14 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 interface AuthState {
     session: Session | null;
     user: User | null;
+    profile: Profile | null;
     role: UserRole | null;
     isLoading: boolean;
 
     /** Set the current auth session */
     setSession: (session: Session | null) => void;
+    /** Set the user's profile (full_name, role, etc.) */
+    setProfile: (profile: Profile | null) => void;
     /** Set the user's role (professional or caregiver) */
     setRole: (role: UserRole) => void;
     /** Set loading state */
@@ -26,6 +29,7 @@ export const useAuthStore = create<AuthState>()(
         (set) => ({
             session: null,
             user: null,
+            profile: null,
             role: null,
             isLoading: true,
 
@@ -34,6 +38,8 @@ export const useAuthStore = create<AuthState>()(
                     session,
                     user: session?.user ?? null,
                 }),
+
+            setProfile: (profile) => set({ profile }),
 
             setRole: (role) => set({ role }),
 
@@ -48,6 +54,7 @@ export const useAuthStore = create<AuthState>()(
                     set({
                         session: null,
                         user: null,
+                        profile: null,
                         role: null,
                         isLoading: false,
                     });
