@@ -14,6 +14,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect } from 'react';
 import { PaperProvider } from 'react-native-paper';
+import {
+    SafeAreaProvider,
+    SafeAreaView,
+} from 'react-native-safe-area-context';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -54,11 +58,21 @@ export default function RootLayout() {
 
     return (
         <PaperProvider theme={TybachaTheme}>
-            <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" />
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(app)" />
-            </Stack>
+            <SafeAreaProvider>
+                <SafeAreaView
+                    style={{
+                        flex: 1,
+                        backgroundColor: '#000000',
+                    }}
+                    edges={['bottom']}
+                >
+                    <Stack screenOptions={{ headerShown: false }}>
+                        <Stack.Screen name="index" />
+                        <Stack.Screen name="(auth)" />
+                        <Stack.Screen name="(app)" />
+                    </Stack>
+                </SafeAreaView>
+            </SafeAreaProvider>
         </PaperProvider>
     );
 }
