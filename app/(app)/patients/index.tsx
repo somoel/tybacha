@@ -97,6 +97,17 @@ export default function PatientsListScreen() {
                     showsVerticalScrollIndicator={false}
                 />
             )}
+
+            {/* Floating Action Button for adding new patients - only for professionals */}
+            {isProfessional && (
+                <FAB
+                    icon="plus"
+                    style={styles.fab}
+                    onPress={() => router.push('/(app)/patients/new' as never)}
+                    accessibilityLabel="Agregar nuevo paciente"
+                    accessibilityRole="button"
+                />
+            )}
         </View>
     );
 }
@@ -121,5 +132,12 @@ const styles = StyleSheet.create({
     list: {
         paddingHorizontal: 16,
         paddingBottom: 24,
+    },
+    fab: {
+        position: 'absolute',
+        margin: 16,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#007AFF',
     },
 });

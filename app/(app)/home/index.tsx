@@ -12,8 +12,8 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { FAB, Text, useTheme } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 /**
  * Dashboard screen showing role-specific content.
@@ -37,10 +37,14 @@ export default function HomeScreen() {
 
     useEffect(() => {
         const loadPatients = async () => {
-            if (!user) return;
+            if (!user || !user.id) {
+                console.log('HomeScreen - User not available, skipping patient load');
+                return;
+            }
             setLoading(true);
             try {
                 const role = isProfessional ? 'professional' : 'caregiver';
+                console.log('HomeScreen - Loading patients for user:', user.id, 'role:', role);
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
             } catch (error) {
@@ -130,7 +134,7 @@ export default function HomeScreen() {
                             </View>
                         </AppCard>
                     ) : (
-                        patients.slice(0, isProfessional ? 3 : undefined).map((patient) => (
+                        patients.slice(0, isProfessional ? 3 : undefined).filter((patient) => patient && patient.id).map((patient) => (
                             <PatientCard
                                 key={patient.id}
                                 patient={patient}

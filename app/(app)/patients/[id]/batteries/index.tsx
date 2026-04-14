@@ -1,6 +1,6 @@
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
-import { fetchBatteries } from '@/src/services/batteryService';
+import { fetchBatteries } from '@/src/services/batteryServiceMySQL';
 import type { SFTBattery } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';

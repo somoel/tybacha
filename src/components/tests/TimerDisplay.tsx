@@ -46,8 +46,11 @@ export function TimerDisplay({
 
                 if (mode === 'countdown' && next <= 0) {
                     clearTimer();
-                    setIsRunning(false);
-                    onComplete?.(initialSeconds);
+                    // Use setTimeout to defer state updates and avoid setState during render
+                    setTimeout(() => {
+                        setIsRunning(false);
+                        onComplete?.(initialSeconds);
+                    }, 0);
                     onTick?.(0);
                     return 0;
                 }

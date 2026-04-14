@@ -1,63 +1,42 @@
-import { supabase } from '@/src/lib/supabase';
-import { fetchUserProfile } from '@/src/services/authService';
 import { useAuthStore } from '@/src/stores/authStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 
 /**
- * Hook that manages Supabase auth state changes.
- * Listens for session changes and updates the auth store.
+ * Hook that manages MySQL auth state initialization.
+ * Initializes auth state from AsyncStorage on app startup.
  * Should be called once in the root layout.
  */
 export function useAuth() {
-    const { setSession, setRole, setProfile, setLoading, session, role, user, isLoading } = useAuthStore();
+    const { setUser, setRole, setProfile, setLoading, user, role, profile, isLoading } = useAuthStore();
 
     useEffect(() => {
-        // Get initial session
-        const initSession = async () => {
+        // Initialize auth state from storage
+        const initializeAuth = async () => {
             try {
-                const { data } = await supabase.auth.getSession();
-                setSession(data.session);
-
-                if (data.session?.user) {
-                    const profile = await fetchUserProfile(data.session.user.id);
-                    if (profile) {
-                        setRole(profile.role);
-                        setProfile(profile);
-                    }
+                // Check if we already have auth state in the store
+                if (user && profile && role) {
+                    setLoading(false);
+                    return;
                 }
+
+                // Try to restore auth from stored user ID
+                const storedUserId = await AsyncStorage.getItem('tybacha-user-id');
+                if (storedUserId) {
+                    // In a real app, you would fetch user data from the API here
+                    // For now, we'll just set loading to false
+                    console.log('Found stored user ID:', storedUserId);
+                }
+
+                setLoading(false);
             } catch (error) {
-                console.error('Error inicializando sesión:', error);
-            } finally {
+                console.error('Error initializing auth:', error);
                 setLoading(false);
             }
         };
 
-        void initSession();
+        void initializeAuth();
+    }, [user, profile, role, setLoading]);
 
-        // Listen for auth state changes
-        const { data: listener } = supabase.auth.onAuthStateChange(
-            async (event, newSession) => {
-                setSession(newSession);
-
-                if (event === 'SIGNED_IN' && newSession?.user) {
-                    const profile = await fetchUserProfile(newSession.user.id);
-                    if (profile) {
-                        setRole(profile.role);
-                        setProfile(profile);
-                    }
-                }
-
-                if (event === 'SIGNED_OUT') {
-                    setRole('professional'); // Reset will be overridden by store reset
-                    setProfile(null);
-                }
-            }
-        );
-
-        return () => {
-            listener?.subscription.unsubscribe();
-        };
-    }, [setSession, setRole, setLoading, setProfile]);
-
-    return { session, role, user, isLoading };
+    return { user, role, profile, isLoading };
 }

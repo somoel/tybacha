@@ -29,6 +29,12 @@ export default function ProfileScreen() {
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const [isEditing, setIsEditing] = useState(false);
+    const [formData, setFormData] = useState({
+        firstName: '',
+        lastName: '',
+        phone: ''
+    });
 
     useEffect(() => {
         if (isCaregiver && user) {
@@ -63,17 +69,24 @@ export default function ProfileScreen() {
         );
     };
 
-    const handleLogout = () => {
-        Alert.alert('Cerrar sesión', '¿Desea cerrar sesión?', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Cerrar sesión',
-                onPress: async () => {
-                    await logout();
-                    router.replace('/(auth)/login' as never);
-                },
-            },
-        ]);
+    const handleLogout = async () => {
+        console.log('ProfileScreen - handleLogout called');
+        
+        // Use window.confirm for web compatibility
+        const confirmed = window.confirm('¿Desea cerrar sesión?');
+        
+        if (confirmed) {
+            try {
+                console.log('ProfileScreen - Starting logout process');
+                await logout();
+                console.log('ProfileScreen - Logout completed, navigating to login');
+                router.replace('/(auth)/login' as never);
+            } catch (error) {
+                console.error('ProfileScreen - Logout error:', error);
+            }
+        } else {
+            console.log('ProfileScreen - Logout cancelled by user');
+        }
     };
 
     const handleManualSync = async () => {
@@ -87,8 +100,60 @@ export default function ProfileScreen() {
         }
     };
 
-    const userName = profile?.full_name ?? 'Usuario';
-    const roleLabel = role === 'professional' ? 'Profesional' : 'Cuidador';
+    const handleEditProfile = () => {
+        if (user) {
+            setFormData({
+                firstName: user.first_name || '',
+                lastName: user.last_name || '',
+                phone: user.phone || ''
+            });
+            setIsEditing(true);
+        }
+    };
+
+    const handleSaveProfile = async () => {
+        if (!user) return;
+
+        try {
+            const response = await fetch('http://localhost:3001/api/user/profile', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userId: user.id,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    phone: formData.phone
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update user in auth store
+                const updatedUser = { ...user, ...result.user };
+                // You'll need to add an updateUser method to authStore
+                setSnackbar({ visible: true, message: 'Perfil actualizado exitosamente', type: 'success' });
+                setIsEditing(false);
+            } else {
+                setSnackbar({ visible: true, message: result.error || 'Error al actualizar perfil', type: 'error' });
+            }
+        } catch (error) {
+            setSnackbar({ visible: true, message: 'Error de conexión', type: 'error' });
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setFormData({
+            firstName: '',
+            lastName: '',
+            phone: ''
+        });
+    };
+
+    const roleLabel = role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Cuidador';
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -99,11 +164,55 @@ export default function ProfileScreen() {
                         <MaterialCommunityIcons name="account" size={36} color={theme.colors.primary} />
                     </View>
                     <View style={styles.userInfo}>
-                        <Text style={styles.name}>{userName}</Text>
-                        <Text style={styles.email}>{user?.email ?? ''}</Text>
-                        <View style={[styles.roleBadge, { backgroundColor: theme.colors.primaryContainer }]}>
-                            <Text style={[styles.roleText, { color: theme.colors.onPrimaryContainer }]}>{roleLabel}</Text>
-                        </View>
+                        {isEditing ? (
+                            <>
+                                <TextInput
+                                    label="Nombre"
+                                    value={formData.firstName}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, firstName: text }))}
+                                    style={styles.input}
+                                    mode="outlined"
+                                    dense
+                                />
+                                <TextInput
+                                    label="Apellido"
+                                    value={formData.lastName}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, lastName: text }))}
+                                    style={styles.input}
+                                    mode="outlined"
+                                    dense
+                                />
+                                <TextInput
+                                    label="Teléfono"
+                                    value={formData.phone}
+                                    onChangeText={(text) => setFormData(prev => ({ ...prev, phone: text }))}
+                                    style={styles.input}
+                                    mode="outlined"
+                                    dense
+                                />
+                                <View style={styles.editButtons}>
+                                    <AppButton label="Guardar" onPress={handleSaveProfile} />
+                                    <AppButton label="Cancelar" variant="outlined" onPress={handleCancelEdit} />
+                                </View>
+                            </>
+                        ) : (
+                            <>
+                                <Text style={styles.name}>
+                                    {user?.first_name && user?.last_name 
+                                        ? `${user.first_name} ${user.last_name}` 
+                                        : user?.email?.split('@')[0] || 'Usuario'}
+                                </Text>
+                                <Text style={styles.role}>{roleLabel}</Text>
+                                <Text style={styles.email}>{user?.email ?? ''}</Text>
+                                {user?.phone && <Text style={styles.phone}>{user.phone}</Text>}
+                                <AppButton 
+                                    label="Editar perfil" 
+                                    variant="outlined" 
+                                    onPress={handleEditProfile}
+                                    style={styles.editButton}
+                                />
+                            </>
+                        )}
                     </View>
                 </View>
             </AppCard>
@@ -172,7 +281,12 @@ const styles = StyleSheet.create({
     avatar: { width: 60, height: 60, borderRadius: 30, justifyContent: 'center', alignItems: 'center' },
     userInfo: { flex: 1, gap: 2 },
     name: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
+    role: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#6b7280' },
     email: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
+    phone: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
+    input: { marginBottom: 8 },
+    editButtons: { flexDirection: 'row', gap: 8, marginTop: 8 },
+    editButton: { marginTop: 8 },
     roleBadge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, marginTop: 4 },
     roleText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 12 },
     syncRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

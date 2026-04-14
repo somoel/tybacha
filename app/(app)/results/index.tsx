@@ -5,8 +5,8 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchBatteries, fetchBatteryWithResults } from '@/src/services/batteryService';
-import { fetchExercisePlans, generateExercisePlan, logExerciseCompletion } from '@/src/services/exercisePlanService';
+import { fetchBatteries, fetchBatteryWithResults } from '@/src/services/batteryServiceMySQL';
+import { fetchExercisePlans, generateExercisePlan, logExerciseCompletion } from '@/src/services/exercisePlanServiceMySQL';
 import { fetchPatients } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useExercisePlanStore } from '@/src/stores/exercisePlanStore';
@@ -68,7 +68,7 @@ export default function ResultsScreen() {
                 const patientPlans = await fetchExercisePlans(selectedPatient.id);
                 setPlans(patientPlans);
             } catch (error) {
-                console.error('Error:', error);
+                // Handle error silently
             }
         };
         loadBatteryAndPlans();

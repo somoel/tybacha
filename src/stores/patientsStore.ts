@@ -1,4 +1,4 @@
-import type { Patient, SectionedPatients } from '@/src/types/patient.types';
+import type { Patient, PatientFormData, SectionedPatients } from '@/src/types/patient.types';
 import { create } from 'zustand';
 
 interface PatientsState {
@@ -6,6 +6,7 @@ interface PatientsState {
     selectedPatient: Patient | null;
     searchQuery: string;
     isLoading: boolean;
+    sectionedPatients: SectionedPatients;
 
     /** Replace the entire patients list */
     setPatients: (patients: Patient[]) => void;
@@ -21,17 +22,28 @@ interface PatientsState {
     setSearchQuery: (query: string) => void;
     /** Set loading state */
     setLoading: (loading: boolean) => void;
+    /** Set sectioned patients */
+    setSectionedPatients: (sectioned: SectionedPatients) => void;
+
+    /** Async operations */
+    loadPatients: (userId: string, userRole: string) => Promise<void>;
+    createPatient: (patientData: PatientFormData, createdBy: string) => Promise<boolean>;
+    updatePatientData: (patientId: string, patientData: Partial<PatientFormData>) => Promise<boolean>;
+    deletePatientData: (patientId: string) => Promise<boolean>;
+    loadPatientDetails: (patientId: string) => Promise<void>;
+    searchPatients: (query: string) => Promise<void>;
 }
 
 /**
  * Patients state store.
  * Manages patient list, selection, and search filtering.
  */
-export const usePatientsStore = create<PatientsState>()((set) => ({
+export const usePatientsStore = create<PatientsState>()((set, get) => ({
     patients: [],
     selectedPatient: null,
     searchQuery: '',
     isLoading: false,
+    sectionedPatients: { noBatteries: [], pendingRecommendation: [], inProgress: [] },
 
     setPatients: (patients) => set({ patients }),
 
@@ -56,6 +68,113 @@ export const usePatientsStore = create<PatientsState>()((set) => ({
     setSearchQuery: (searchQuery) => set({ searchQuery }),
 
     setLoading: (isLoading) => set({ isLoading }),
+
+    setSectionedPatients: (sectionedPatients) => set({ sectionedPatients }),
+
+    // Async operations
+    loadPatients: async (userId: string, userRole: string) => {
+        set({ isLoading: true });
+        try {
+            const sectionedPatients = await patientServiceMySQL.getSectionedPatients(userId, userRole);
+            const allPatients = [
+                ...sectionedPatients.noBatteries,
+                ...sectionedPatients.pendingRecommendation,
+                ...sectionedPatients.inProgress
+            ];
+            set({ 
+                patients: allPatients, 
+                sectionedPatients, 
+                isLoading: false 
+            });
+        } catch (error) {
+            console.error('Error loading patients:', error);
+            set({ isLoading: false });
+        }
+    },
+
+    createPatient: async (patientData: PatientFormData, createdBy: string) => {
+        set({ isLoading: true });
+        try {
+            const newPatient = await patientServiceMySQL.createPatient(patientData, createdBy);
+            if (newPatient) {
+                set((state) => ({ 
+                    patients: [newPatient, ...state.patients],
+                    isLoading: false 
+                }));
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error creating patient:', error);
+            set({ isLoading: false });
+            return false;
+        }
+    },
+
+    updatePatientData: async (patientId: string, patientData: Partial<PatientFormData>) => {
+        set({ isLoading: true });
+        try {
+            const success = await patientServiceMySQL.updatePatient(patientId, patientData);
+            if (success) {
+                const updatedPatient = await patientServiceMySQL.getPatientById(patientId);
+                if (updatedPatient) {
+                    get().updatePatient(updatedPatient);
+                }
+            }
+            set({ isLoading: false });
+            return success;
+        } catch (error) {
+            console.error('Error updating patient:', error);
+            set({ isLoading: false });
+            return false;
+        }
+    },
+
+    deletePatientData: async (patientId: string) => {
+        set({ isLoading: true });
+        try {
+            const success = await patientServiceMySQL.deletePatient(patientId);
+            if (success) {
+                get().removePatient(patientId);
+            }
+            set({ isLoading: false });
+            return success;
+        } catch (error) {
+            console.error('Error deleting patient:', error);
+            set({ isLoading: false });
+            return false;
+        }
+    },
+
+    loadPatientDetails: async (patientId: string) => {
+        set({ isLoading: true });
+        try {
+            const patientDetails = await patientServiceMySQL.getPatientWithDetails(patientId);
+            if (patientDetails) {
+                set({ 
+                    selectedPatient: patientDetails, 
+                    isLoading: false 
+                });
+            }
+        } catch (error) {
+            console.error('Error loading patient details:', error);
+            set({ isLoading: false });
+        }
+    },
+
+    searchPatients: async (query: string) => {
+        set({ isLoading: true, searchQuery: query });
+        try {
+            const searchResults = await patientServiceMySQL.searchPatients(query);
+            set({ 
+                patients: searchResults, 
+                isLoading: false 
+            });
+        } catch (error) {
+            console.error('Error searching patients:', error);
+            set({ isLoading: false });
+        }
+    },
 }));
 
 /**

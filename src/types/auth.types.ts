@@ -1,6 +1,6 @@
-import type { Session, User } from '@supabase/supabase-js';
+import type { User, UserProfile, UserRole } from './database.types';
 
-export type UserRole = 'professional' | 'caregiver';
+export type { UserRole };
 
 export interface Profile {
     id: string;
@@ -10,11 +10,12 @@ export interface Profile {
 }
 
 export interface AuthState {
-    session: Session | null;
     user: User | null;
+    profile: UserProfile | null;
     role: UserRole | null;
     isLoading: boolean;
-    setSession: (session: Session | null) => void;
+    setUser: (user: User | null) => void;
+    setProfile: (profile: UserProfile | null) => void;
     setRole: (role: UserRole) => void;
     logout: () => Promise<void>;
 }
@@ -23,4 +24,11 @@ export interface LoginFormData {
     email: string;
     password: string;
     rememberMe: boolean;
+}
+
+export interface AuthResponse {
+    success: boolean;
+    user?: User;
+    profile?: UserProfile;
+    error?: string;
 }

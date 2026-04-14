@@ -26,7 +26,7 @@ interface BatteryState {
  * Results are accumulated as each test is completed,
  * then persisted to Supabase/SQLite via batteryService.finalizeBattery().
  */
-export const useBatteryStore = create<BatteryState>()((set) => ({
+export const useBatteryStore = create<BatteryState>()((set, get) => ({
     activeBatteryId: null,
     patientId: null,
     results: {},
@@ -49,6 +49,39 @@ export const useBatteryStore = create<BatteryState>()((set) => ({
                 ? state.completedTests
                 : [...state.completedTests, testType],
         })),
+
+    finalizeBattery: async () => {
+        const state = get();
+        
+        if (!state.patientId || Object.keys(state.results).length === 0) {
+            return;
+        }
+
+        try {
+            // Import here to avoid circular dependency
+            const { batteryServiceMySQL } = await import('@/src/services/batteryServiceMySQL');
+            const { user } = await import('@/src/stores/authStore').then(m => m.useAuthStore.getState());
+            
+            // Always create a new battery since we need to ensure it exists
+            const battery = await batteryServiceMySQL.createBattery(
+                state.patientId,
+                user?.id || 'unknown',
+                'Batería SFT completada'
+            );
+            const batteryId = battery.id;
+            
+            // Save each result to the database
+            for (const [testType, value] of Object.entries(state.results)) {
+                await batteryServiceMySQL.addSFTResult(
+                    batteryId,
+                    testType,
+                    value.toString()
+                );
+            }
+        } catch (error) {
+            throw error;
+        }
+    },
 
     setFinalized: () =>
         set({

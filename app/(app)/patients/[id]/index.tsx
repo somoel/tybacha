@@ -2,10 +2,11 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchBatteries } from '@/src/services/batteryService';
-import { fetchExercisePlans } from '@/src/services/exercisePlanService';
+import { fetchBatteries } from '@/src/services/batteryServiceMySQL';
+import { fetchExercisePlans } from '@/src/services/exercisePlanServiceMySQL';
 import { fetchPatientById } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
+import { useBatteryStore } from '@/src/stores/batteryStore';
 import type { SFTBattery } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
@@ -26,6 +27,7 @@ export default function PatientDetailScreen() {
     const router = useRouter();
     const { user } = useAuthStore();
     const { isProfessional } = usePermissions();
+    const { resetBattery } = useBatteryStore();
 
     const [patient, setPatient] = useState<Patient | null>(null);
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
@@ -35,6 +37,9 @@ export default function PatientDetailScreen() {
     useEffect(() => {
         const load = async () => {
             if (!id) return;
+            
+            // Reset battery store to prevent data sharing between patients
+            resetBattery();
             try {
                 const [p, b, pl] = await Promise.all([
                     fetchPatientById(id),
@@ -45,7 +50,7 @@ export default function PatientDetailScreen() {
                 setBatteries(b);
                 setPlans(pl);
             } catch (error) {
-                console.error('Error cargando detalle:', error);
+                // Handle error silently
             } finally {
                 setIsLoading(false);
             }
@@ -59,7 +64,7 @@ export default function PatientDetailScreen() {
     const age = differenceInYears(new Date(), new Date(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
         .filter(Boolean).join(' ');
-    const genderLabel = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Femenino' : 'Otro';
+    const genderLabel = patient.gender === 'M' ? 'Masculino' : patient.gender === 'F' ? 'Femenino' : 'Otro';
     const hasActivePlan = plans.some((p) => p.status === 'active');
 
     return (
@@ -80,12 +85,6 @@ export default function PatientDetailScreen() {
                         </Text>
                     </View>
                 </View>
-                {patient.pathologies && (
-                    <View style={styles.pathologiesContainer}>
-                        <MaterialCommunityIcons name="medical-bag" size={16} color={theme.colors.secondary} />
-                        <Text style={styles.pathologies}>{patient.pathologies}</Text>
-                    </View>
-                )}
             </AppCard>
 
             {/* Action buttons */}

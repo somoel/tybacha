@@ -1,10 +1,11 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { fetchUserProfile, login } from '@/src/services/authService';
+import { authServiceMySQL } from '@/src/services/authServiceMySQL';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -27,7 +28,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { setSession, setRole } = useAuthStore();
+    const { setUser, setProfile, setRole } = useAuthStore();
 
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -35,25 +36,33 @@ export default function LoginScreen() {
 
     const { control, handleSubmit } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
-        defaultValues: { email: 'chamber@yopmail.com', password: 'AAA12345*' },
+        defaultValues: { email: 'admin@tybacha.com', password: 'admin123' },
     });
 
     const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
         try {
-            // register
-            // await register(data.email, data.password, 'Kevin Viasus', 'professional');
-            const authData = await login(data.email, data.password);
-            setSession(authData.session);
+            const authResponse = await authServiceMySQL.login({
+                email: data.email,
+                password: data.password,
+                rememberMe: rememberMe,
+            });
 
-            if (authData.session?.user) {
-                const profile = await fetchUserProfile(authData.session.user.id);
-                if (profile) {
-                    setRole(profile.role);
+            if (authResponse.success && authResponse.user) {
+                // Store user ID in AsyncStorage for persistence
+                if (rememberMe) {
+                    await AsyncStorage.setItem('tybacha-user-id', authResponse.user.id);
                 }
-            }
 
-            router.replace('/(app)/home' as never);
+                // Update auth store
+                setUser(authResponse.user);
+                setProfile(authResponse.profile);
+                setRole(authResponse.user.rol);
+
+                router.replace('/(app)/home' as never);
+            } else {
+                throw new Error(authResponse.error || 'Error al iniciar sesión');
+            }
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Error inesperado al iniciar sesión.';
             setSnackbar({ visible: true, message, type: 'error' });
