@@ -1,0 +1,33 @@
+{
+  "name": "@tybacha/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "seed": "tsx src/seeds/runSeeds.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.0",
+    "@fastify/multipart": "^9.0.0",
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
+    "expo-server-sdk": "^3.15.0",
+    "fastify": "^5.6.2",
+    "jose": "^6.1.0",
+    "mysql2": "^3.15.3",
+    "pdfkit": "^0.17.2",
+    "pino": "^10.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/pdfkit": "^0.17.3",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.2"
+  }
+}
+

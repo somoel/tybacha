@@ -1,0 +1,157 @@
+import type { FastifyInstance } from 'fastify';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { z } from 'zod';
+import { canCreateRole, type UserRole } from '../../../../domain/roles.js';
+import { hashPassword } from '../../../../infrastructure/auth/passwords.js';
+import { pool } from '../../../../infrastructure/db/pool.js';
+import { badRequest, forbidden, notFound } from '../../httpErrors.js';
+import { requireAuth, requireRoles } from '../../requireAuth.js';
+
+const createUserSchema = z.object({
+  correo: z.string().email(),
+  contrasena: z.string().min(8),
+  rol: z.enum(['administrador', 'profesional', 'cuidador']),
+  nombres: z.string().min(1).max(120),
+  apellidos: z.string().min(1).max(120),
+  tipoDocumento: z.string().max(30).optional(),
+  numeroDocumento: z.string().max(60).optional(),
+  telefono: z.string().max(40).optional(),
+  fechaNacimiento: z.string().date().optional(),
+  genero: z.enum(['femenino', 'masculino', 'otro', 'no_informa']).optional(),
+  direccion: z.string().max(255).optional(),
+  ciudad: z.string().max(120).optional(),
+});
+
+interface MeRow extends RowDataPacket {
+  id_usuario: number;
+  correo: string;
+  rol: UserRole;
+  estado: string;
+  nombres: string | null;
+  apellidos: string | null;
+  telefono: string | null;
+  ciudad: string | null;
+}
+
+export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/me', { preHandler: requireAuth(app) }, async (request) => {
+    const userId = request.authUser?.idUsuario;
+    const [rows] = await pool.query<MeRow[]>(
+      `select u.id_usuario, u.correo, u.rol, u.estado,
+              p.nombres, p.apellidos, p.telefono, p.ciudad
+       from usuario u
+       left join perfil_usuario p on p.id_usuario = u.id_usuario
+       where u.id_usuario = :userId
+       limit 1`,
+      { userId },
+    );
+
+    const row = rows[0];
+    if (!row) throw notFound('Usuario no encontrado');
+
+    return {
+      idUsuario: row.id_usuario,
+      correo: row.correo,
+      rol: row.rol,
+      estado: row.estado,
+      perfil: {
+        nombres: row.nombres,
+        apellidos: row.apellidos,
+        telefono: row.telefono,
+        ciudad: row.ciudad,
+      },
+    };
+  });
+
+  app.get('/users', { preHandler: requireRoles(app, ['administrador', 'profesional']) }, async (request) => {
+    const actor = request.authUser!;
+    const roleFilter = actor.rol === 'administrador' ? ['profesional', 'cuidador'] : ['cuidador'];
+
+    const [rows] = await pool.query<MeRow[]>(
+      `select u.id_usuario, u.correo, u.rol, u.estado,
+              p.nombres, p.apellidos, p.telefono, p.ciudad
+       from usuario u
+       left join perfil_usuario p on p.id_usuario = u.id_usuario
+       where u.rol in (:roles)
+       order by p.apellidos, p.nombres, u.correo`,
+      { roles: roleFilter },
+    );
+
+    return rows.map((row) => ({
+      idUsuario: row.id_usuario,
+      correo: row.correo,
+      rol: row.rol,
+      estado: row.estado,
+      nombres: row.nombres,
+      apellidos: row.apellidos,
+      telefono: row.telefono,
+      ciudad: row.ciudad,
+    }));
+  });
+
+  app.post('/users', { preHandler: requireRoles(app, ['administrador', 'profesional']) }, async (request) => {
+    const actor = request.authUser!;
+    const body = createUserSchema.parse(request.body);
+
+    if (!canCreateRole(actor.rol, body.rol)) {
+      throw forbidden('No puede crear usuarios con ese rol');
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const passwordHash = await hashPassword(body.contrasena);
+      const [insertResult] = await connection.query<ResultSetHeader>(
+        `insert into usuario
+          (correo, contrasena_hash, rol, estado, correo_verificado, id_profesional_supervisor)
+         values
+          (:correo, :passwordHash, :rol, 'activo', 1, :supervisor)`,
+        {
+          correo: body.correo.toLowerCase(),
+          passwordHash,
+          rol: body.rol,
+          supervisor: actor.rol === 'profesional' && body.rol === 'cuidador' ? actor.idUsuario : null,
+        },
+      );
+
+      const idUsuario = insertResult.insertId;
+      await connection.query(
+        `insert into perfil_usuario
+          (id_usuario, nombres, apellidos, tipo_documento, numero_documento, telefono, fecha_nacimiento, genero, direccion, ciudad)
+         values
+          (:idUsuario, :nombres, :apellidos, :tipoDocumento, :numeroDocumento, :telefono, :fechaNacimiento, :genero, :direccion, :ciudad)`,
+        {
+          idUsuario,
+          nombres: body.nombres,
+          apellidos: body.apellidos,
+          tipoDocumento: body.tipoDocumento ?? null,
+          numeroDocumento: body.numeroDocumento ?? null,
+          telefono: body.telefono ?? null,
+          fechaNacimiento: body.fechaNacimiento ?? null,
+          genero: body.genero ?? null,
+          direccion: body.direccion ?? null,
+          ciudad: body.ciudad ?? null,
+        },
+      );
+
+      await connection.commit();
+
+      return {
+        idUsuario,
+        correo: body.correo.toLowerCase(),
+        rol: body.rol,
+        estado: 'activo',
+      };
+    } catch (error) {
+      await connection.rollback();
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ER_DUP_ENTRY') {
+        throw badRequest('Ya existe un usuario con esos datos');
+      }
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+}
+
