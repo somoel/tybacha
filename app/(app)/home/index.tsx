@@ -11,9 +11,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FAB, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 
 /**
  * Dashboard screen showing role-specific content.
@@ -24,7 +24,7 @@ export default function HomeScreen() {
     const theme = useTheme();
     const router = useRouter();
     const { user, profile } = useAuthStore();
-    const { isProfessional, isCaregiver } = usePermissions();
+    const { isAdmin, isProfessional, isCaregiver } = usePermissions();
     const { patients, setPatients, setLoading, isLoading } = usePatientsStore();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
@@ -40,7 +40,7 @@ export default function HomeScreen() {
             if (!user) return;
             setLoading(true);
             try {
-                const role = isProfessional ? 'profesional' : 'cuidador';
+                const role = isAdmin || isProfessional ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
             } catch (error) {
@@ -50,9 +50,10 @@ export default function HomeScreen() {
             }
         };
         void loadPatients();
-    }, [user, isProfessional, setPatients, setLoading]);
+    }, [user, isAdmin, isProfessional, setPatients, setLoading]);
 
     const userName = profile?.full_name ?? 'Usuario';
+    const hasStaffAccess = isAdmin || isProfessional;
 
     if (isLoading) {
         return <AppLoader message="Cargando datos..." />;
@@ -72,9 +73,8 @@ export default function HomeScreen() {
                     <SafeAreaView edges={['top']} style={styles.headerContent}>
                         <Text style={styles.greeting}>{greeting},</Text>
                         <Text style={styles.userName}>{userName}</Text>
-                        {isProfessional && (
-                            <Text style={styles.roleLabel}>Profesional</Text>
-                        )}
+                        {isAdmin && <Text style={styles.roleLabel}>Administrador</Text>}
+                        {isProfessional && <Text style={styles.roleLabel}>Profesional</Text>}
                         {isCaregiver && (
                             <Text style={styles.roleLabel}>Cuidador</Text>
                         )}
@@ -83,7 +83,7 @@ export default function HomeScreen() {
 
                 <View style={styles.content}>
                     {/* Summary cards for professional */}
-                    {isProfessional && (
+                    {hasStaffAccess && (
                         <View style={styles.statsRow}>
                             <AppCard style={styles.statCard}>
                                 <View style={styles.statContent}>
@@ -115,7 +115,7 @@ export default function HomeScreen() {
 
                     {/* Recent patients */}
                     <Text style={styles.sectionTitle}>
-                        {isProfessional ? 'Pacientes recientes' : 'Mis pacientes asignados'}
+                        {hasStaffAccess ? 'Pacientes recientes' : 'Mis pacientes asignados'}
                     </Text>
 
                     {patients.length === 0 ? (
@@ -123,14 +123,14 @@ export default function HomeScreen() {
                             <View style={styles.emptyContainer}>
                                 <MaterialCommunityIcons name="account-question" size={48} color={theme.colors.outline} />
                                 <Text style={styles.emptyText}>
-                                    {isProfessional
+                                    {hasStaffAccess
                                         ? 'No tiene pacientes registrados aún.'
                                         : 'No tiene pacientes asignados aún.'}
                                 </Text>
                             </View>
                         </AppCard>
                     ) : (
-                        patients.slice(0, isProfessional ? 3 : undefined).map((patient) => (
+                        patients.slice(0, hasStaffAccess ? 3 : undefined).map((patient) => (
                             <PatientCard
                                 key={patient.id}
                                 patient={patient}
@@ -139,7 +139,7 @@ export default function HomeScreen() {
                         ))
                     )}
 
-                    {isProfessional && patients.length > 3 && (
+                    {hasStaffAccess && patients.length > 3 && (
                         <Text
                             style={styles.seeAll}
                             onPress={() => router.push('/(app)/patients' as never)}
@@ -151,15 +151,16 @@ export default function HomeScreen() {
             </ScrollView>
 
             {/* FAB for professional to add new patient */}
-            {isProfessional && (
-                <FAB
-                    icon="plus"
-                    label="Nuevo paciente"
+            {hasStaffAccess && (
+                <Pressable
                     style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-                    color={theme.colors.onPrimary}
                     onPress={() => router.push('/(app)/patients/new' as never)}
                     accessibilityLabel="Registrar nuevo paciente"
-                />
+                    accessibilityRole="button"
+                >
+                    <MaterialCommunityIcons name="plus" size={20} color={theme.colors.onPrimary} />
+                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Nuevo paciente</Text>
+                </Pressable>
             )}
         </View>
     );
@@ -263,5 +264,15 @@ const styles = StyleSheet.create({
         right: 16,
         bottom: 24,
         borderRadius: 16,
+        minHeight: 56,
+        paddingHorizontal: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        elevation: 4,
+    },
+    fabText: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 14,
     },
 });

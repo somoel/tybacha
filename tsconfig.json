@@ -13,5 +13,14 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "api/**",
+    "node_modules/**",
+    "src/config/database.ts",
+    "src/lib/mysql.ts",
+    "src/lib/databaseTest.ts",
+    "src/lib/integrationTest.ts",
+    "src/services/**/*MySQL.ts"
   ]
 }

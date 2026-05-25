@@ -1,4 +1,11 @@
 import type { Patient, PatientFormData, SectionedPatients } from '@/src/types/patient.types';
+import {
+    createPatient,
+    deletePatient,
+    fetchPatientById,
+    fetchPatients,
+    updatePatient,
+} from '@/src/services/patientService';
 import { create } from 'zustand';
 
 interface PatientsState {
@@ -75,17 +82,8 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     loadPatients: async (userId: string, userRole: string) => {
         set({ isLoading: true });
         try {
-            const sectionedPatients = await patientServiceMySQL.getSectionedPatients(userId, userRole);
-            const allPatients = [
-                ...sectionedPatients.noBatteries,
-                ...sectionedPatients.pendingRecommendation,
-                ...sectionedPatients.inProgress
-            ];
-            set({ 
-                patients: allPatients, 
-                sectionedPatients, 
-                isLoading: false 
-            });
+            const patients = await fetchPatients(userId, userRole);
+            set({ patients, isLoading: false });
         } catch (error) {
             console.error('Error loading patients:', error);
             set({ isLoading: false });
@@ -95,7 +93,7 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     createPatient: async (patientData: PatientFormData, createdBy: string) => {
         set({ isLoading: true });
         try {
-            const newPatient = await patientServiceMySQL.createPatient(patientData, createdBy);
+            const newPatient = await createPatient(patientData, createdBy);
             if (newPatient) {
                 set((state) => ({ 
                     patients: [newPatient, ...state.patients],
@@ -114,15 +112,24 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     updatePatientData: async (patientId: string, patientData: Partial<PatientFormData>) => {
         set({ isLoading: true });
         try {
-            const success = await patientServiceMySQL.updatePatient(patientId, patientData);
-            if (success) {
-                const updatedPatient = await patientServiceMySQL.getPatientById(patientId);
-                if (updatedPatient) {
-                    get().updatePatient(updatedPatient);
-                }
+            const current = get().patients.find((patient) => patient.id === patientId);
+            if (!current) {
+                set({ isLoading: false });
+                return false;
             }
+            const updatedPatient = await updatePatient(patientId, {
+                first_name: patientData.first_name ?? current.first_name,
+                second_name: patientData.second_name ?? current.second_name,
+                first_lastname: patientData.first_lastname ?? current.first_lastname,
+                second_lastname: patientData.second_lastname ?? current.second_lastname,
+                birth_date: patientData.birth_date ?? new Date(current.birth_date),
+                gender: patientData.gender ?? current.gender,
+                pathologies: patientData.pathologies ?? current.pathologies,
+                id_cuidador: patientData.id_cuidador ?? current.id_cuidador,
+            });
+            get().updatePatient(updatedPatient);
             set({ isLoading: false });
-            return success;
+            return true;
         } catch (error) {
             console.error('Error updating patient:', error);
             set({ isLoading: false });
@@ -133,12 +140,10 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     deletePatientData: async (patientId: string) => {
         set({ isLoading: true });
         try {
-            const success = await patientServiceMySQL.deletePatient(patientId);
-            if (success) {
-                get().removePatient(patientId);
-            }
+            await deletePatient(patientId);
+            get().removePatient(patientId);
             set({ isLoading: false });
-            return success;
+            return true;
         } catch (error) {
             console.error('Error deleting patient:', error);
             set({ isLoading: false });
@@ -149,7 +154,7 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     loadPatientDetails: async (patientId: string) => {
         set({ isLoading: true });
         try {
-            const patientDetails = await patientServiceMySQL.getPatientWithDetails(patientId);
+            const patientDetails = await fetchPatientById(patientId);
             if (patientDetails) {
                 set({ 
                     selectedPatient: patientDetails, 
@@ -165,7 +170,11 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     searchPatients: async (query: string) => {
         set({ isLoading: true, searchQuery: query });
         try {
-            const searchResults = await patientServiceMySQL.searchPatients(query);
+            const normalized = query.toLowerCase();
+            const searchResults = get().patients.filter((patient) => {
+                const fullName = `${patient.first_name} ${patient.second_name ?? ''} ${patient.first_lastname} ${patient.second_lastname ?? ''}`.toLowerCase();
+                return fullName.includes(normalized);
+            });
             set({ 
                 patients: searchResults, 
                 isLoading: false 

@@ -11,6 +11,7 @@ export interface Patient {
     gender: Gender;
     pathologies?: string;
     caregiver_email?: string;  // Email del cuidador asignado
+    id_cuidador?: number;
     created_at: string;
     updated_at: string;
 }

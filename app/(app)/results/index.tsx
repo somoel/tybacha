@@ -5,8 +5,8 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchBatteries, fetchBatteryWithResults } from '@/src/services/batteryServiceMySQL';
-import { fetchExercisePlans, generateExercisePlan, logExerciseCompletion } from '@/src/services/exercisePlanServiceMySQL';
+import { fetchBatteries, fetchBatteryWithResults } from '@/src/services/batteryService';
+import { fetchExercisePlans, generateExercisePlan, logExerciseCompletion } from '@/src/services/exercisePlanService';
 import { fetchPatients } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useExercisePlanStore } from '@/src/stores/exercisePlanStore';
@@ -25,7 +25,7 @@ import { Text, useTheme } from 'react-native-paper';
 export default function ResultsScreen() {
     const theme = useTheme();
     const { user } = useAuthStore();
-    const { isProfessional } = usePermissions();
+    const { isAdmin, isProfessional } = usePermissions();
     const { patients, setPatients } = usePatientsStore();
     const { isGenerating, setGenerating, setGenerationError, generationError, addPlan } = useExercisePlanStore();
 
@@ -39,7 +39,7 @@ export default function ResultsScreen() {
         const load = async () => {
             if (!user) return;
             try {
-                const role = isProfessional ? 'profesional' : 'cuidador';
+                const role = isAdmin || isProfessional ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
                 if (data.length > 0) {
@@ -52,7 +52,8 @@ export default function ResultsScreen() {
             }
         };
         load();
-    }, [user, isProfessional, setPatients]);
+    }, [user, isAdmin, isProfessional, setPatients]);
+    const hasStaffAccess = isAdmin || isProfessional;
 
     useEffect(() => {
         const loadBatteryAndPlans = async () => {
@@ -67,7 +68,7 @@ export default function ResultsScreen() {
                 }
                 const patientPlans = await fetchExercisePlans(selectedPatient.id);
                 setPlans(patientPlans);
-            } catch (error) {
+            } catch {
                 // Handle error silently
             }
         };
@@ -153,7 +154,7 @@ export default function ResultsScreen() {
                     )}
 
                     {/* Generate AI plan button */}
-                    {isProfessional && latestBattery && !hasActivePlan && (
+                    {hasStaffAccess && latestBattery && !hasActivePlan && (
                         <View style={styles.generateSection}>
                             <AppButton
                                 label="Generar plan de ejercicios con IA"

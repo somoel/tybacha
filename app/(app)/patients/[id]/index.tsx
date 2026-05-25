@@ -23,7 +23,7 @@ export default function PatientDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const theme = useTheme();
     const router = useRouter();
-    const { isProfessional } = usePermissions();
+    const { isAdmin, isProfessional } = usePermissions();
 
     const [patient, setPatient] = useState<Patient | null>(null);
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
@@ -59,6 +59,7 @@ export default function PatientDetailScreen() {
         .filter(Boolean).join(' ');
     const genderLabel = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Femenino' : 'Otro';
     const hasActivePlan = plans.some((p) => p.status === 'active');
+    const hasStaffAccess = isAdmin || isProfessional;
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -102,7 +103,7 @@ export default function PatientDetailScreen() {
                     onPress={() => router.push(`/(app)/patients/${id}/batteries` as never)}
                     accessibilityLabel="Ver historial de baterías"
                 />
-                {isProfessional && batteries.length > 0 && !hasActivePlan && (
+                {hasStaffAccess && batteries.length > 0 && !hasActivePlan && (
                     <AppButton
                         label="Generar plan IA"
                         variant="filled"
@@ -111,7 +112,7 @@ export default function PatientDetailScreen() {
                         accessibilityLabel="Generar plan de ejercicios con IA"
                     />
                 )}
-                {isProfessional && (
+                {hasStaffAccess && (
                     <>
                         <Divider style={styles.divider} />
                         <AppButton

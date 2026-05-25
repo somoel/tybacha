@@ -1,4 +1,5 @@
 import { generateUUID } from '@/src/lib/sqlite';
+import { createBattery, saveBatteryResults } from '@/src/services/batteryService';
 import type { SFTTestType } from '@/src/types/battery.types';
 import { create } from 'zustand';
 
@@ -14,6 +15,8 @@ interface BatteryState {
     /** Save a single test result into the active battery */
     saveResult: (testType: SFTTestType, value: number) => void;
     /** Mark battery as complete (triggers persistence via service) */
+    finalizeBattery: () => Promise<void>;
+    /** Clear the active session after persistence */
     setFinalized: () => void;
     /** Reset the battery state for a new session */
     resetBattery: () => void;
@@ -24,7 +27,7 @@ interface BatteryState {
 /**
  * Battery store – tracks the active SFT battery session.
  * Results are accumulated as each test is completed,
- * then persisted to Supabase/SQLite via batteryService.finalizeBattery().
+ * then persisted through the TiDB API.
  */
 export const useBatteryStore = create<BatteryState>()((set, get) => ({
     activeBatteryId: null,
@@ -58,26 +61,15 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
         }
 
         try {
-            // Import here to avoid circular dependency
-            const { batteryServiceMySQL } = await import('@/src/services/batteryServiceMySQL');
             const { user } = await import('@/src/stores/authStore').then(m => m.useAuthStore.getState());
-            
-            // Always create a new battery since we need to ensure it exists
-            const battery = await batteryServiceMySQL.createBattery(
+
+            const battery = await createBattery(
                 state.patientId,
                 user?.id || 'unknown',
-                'Batería SFT completada'
+                'Bateria SFT completada',
+                true,
             );
-            const batteryId = battery.id;
-            
-            // Save each result to the database
-            for (const [testType, value] of Object.entries(state.results)) {
-                await batteryServiceMySQL.addSFTResult(
-                    batteryId,
-                    testType,
-                    value.toString()
-                );
-            }
+            await saveBatteryResults(battery.id, state.results, true);
         } catch (error) {
             throw error;
         }

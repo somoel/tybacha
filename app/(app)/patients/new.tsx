@@ -34,7 +34,7 @@ type PatientFormValues = z.infer<typeof patientSchema>;
 export default function NewPatientScreen() {
     const router = useRouter();
     const { user } = useAuthStore();
-    const { isProfessional } = usePermissions();
+    const { isAdmin, isProfessional } = usePermissions();
     const { addPatient } = usePatientsStore();
     const isOnline = useSyncStore((s) => s.isOnline);
 
@@ -58,6 +58,11 @@ export default function NewPatientScreen() {
 
     const onSubmit = async (data: PatientFormValues) => {
         if (!user) return;
+        const requiresCaregiver = isAdmin || isProfessional;
+        if (requiresCaregiver && !data.id_cuidador) {
+            setSnackbar({ visible: true, message: 'Debe asignar un cuidador al adulto mayor.', type: 'error' });
+            return;
+        }
         setIsLoading(true);
         try {
             const patient = await createPatient(
@@ -137,7 +142,7 @@ export default function NewPatientScreen() {
                         )}
                     />
 
-                    {isProfessional && (
+                    {(isAdmin || isProfessional) && (
                         <AppInput
                             control={control}
                             name="id_cuidador"

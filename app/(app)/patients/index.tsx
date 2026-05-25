@@ -7,9 +7,10 @@ import { fetchPatients } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { getSectionedPatients, usePatientsStore } from '@/src/stores/patientsStore';
 import type { Patient, SectionedPatients } from '@/src/types/patient.types';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Searchbar } from 'react-native-paper';
 
 /**
@@ -18,7 +19,7 @@ import { Searchbar } from 'react-native-paper';
 export default function PatientsListScreen() {
     const router = useRouter();
     const { user } = useAuthStore();
-    const { isProfessional } = usePermissions();
+    const { isAdmin, isProfessional } = usePermissions();
     const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading } = usePatientsStore();
     const [sections, setSections] = useState<SectionedPatients | null>(null);
 
@@ -27,11 +28,12 @@ export default function PatientsListScreen() {
             if (!user) return;
             setLoading(true);
             try {
-                const role = isProfessional ? 'profesional' : 'cuidador';
+                const hasStaffAccess = isAdmin || isProfessional;
+                const role = hasStaffAccess ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
 
-                if (isProfessional && data.length > 0) {
+                if (hasStaffAccess && data.length > 0) {
                     const ids = data.map((p) => p.id);
                     const [counts, plans] = await Promise.all([
                         fetchBatteryCountsForPatients(ids),
@@ -46,7 +48,8 @@ export default function PatientsListScreen() {
             }
         };
         load();
-    }, [user, isProfessional, setPatients, setLoading]);
+    }, [user, isAdmin, isProfessional, setPatients, setLoading]);
+    const hasStaffAccess = isAdmin || isProfessional;
 
     const filteredPatients = patients.filter((p) => {
         const fullName = `${p.first_name} ${p.second_name ?? ''} ${p.first_lastname} ${p.second_lastname ?? ''}`.toLowerCase();
@@ -74,7 +77,7 @@ export default function PatientsListScreen() {
                 />
             </View>
 
-            {isProfessional && sections && !searchQuery ? (
+            {hasStaffAccess && sections && !searchQuery ? (
                 <PatientSectionList
                     sections={sections}
                     onPatientPress={handlePatientPress}
@@ -94,15 +97,16 @@ export default function PatientsListScreen() {
                 />
             )}
 
-            {/* Floating Action Button for adding new patients - only for professionals */}
-            {isProfessional && (
-                <FAB
-                    icon="plus"
+            {/* Floating Action Button for adding new patients */}
+            {hasStaffAccess && (
+                <Pressable
                     style={styles.fab}
                     onPress={() => router.push('/(app)/patients/new' as never)}
                     accessibilityLabel="Agregar nuevo paciente"
                     accessibilityRole="button"
-                />
+                >
+                    <MaterialCommunityIcons name="plus" size={26} color="#FFFFFF" />
+                </Pressable>
             )}
         </View>
     );
@@ -135,5 +139,11 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
         backgroundColor: '#007AFF',
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 4,
     },
 });

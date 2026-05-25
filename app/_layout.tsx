@@ -1,8 +1,6 @@
-import { getDatabaseConfig } from '@/src/config/database';
 import { TybachaTheme } from '@/src/constants/theme';
 import { useAuth } from '@/src/hooks/useAuth';
 import { useOffline } from '@/src/hooks/useOffline';
-import { initMySQLService } from '@/src/lib/mysql';
 import {
     Montserrat_400Regular,
     Montserrat_500Medium,
@@ -24,7 +22,7 @@ import {
 SplashScreen.preventAutoHideAsync();
 
 /**
- * Root layout: PaperProvider + Montserrat fonts + auth listener + MySQL init.
+ * Root layout: PaperProvider + Montserrat fonts + auth listener.
  */
 export default function RootLayout() {
     const [fontsLoaded, fontError] = useFonts({
@@ -40,11 +38,6 @@ export default function RootLayout() {
 
     // Initialize offline detection
     useOffline();
-
-    // Initialize MySQL database
-    useEffect(() => {
-        initMySQLService(getDatabaseConfig()).catch(console.error);
-    }, []);
 
     // Hide splash screen when fonts are loaded
     useEffect(() => {
