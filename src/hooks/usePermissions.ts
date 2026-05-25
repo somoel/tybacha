@@ -13,14 +13,14 @@ export function usePermissions() {
         return role === requiredRole;
     };
 
+    /** Whether the current user is an administrator */
+    const isAdmin = role === 'administrador';
+
     /** Whether the current user is a professional */
-    const isProfessional = role === 'professional' || role === 'admin';
+    const isProfessional = role === 'profesional';
 
     /** Whether the current user is a caregiver */
-    const isCaregiver = role === 'caregiver';
-
-    /** Whether the current user is an admin */
-    const isAdmin = role === 'admin';
+    const isCaregiver = role === 'cuidador';
 
     /**
      * Check if user can perform an action that requires a specific role.
@@ -33,9 +33,9 @@ export function usePermissions() {
 
     return {
         role,
+        isAdmin,
         isProfessional,
         isCaregiver,
-        isAdmin,
         hasRole,
         canPerform,
     };

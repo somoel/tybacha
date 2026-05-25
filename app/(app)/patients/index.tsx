@@ -21,15 +21,13 @@ export default function PatientsListScreen() {
     const { isProfessional } = usePermissions();
     const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading } = usePatientsStore();
     const [sections, setSections] = useState<SectionedPatients | null>(null);
-    const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
-    const [activePlans, setActivePlans] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         const load = async () => {
             if (!user) return;
             setLoading(true);
             try {
-                const role = isProfessional ? 'professional' : 'caregiver';
+                const role = isProfessional ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
 
@@ -39,8 +37,6 @@ export default function PatientsListScreen() {
                         fetchBatteryCountsForPatients(ids),
                         fetchActivePlanStatus(ids),
                     ]);
-                    setBatteryCounts(counts);
-                    setActivePlans(plans);
                     setSections(getSectionedPatients(data, counts, plans));
                 }
             } catch (error) {

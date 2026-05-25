@@ -1,21 +1,35 @@
-import type { User, UserProfile, UserRole } from './database.types';
+export type UserRole = 'administrador' | 'profesional' | 'cuidador';
 
-export type { UserRole };
+export interface AuthSession {
+    accessToken: string;
+    refreshToken: string;
+}
+
+export interface AuthUser {
+    id: string;
+    idUsuario: number;
+    email: string;
+    correo: string;
+    rol: UserRole;
+}
 
 export interface Profile {
     id: string;
+    idUsuario: number;
     full_name: string;
     role: UserRole;
-    created_at: string;
+    nombres: string | null;
+    apellidos: string | null;
+    telefono: string | null;
+    ciudad: string | null;
 }
 
 export interface AuthState {
-    user: User | null;
-    profile: UserProfile | null;
+    session: AuthSession | null;
+    user: AuthUser | null;
     role: UserRole | null;
     isLoading: boolean;
-    setUser: (user: User | null) => void;
-    setProfile: (profile: UserProfile | null) => void;
+    setSession: (session: AuthSession | null) => void;
     setRole: (role: UserRole) => void;
     logout: () => Promise<void>;
 }
@@ -24,11 +38,4 @@ export interface LoginFormData {
     email: string;
     password: string;
     rememberMe: boolean;
-}
-
-export interface AuthResponse {
-    success: boolean;
-    user?: User;
-    profile?: UserProfile;
-    error?: string;
 }

@@ -7,13 +7,13 @@ import { Redirect } from 'expo-router';
  * If session exists → app home, otherwise → login.
  */
 export default function IndexScreen() {
-    const { session, isLoading } = useAuthStore();
+    const { user, isLoading } = useAuthStore();
 
     if (isLoading) {
         return <AppLoader message="Cargando Tybacha..." />;
     }
 
-    if (session) {
+    if (user) {
         return <Redirect href={'/(app)/home' as never} />;
     }
 

@@ -1,5 +1,6 @@
 export interface Exercise {
     index: number;
+    id_ejercicio_plan?: number;
     name: string;
     description: string;
     sets: number;

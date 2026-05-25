@@ -120,6 +120,21 @@ export default function AppLayout() {
                         tabBarAccessibilityLabel: 'Perfil',
                     }}
                 />
+                <Tabs.Screen
+                    name="admin/index"
+                    options={{
+                        title: 'Admin',
+                        headerTitle: 'Administracion',
+                        tabBarIcon: ({ color, focused }) => (
+                            <MaterialCommunityIcons
+                                name={focused ? 'shield-account' : 'shield-account-outline'}
+                                size={24}
+                                color={color}
+                            />
+                        ),
+                        tabBarAccessibilityLabel: 'Administracion',
+                    }}
+                />
             </Tabs>
         </View>
     );

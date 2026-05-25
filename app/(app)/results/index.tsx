@@ -39,7 +39,7 @@ export default function ResultsScreen() {
         const load = async () => {
             if (!user) return;
             try {
-                const role = isProfessional ? 'professional' : 'caregiver';
+                const role = isProfessional ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
                 if (data.length > 0) {

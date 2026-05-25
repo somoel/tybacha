@@ -22,12 +22,12 @@ export function ResultChart({ results, previousResults }: ResultChartProps) {
         const current = results.find((r) => r.test_type === test.type);
         const previous = previousResults?.find((r) => r.test_type === test.type);
 
-        const items: Array<{
+        const items: {
             value: number;
             label: string;
             frontColor: string;
             spacing?: number;
-        }> = [];
+        }[] = [];
 
         if (previous) {
             items.push({

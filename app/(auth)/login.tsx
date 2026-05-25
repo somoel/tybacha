@@ -1,11 +1,11 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { authServiceMySQL } from '@/src/services/authServiceMySQL';
+import { fetchApiMe, loginWithApi } from '@/src/api/authApi';
+import { registerPushNotifications } from '@/src/services/pushNotificationService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -28,7 +28,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { setUser, setProfile, setRole } = useAuthStore();
+    const { setSession, setUser, setProfile, setRole } = useAuthStore();
 
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -36,33 +36,29 @@ export default function LoginScreen() {
 
     const { control, handleSubmit } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
-        defaultValues: { email: 'admin@tybacha.com', password: 'admin123' },
+        defaultValues: { email: 'chamber@yopmail.com', password: 'AAA12345*' },
     });
 
     const onSubmit = async (data: LoginFormData) => {
         setIsLoading(true);
         try {
-            const authResponse = await authServiceMySQL.login({
-                email: data.email,
-                password: data.password,
-                rememberMe: rememberMe,
+            const authData = await loginWithApi({
+                correo: data.email,
+                contrasena: data.password,
+                recordarSesion: rememberMe,
+            });
+            setSession({
+                accessToken: authData.accessToken,
+                refreshToken: authData.refreshToken,
             });
 
-            if (authResponse.success && authResponse.user) {
-                // Store user ID in AsyncStorage for persistence
-                if (rememberMe) {
-                    await AsyncStorage.setItem('tybacha-user-id', authResponse.user.id);
-                }
+            const { user, profile } = await fetchApiMe();
+            setUser(user);
+            setProfile(profile);
+            setRole(user.rol);
+            registerPushNotifications().catch(console.error);
 
-                // Update auth store
-                setUser(authResponse.user);
-                setProfile(authResponse.profile);
-                setRole(authResponse.user.rol);
-
-                router.replace('/(app)/home' as never);
-            } else {
-                throw new Error(authResponse.error || 'Error al iniciar sesión');
-            }
+            router.replace('/(app)/home' as never);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Error inesperado al iniciar sesión.';
             setSnackbar({ visible: true, message, type: 'error' });

@@ -2,6 +2,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import { createPatient } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
@@ -12,7 +13,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import { SegmentedButtons, Text } from 'react-native-paper';
 import { z } from 'zod';
 
 const patientSchema = z.object({
@@ -21,6 +22,7 @@ const patientSchema = z.object({
     first_lastname: z.string().min(1, 'El primer apellido es requerido'),
     second_lastname: z.string().optional(),
     gender: z.enum(['male', 'female', 'other'], { message: 'Seleccione un género' }),
+    id_cuidador: z.string().optional(),
     pathologies: z.string().optional(),
 });
 
@@ -30,9 +32,9 @@ type PatientFormValues = z.infer<typeof patientSchema>;
  * RF-02: Register a new patient (professional only).
  */
 export default function NewPatientScreen() {
-    const theme = useTheme();
     const router = useRouter();
     const { user } = useAuthStore();
+    const { isProfessional } = usePermissions();
     const { addPatient } = usePatientsStore();
     const isOnline = useSyncStore((s) => s.isOnline);
 
@@ -49,6 +51,7 @@ export default function NewPatientScreen() {
             first_lastname: '',
             second_lastname: '',
             gender: 'male',
+            id_cuidador: undefined,
             pathologies: '',
         },
     });
@@ -58,7 +61,11 @@ export default function NewPatientScreen() {
         setIsLoading(true);
         try {
             const patient = await createPatient(
-                { ...data, birth_date: birthDate },
+                {
+                    ...data,
+                    birth_date: birthDate,
+                    id_cuidador: data.id_cuidador ? Number(data.id_cuidador) : undefined,
+                },
                 user.id,
                 isOnline
             );
@@ -129,6 +136,17 @@ export default function NewPatientScreen() {
                             />
                         )}
                     />
+
+                    {isProfessional && (
+                        <AppInput
+                            control={control}
+                            name="id_cuidador"
+                            label="ID del cuidador asignado *"
+                            placeholder="Ej. 12"
+                            keyboardType="numeric"
+                            accessibilityLabel="ID del cuidador asignado"
+                        />
+                    )}
 
                     <AppInput
                         control={control}

@@ -1,109 +1,52 @@
-import { getDatabase, getPendingSyncItems, removeSyncQueueItem } from '@/src/lib/sqlite';
-import { supabase } from '@/src/lib/supabase';
+import { syncApiOperations } from '@/src/api/syncApi';
+import {
+    getPendingOfflineOperations,
+    getPendingSyncItems,
+    markOfflineOperationResult,
+    removeSyncQueueItem,
+} from '@/src/lib/sqlite';
 
-/**
- * Synchronize all pending offline items to Supabase.
- * Processes the sync queue in order, upserting/deleting as needed.
- * @returns The number of items successfully synced
- */
 export async function syncPendingItems(): Promise<number> {
     let syncedCount = 0;
+    const operations = await getPendingOfflineOperations();
 
-    try {
-        const items = await getPendingSyncItems();
+    if (operations.length > 0) {
+        const response = await syncApiOperations(
+            operations.map((operation) => ({
+                idLocal: operation.id_local,
+                entidad: operation.entidad,
+                accion: operation.accion,
+                creadoEnLocal: operation.creado_en_local,
+                payload: JSON.parse(operation.payload) as Record<string, unknown>,
+            })),
+        );
 
-        if (items.length === 0) return 0;
-
-        for (const item of items) {
-            try {
-                const payload = JSON.parse(item.payload) as Record<string, unknown>;
-
-                switch (item.operation) {
-                    case 'INSERT': {
-                        const { error } = await supabase
-                            .from(item.table_name)
-                            .upsert(payload);
-
-                        if (error) {
-                            console.error(`Error sincronizando INSERT en ${item.table_name}:`, error);
-                            continue;
-                        }
-                        break;
-                    }
-                    case 'UPDATE': {
-                        const id = payload.id as string;
-                        const updateData = { ...payload };
-                        delete updateData.id;
-
-                        const { error } = await supabase
-                            .from(item.table_name)
-                            .update(updateData)
-                            .eq('id', id);
-
-                        if (error) {
-                            console.error(`Error sincronizando UPDATE en ${item.table_name}:`, error);
-                            continue;
-                        }
-                        break;
-                    }
-                    case 'DELETE': {
-                        const { error } = await supabase
-                            .from(item.table_name)
-                            .delete()
-                            .eq('id', payload.id as string);
-
-                        if (error) {
-                            console.error(`Error sincronizando DELETE en ${item.table_name}:`, error);
-                            continue;
-                        }
-                        break;
-                    }
-                    default:
-                        console.warn(`Operación no soportada: ${item.operation}`);
-                        continue;
-                }
-
-                // Mark as synced in local table
-                await markLocalItemSynced(item.table_name, payload.id as string);
-                // Remove from sync queue
-                await removeSyncQueueItem(item.id);
+        for (const result of response.resultados) {
+            await markOfflineOperationResult(
+                result.idLocal,
+                result.estado,
+                result.idRemoto,
+                result.detalle,
+            );
+            if (result.estado === 'aplicada') {
                 syncedCount++;
-            } catch (error) {
-                console.error(`Error procesando item de sincronización ${item.id}:`, error);
             }
         }
-
-        return syncedCount;
-    } catch (error) {
-        console.error('Error en sincronización:', error);
-        throw new Error('Error al sincronizar datos con el servidor.');
     }
+
+    // Legacy Supabase-era queue: keep draining unsupported entries so old local data
+    // does not block the new TiDB synchronization indicator forever.
+    const legacyItems = await getPendingSyncItems();
+    for (const item of legacyItems) {
+        await removeSyncQueueItem(item.id);
+    }
+
+    return syncedCount;
 }
 
-/**
- * Mark a local SQLite record as synced.
- */
-async function markLocalItemSynced(tableName: string, id: string): Promise<void> {
-    const localTableName = `${tableName}_local`;
-    try {
-        const db = await getDatabase();
-        await db.runAsync(
-            `UPDATE ${localTableName} SET synced = 1 WHERE id = ?`,
-            [id]
-        );
-    } catch {
-        // Table might not have a local equivalent - that's ok
-    }
-}
-
-/**
- * Get the count of pending sync items.
- */
 export async function getPendingCount(): Promise<number> {
-    try {
-        const items = await getPendingSyncItems();
-        return items.length;
-    } catch {
-        return 0;
-    }
+    const operations = await getPendingOfflineOperations();
+    const legacyItems = await getPendingSyncItems();
+    return operations.length + legacyItems.length;
 }
+

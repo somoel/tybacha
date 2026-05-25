@@ -18,7 +18,7 @@ export default function ActiveTestScreen() {
     const { testType } = useLocalSearchParams<{ testType: string }>();
     const router = useRouter();
     const theme = useTheme();
-    const { saveResult, completedTests, finalizeBattery } = useBatteryStore();
+    const { saveResult } = useBatteryStore();
 
     const test = getSFTTest(testType ?? '');
     const [value, setValue] = useState(0);
@@ -31,8 +31,7 @@ export default function ActiveTestScreen() {
     const handleTimerComplete = useCallback((elapsed: number) => {
         setTimerCompleted(true);
         if (test?.counterMode === 'timer_result') {
-            // Use setTimeout to avoid setState during render
-            setTimeout(() => setValue(parseFloat(elapsed.toFixed(1))), 0);
+            setValue(parseFloat(elapsed.toFixed(1)));
         }
     }, [test]);
 
@@ -40,31 +39,11 @@ export default function ActiveTestScreen() {
         setValue(newValue);
     }, []);
 
-    const handleSave = async () => {
+    const handleSave = () => {
         if (!test) return;
-        
         saveResult(test.type as SFTTestType, value);
-        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado` });
-        
-        // Navigate to next test or go back if it's the last one
-        const nextIndex = currentIndex + 1;
-        
-        if (nextIndex < SFT_TESTS.length) {
-            const nextTest = SFT_TESTS[nextIndex];
-            const navigationUrl = `/(app)/tests/${nextTest.type}/active`;
-            setTimeout(() => router.push(navigationUrl as never), 1000);
-        } else {
-            // Last test completed, finalize battery and navigate to results
-            try {
-                // Finalize battery to save results to database
-                await finalizeBattery();
-            } catch (error) {
-                // Handle error silently
-            }
-            
-            // Navigate to results screen
-            setTimeout(() => router.push('/(app)/results' as never), 1000);
-        }
+        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado ✓` });
+        setTimeout(() => router.back(), 1000);
     };
 
     if (!test) {

@@ -1,7 +1,6 @@
 import type { StreamableOutputItem, Tool } from '@openrouter/sdk';
 import { OpenRouter, stepCountIs } from '@openrouter/sdk';
 import { EventEmitter } from 'eventemitter3';
-import { z } from 'zod';
 
 // Message types
 export interface Message {
@@ -30,7 +29,7 @@ export interface AgentConfig {
     apiKey: string;
     model?: string;
     instructions?: string;
-    tools?: Tool<z.ZodTypeAny, z.ZodTypeAny>[];
+    tools?: Tool[];
     maxSteps?: number;
 }
 
@@ -68,7 +67,7 @@ export class Agent extends EventEmitter<AgentEvents> {
     }
 
     // Register additional tools at runtime
-    addTool(newTool: Tool<z.ZodTypeAny, z.ZodTypeAny>): void {
+    addTool(newTool: Tool): void {
         this.config.tools.push(newTool);
     }
 

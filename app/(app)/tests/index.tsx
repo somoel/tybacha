@@ -3,13 +3,12 @@ import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 /**
  * List of all 7 SFT tests available.
  */
 export default function TestsListScreen() {
-    const theme = useTheme();
     const router = useRouter();
 
     return (
