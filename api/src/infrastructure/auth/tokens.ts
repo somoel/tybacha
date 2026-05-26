@@ -50,3 +50,11 @@ export async function verifyAccessToken(token: string): Promise<TokenUser> {
   };
 }
 
+export async function verifyRefreshToken(token: string): Promise<TokenUser> {
+  const result = await jwtVerify(token, refreshSecret);
+  return {
+    idUsuario: Number(result.payload.sub),
+    correo: String(result.payload.correo),
+    rol: result.payload.rol as UserRole,
+  };
+}

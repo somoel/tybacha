@@ -60,6 +60,29 @@ export class ApiError extends Error {
     }
 }
 
+async function refreshAccessToken(): Promise<string | null> {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) return null;
+
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) {
+        await clearAuthTokens();
+        return null;
+    }
+
+    const payload = await response.json() as { accessToken?: string };
+    if (!payload.accessToken) return null;
+    await setStoredItem(ACCESS_TOKEN_KEY, payload.accessToken);
+    return payload.accessToken;
+}
+
 export async function apiRequest<TResponse>(
     path: string,
     options: RequestInit = {},
@@ -75,10 +98,21 @@ export async function apiRequest<TResponse>(
         headers.set('Authorization', `Bearer ${token}`);
     }
 
-    const response = await fetch(`${API_URL}${path}`, {
+    let response = await fetch(`${API_URL}${path}`, {
         ...options,
         headers,
     });
+
+    if (response.status === 401) {
+        const refreshedToken = await refreshAccessToken();
+        if (refreshedToken) {
+            headers.set('Authorization', `Bearer ${refreshedToken}`);
+            response = await fetch(`${API_URL}${path}`, {
+                ...options,
+                headers,
+            });
+        }
+    }
 
     const contentType = response.headers.get('content-type') ?? '';
     const payload = contentType.includes('application/json')
@@ -97,4 +131,3 @@ export async function apiRequest<TResponse>(
 
     return payload as TResponse;
 }
-

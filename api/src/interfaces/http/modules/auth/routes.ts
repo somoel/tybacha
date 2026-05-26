@@ -3,7 +3,7 @@ import type { RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
 import { verifyPassword } from '../../../../infrastructure/auth/passwords.js';
-import { createAccessToken, createRefreshToken, hashToken } from '../../../../infrastructure/auth/tokens.js';
+import { createAccessToken, createRefreshToken, hashToken, verifyRefreshToken } from '../../../../infrastructure/auth/tokens.js';
 import { unauthorized } from '../../httpErrors.js';
 
 const loginSchema = z.object({
@@ -11,6 +11,10 @@ const loginSchema = z.object({
   contrasena: z.string().min(8),
   dispositivo: z.string().max(120).optional(),
   recordarSesion: z.boolean().default(false),
+});
+
+const refreshSchema = z.object({
+  refreshToken: z.string().min(20),
 });
 
 interface UserRow extends RowDataPacket {
@@ -81,6 +85,42 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
         correo: user.correo,
         rol: user.rol,
       },
+    };
+  });
+
+  app.post('/auth/refresh', async (request) => {
+    const body = refreshSchema.parse(request.body);
+    let tokenUser;
+
+    try {
+      tokenUser = await verifyRefreshToken(body.refreshToken);
+    } catch {
+      throw unauthorized('Sesion expirada');
+    }
+
+    const refreshHash = hashToken(body.refreshToken);
+    const [sessionRows] = await pool.query<RowDataPacket[]>(
+      `select s.id_sesion_usuario, u.estado
+       from sesion_usuario s
+       join usuario u on u.id_usuario = s.id_usuario
+       where s.id_usuario = :idUsuario
+         and s.token_refresco_hash = :refreshHash
+         and s.revocada_en is null
+         and s.expira_en > current_timestamp(3)
+       limit 1`,
+      {
+        idUsuario: tokenUser.idUsuario,
+        refreshHash,
+      },
+    );
+
+    const session = sessionRows[0] as { estado?: string } | undefined;
+    if (!session || session.estado !== 'activo') {
+      throw unauthorized('Sesion expirada');
+    }
+
+    return {
+      accessToken: await createAccessToken(tokenUser),
     };
   });
 }

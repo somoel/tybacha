@@ -14,6 +14,9 @@ export async function authGuard(request: FastifyRequest, _reply: FastifyReply): 
     throw unauthorized();
   }
 
-  request.authUser = await verifyAccessToken(header.slice('Bearer '.length));
+  try {
+    request.authUser = await verifyAccessToken(header.slice('Bearer '.length));
+  } catch {
+    throw unauthorized('Sesion expirada');
+  }
 }
-
