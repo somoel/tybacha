@@ -28,6 +28,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }),
   );
 
+  if (req.method === 'OPTIONS') {
+    const origin = req.headers.origin;
+    if (origin === 'https://tybacha.vercel.app') {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
   try {
     const app = await appPromise;
     await app.ready();

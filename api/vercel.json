@@ -2,14 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "dist/vercel.js",
+      "src": "src/vercel.ts",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "dist/vercel.js",
+      "dest": "src/vercel.ts",
       "headers": {
         "Access-Control-Allow-Origin": "https://tybacha.vercel.app",
         "Access-Control-Allow-Credentials": "true",
