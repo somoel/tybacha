@@ -73,12 +73,21 @@ function mapOlderAdult(row: OlderAdultRow) {
   };
 }
 
-async function assertCaregiverExists(idCuidador: number): Promise<void> {
+async function assertCaregiverExists(idCuidador: number, idProfesional?: number): Promise<void> {
   const [rows] = await pool.query<RowDataPacket[]>(
-    `select id_usuario from usuario where id_usuario = :idCuidador and rol = 'cuidador' and estado = 'activo' limit 1`,
-    { idCuidador },
+    `select u.id_usuario
+     from usuario u
+     left join profesional_cuidador pc
+       on pc.id_cuidador = u.id_usuario
+      and pc.estado = 'activa'
+     where u.id_usuario = :idCuidador
+       and u.rol = 'cuidador'
+       and u.estado = 'activo'
+       and (:idProfesional is null or pc.id_profesional = :idProfesional)
+     limit 1`,
+    { idCuidador, idProfesional: idProfesional ?? null },
   );
-  if (!rows[0]) throw badRequest('El cuidador indicado no existe o no esta activo');
+  if (!rows[0]) throw badRequest('El cuidador indicado no existe, no esta activo o no pertenece al profesional');
 }
 
 export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<void> {
@@ -190,7 +199,7 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
     if (!idCuidador) {
       throw badRequest('El adulto mayor debe quedar enlazado a un cuidador');
     }
-    await assertCaregiverExists(idCuidador);
+    await assertCaregiverExists(idCuidador, actor.rol === 'profesional' ? actor.idUsuario : undefined);
 
     const connection = await pool.getConnection();
     try {

@@ -9,6 +9,7 @@ Esta guia cubre el despliegue de la API Tybacha en Vercel y la configuracion de 
 
 ```bash
 api/migrations/0002_foto_perfil_usuario.sql
+api/migrations/0003_profesional_cuidador.sql
 ```
 
 3. Configura las variables de entorno de la API.
@@ -134,4 +135,3 @@ vercel --prod
 - Seguimiento crea progreso.
 - Reportes PDF/XLSX descargan.
 - Auditoria registra accesos y cambios.
-

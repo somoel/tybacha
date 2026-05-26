@@ -85,6 +85,7 @@ El adulto mayor se gestiona asi:
 
 - Un `profesional` crea adultos mayores y debe enlazarlos obligatoriamente a un cuidador.
 - Un `cuidador` puede crear adultos mayores; en ese caso queda asignado como cuidador activo.
+- La relacion profesional-cuidador vive en `profesional_cuidador`: un profesional puede tener muchos cuidadores y cada cuidador solo puede tener una asignacion activa.
 - La relacion cuidador-adulto mayor vive en `asignacion_cuidador_adulto_mayor`.
 - El profesional responsable vive en `adulto_mayor.id_profesional_responsable`.
 - La trazabilidad de cambios se registra en `auditoria_cambio`.
@@ -160,4 +161,3 @@ SQLite debe guardar datos operacionales y una cola local. Cada operacion offline
 - Permisos calculados desde `permiso` y `permiso_rol`.
 - Auditoria obligatoria para datos personales, clinicos, SFT, planes y reportes.
 - Credenciales TiDB solo en `.env` del backend, nunca en la app Expo.
-

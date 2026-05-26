@@ -27,6 +27,7 @@ interface MeRow extends RowDataPacket {
   correo: string;
   rol: UserRole;
   estado: string;
+  id_profesional_supervisor: number | null;
   nombres: string | null;
   apellidos: string | null;
   telefono: string | null;
@@ -38,7 +39,7 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     const userId = request.authUser?.idUsuario;
     const [rows] = await pool.query<MeRow[]>(
       `select u.id_usuario, u.correo, u.rol, u.estado,
-              p.nombres, p.apellidos, p.telefono, p.ciudad
+              u.id_profesional_supervisor, p.nombres, p.apellidos, p.telefono, p.ciudad
        from usuario u
        left join perfil_usuario p on p.id_usuario = u.id_usuario
        where u.id_usuario = :userId
@@ -69,12 +70,15 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
 
     const [rows] = await pool.query<MeRow[]>(
       `select u.id_usuario, u.correo, u.rol, u.estado,
-              p.nombres, p.apellidos, p.telefono, p.ciudad
+              u.id_profesional_supervisor, p.nombres, p.apellidos, p.telefono, p.ciudad
        from usuario u
        left join perfil_usuario p on p.id_usuario = u.id_usuario
+       left join profesional_cuidador pc
+         on pc.id_cuidador = u.id_usuario and pc.estado = 'activa'
        where u.rol in (:roles)
+         and (:actorRol = 'administrador' or pc.id_profesional = :actorId)
        order by p.apellidos, p.nombres, u.correo`,
-      { roles: roleFilter },
+      { roles: roleFilter, actorRol: actor.rol, actorId: actor.idUsuario },
     );
 
     return rows.map((row) => ({
@@ -116,6 +120,21 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       );
 
       const idUsuario = insertResult.insertId;
+
+      if (actor.rol === 'profesional' && body.rol === 'cuidador') {
+        await connection.query(
+          `insert into profesional_cuidador
+            (id_profesional, id_cuidador, asignado_por, estado, fecha_inicio, id_cuidador_activo)
+           values
+            (:idProfesional, :idCuidador, :asignadoPor, 'activa', current_date(), :idCuidador)`,
+          {
+            idProfesional: actor.idUsuario,
+            idCuidador: idUsuario,
+            asignadoPor: actor.idUsuario,
+          },
+        );
+      }
+
       await connection.query(
         `insert into perfil_usuario
           (id_usuario, nombres, apellidos, tipo_documento, numero_documento, telefono, fecha_nacimiento, genero, direccion, ciudad)
@@ -154,4 +173,3 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 }
-

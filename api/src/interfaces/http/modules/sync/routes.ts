@@ -87,10 +87,19 @@ async function applyOlderAdultCreate(
   }
 
   const [userRows] = await connection.query<RowDataPacket[]>(
-    `select id_usuario from usuario where id_usuario = :idCuidador and rol = 'cuidador' and estado = 'activo' limit 1`,
-    { idCuidador },
+    `select u.id_usuario
+     from usuario u
+     left join profesional_cuidador pc
+       on pc.id_cuidador = u.id_usuario
+      and pc.estado = 'activa'
+     where u.id_usuario = :idCuidador
+       and u.rol = 'cuidador'
+       and u.estado = 'activo'
+       and (:idProfesional is null or pc.id_profesional = :idProfesional)
+     limit 1`,
+    { idCuidador, idProfesional: actor.rol === 'profesional' ? actor.idUsuario : null },
   );
-  if (!userRows[0]) throw badRequest('Cuidador no encontrado o inactivo');
+  if (!userRows[0]) throw badRequest('Cuidador no encontrado, inactivo o no pertenece al profesional');
 
   const [insertResult] = await connection.query<ResultSetHeader>(
     `insert into adulto_mayor
@@ -400,4 +409,3 @@ export async function registerSyncRoutes(app: FastifyInstance): Promise<void> {
     return { resultados };
   });
 }
-
