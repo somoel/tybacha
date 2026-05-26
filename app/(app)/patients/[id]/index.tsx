@@ -90,11 +90,11 @@ export default function PatientDetailScreen() {
             {/* Action buttons */}
             <View style={styles.actions}>
                 <AppButton
-                    label="Nueva batería SFT"
+                    label="Realizar bateria"
                     variant="filled"
                     icon="clipboard-plus"
                     onPress={() => router.push(`/(app)/patients/${id}/batteries/new` as never)}
-                    accessibilityLabel="Crear nueva batería SFT"
+                    accessibilityLabel="Realizar bateria SFT"
                 />
                 <AppButton
                     label="Ver historial baterías"

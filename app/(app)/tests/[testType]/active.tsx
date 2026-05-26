@@ -6,27 +6,73 @@ import { getSFTTest, SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import type { SFTTestType } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } from 'react-native-paper';
 
 /**
- * RF-08: Active test screen with timer/counter for specific SFT test.
+ * Active test screen inside the dedicated SFT battery mode.
  */
 export default function ActiveTestScreen() {
     const { testType } = useLocalSearchParams<{ testType: string }>();
+    const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
-    const { saveResult } = useBatteryStore();
+    const { activeBatteryId, completedTests, patientId, resetBattery, saveResult } = useBatteryStore();
 
     const test = getSFTTest(testType ?? '');
     const [value, setValue] = useState(0);
     const [timerCompleted, setTimerCompleted] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
+    const [exitDialogVisible, setExitDialogVisible] = useState(false);
+    const allowExitRef = useRef(false);
+    const pendingNavigationActionRef = useRef<unknown>(null);
 
     const currentIndex = SFT_TESTS.findIndex((t) => t.type === testType);
     const totalTests = SFT_TESTS.length;
+    const currentIsAlreadyComplete = completedTests.includes(testType as SFTTestType);
+    const progress = currentIndex >= 0 ? (completedTests.length + (currentIsAlreadyComplete ? 0 : 1)) / totalTests : 0;
+    const hasActiveSession = Boolean(activeBatteryId);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (event) => {
+            if (!hasActiveSession || allowExitRef.current) {
+                return;
+            }
+
+            event.preventDefault();
+            pendingNavigationActionRef.current = event.data.action;
+            setExitDialogVisible(true);
+        });
+
+        return unsubscribe;
+    }, [hasActiveSession, navigation, resetBattery]);
+
+    const handleRequestExit = () => {
+        pendingNavigationActionRef.current = null;
+        setExitDialogVisible(true);
+    };
+
+    const handleCancelExit = () => {
+        pendingNavigationActionRef.current = null;
+        setExitDialogVisible(false);
+    };
+
+    const handleConfirmExit = () => {
+        allowExitRef.current = true;
+        resetBattery();
+        setExitDialogVisible(false);
+
+        if (pendingNavigationActionRef.current) {
+            navigation.dispatch(pendingNavigationActionRef.current as never);
+            pendingNavigationActionRef.current = null;
+            return;
+        }
+
+        const destination = patientId ? `/(app)/patients/${patientId}` : '/(app)/patients';
+        router.replace(destination as never);
+    };
 
     const handleTimerComplete = useCallback((elapsed: number) => {
         setTimerCompleted(true);
@@ -42,8 +88,17 @@ export default function ActiveTestScreen() {
     const handleSave = () => {
         if (!test) return;
         saveResult(test.type as SFTTestType, value);
-        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado ✓` });
-        setTimeout(() => router.back(), 1000);
+        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado` });
+        allowExitRef.current = true;
+        const nextTest = SFT_TESTS.slice(currentIndex + 1).find((candidate) => candidate.type !== test.type);
+        setTimeout(() => {
+            if (nextTest) {
+                router.replace(`/(app)/tests/${nextTest.type}/active` as never);
+                return;
+            }
+
+            router.back();
+        }, 700);
     };
 
     if (!test) {
@@ -57,88 +112,125 @@ export default function ActiveTestScreen() {
     const canSave = test.timerMode === 'none' || timerCompleted || test.counterMode === 'manual_input';
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
-            {/* Progress indicator */}
-            <View style={styles.progressRow}>
-                <Text style={styles.progressText}>
-                    Prueba {currentIndex + 1} de {totalTests}
-                </Text>
-            </View>
-
-            {/* Test instructions */}
-            <View style={[styles.instructionCard, { backgroundColor: theme.colors.primaryContainer }]}>
-                <MaterialCommunityIcons
-                    name={test.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-                    size={36}
-                    color={theme.colors.primary}
-                />
-                <Text style={styles.testName}>{test.name}</Text>
-                <Text style={styles.testDescription}>{test.description}</Text>
-            </View>
-
-            {/* Timer */}
-            {test.timerMode !== 'none' && (
-                <TimerDisplay
-                    mode={test.timerMode}
-                    initialSeconds={test.timerSeconds}
-                    onComplete={handleTimerComplete}
-                />
-            )}
-
-            {/* Counter/Input */}
-            {test.counterMode === 'increment' && (
-                <RepCounter
-                    mode="increment"
-                    allowNegative={test.allowNegative}
-                    onValueChange={handleValueChange}
-                    label={test.inputLabel}
-                />
-            )}
-
-            {test.counterMode === 'manual_input' && (
-                <RepCounter
-                    mode="manual_input"
-                    allowNegative={test.allowNegative}
-                    onValueChange={handleValueChange}
-                    label={test.inputLabel}
-                />
-            )}
-
-            {test.counterMode === 'timer_result' && timerCompleted && (
-                <View style={styles.timerResultContainer}>
-                    <Text style={styles.timerResultLabel}>Tiempo registrado:</Text>
-                    <Text style={[styles.timerResultValue, { color: theme.colors.primary }]}>
-                        {value.toFixed(1)} segundos
+        <View style={styles.container}>
+            <View style={styles.topBar}>
+                <View style={styles.topBarText}>
+                    <Text style={styles.modeLabel}>Realizar bateria SFT</Text>
+                    <Text style={styles.progressText}>
+                        Prueba {currentIndex + 1} de {totalTests}
                     </Text>
                 </View>
-            )}
+                <IconButton
+                    icon="close"
+                    mode="contained-tonal"
+                    size={20}
+                    onPress={handleRequestExit}
+                    accessibilityLabel="Salir de la bateria"
+                />
+            </View>
+            <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
+            </View>
 
-            {/* Save button */}
-            <AppButton
-                label="Guardar resultado"
-                variant="filled"
-                icon="content-save"
-                onPress={handleSave}
-                disabled={!canSave}
-                style={styles.saveBtn}
-                accessibilityLabel="Guardar resultado de la prueba"
-            />
+            <ScrollView style={styles.content} contentContainerStyle={styles.scroll}>
+                <View style={[styles.instructionCard, { backgroundColor: theme.colors.primaryContainer }]}>
+                    <MaterialCommunityIcons
+                        name={test.icon as keyof typeof MaterialCommunityIcons.glyphMap}
+                        size={36}
+                        color={theme.colors.primary}
+                    />
+                    <Text style={styles.testName}>{test.name}</Text>
+                    <Text style={styles.testDescription}>{test.description}</Text>
+                </View>
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type="success"
-                onDismiss={() => setSnackbar({ visible: false, message: '' })}
-            />
-        </ScrollView>
+                {test.timerMode !== 'none' && (
+                    <TimerDisplay
+                        mode={test.timerMode}
+                        initialSeconds={test.timerSeconds}
+                        onComplete={handleTimerComplete}
+                    />
+                )}
+
+                {test.counterMode === 'increment' && (
+                    <RepCounter
+                        mode="increment"
+                        allowNegative={test.allowNegative}
+                        onValueChange={handleValueChange}
+                        label={test.inputLabel}
+                    />
+                )}
+
+                {test.counterMode === 'manual_input' && (
+                    <RepCounter
+                        mode="manual_input"
+                        allowNegative={test.allowNegative}
+                        onValueChange={handleValueChange}
+                        label={test.inputLabel}
+                    />
+                )}
+
+                {test.counterMode === 'timer_result' && timerCompleted && (
+                    <View style={styles.timerResultContainer}>
+                        <Text style={styles.timerResultLabel}>Tiempo registrado:</Text>
+                        <Text style={[styles.timerResultValue, { color: theme.colors.primary }]}>
+                            {value.toFixed(1)} segundos
+                        </Text>
+                    </View>
+                )}
+
+                <AppButton
+                    label="Guardar resultado"
+                    variant="filled"
+                    icon="content-save"
+                    onPress={handleSave}
+                    disabled={!canSave}
+                    style={styles.saveBtn}
+                    accessibilityLabel="Guardar resultado de la prueba"
+                />
+
+                <AppSnackbar
+                    visible={snackbar.visible}
+                    message={snackbar.message}
+                    type="success"
+                    onDismiss={() => setSnackbar({ visible: false, message: '' })}
+                />
+            </ScrollView>
+            <Portal>
+                <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
+                    <Dialog.Title>Salir de la bateria</Dialog.Title>
+                    <Dialog.Content>
+                        <Text>Si sales ahora se perderan los resultados no guardados. Deseas salir?</Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <PaperButton onPress={handleCancelExit}>Continuar bateria</PaperButton>
+                        <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    scroll: { padding: 16, paddingBottom: 40 },
-    progressRow: { alignItems: 'center', marginBottom: 12 },
+    topBar: {
+        backgroundColor: '#ffffff',
+        borderBottomColor: '#e5e7eb',
+        borderBottomWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 10,
+    },
+    topBarText: { flex: 1, paddingRight: 12 },
+    modeLabel: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 2 },
     progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#6b7280' },
+    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden' },
+    progressFill: { height: 6 },
+    content: { flex: 1 },
+    scroll: { padding: 16, paddingBottom: 40 },
     instructionCard: { borderRadius: 20, padding: 20, alignItems: 'center', gap: 8, marginBottom: 20 },
     testName: { fontFamily: 'Montserrat_700Bold', fontSize: 20, color: '#004d40', textAlign: 'center' },
     testDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#004d40', textAlign: 'center', lineHeight: 20 },

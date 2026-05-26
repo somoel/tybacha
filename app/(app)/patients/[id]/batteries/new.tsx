@@ -6,16 +6,18 @@ import { createBattery, saveBatteryResults } from '@/src/services/batteryService
 import { useAuthStore } from '@/src/stores/authStore';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useSyncStore } from '@/src/stores/syncStore';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ProgressBar, Text, useTheme } from 'react-native-paper';
+import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } from 'react-native-paper';
 
 /**
- * RF-08: New SFT battery — shows all 7 tests, tracks completion, and saves results.
+ * Dedicated SFT battery mode. The user enters from a patient profile,
+ * completes all tests, and must confirm before leaving an active session.
  */
 export default function NewBatteryScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
+    const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
     const { user } = useAuthStore();
@@ -23,9 +25,11 @@ export default function NewBatteryScreen() {
     const { startBattery, results, completedTests, activeBatteryId, resetBattery } = useBatteryStore();
     const [isSaving, setIsSaving] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const [exitDialogVisible, setExitDialogVisible] = useState(false);
+    const allowExitRef = useRef(false);
+    const pendingNavigationActionRef = useRef<unknown>(null);
 
-    // Start battery if not already started
-    React.useEffect(() => {
+    useEffect(() => {
         if (!activeBatteryId && id) {
             startBattery(id);
         }
@@ -33,6 +37,45 @@ export default function NewBatteryScreen() {
 
     const progress = completedTests.length / SFT_TESTS.length;
     const allComplete = completedTests.length === SFT_TESTS.length;
+    const hasActiveSession = Boolean(activeBatteryId);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (event) => {
+            if (!hasActiveSession || allowExitRef.current || isSaving) {
+                return;
+            }
+
+            event.preventDefault();
+            pendingNavigationActionRef.current = event.data.action;
+            setExitDialogVisible(true);
+        });
+
+        return unsubscribe;
+    }, [hasActiveSession, isSaving, navigation, resetBattery]);
+
+    const handleRequestExit = () => {
+        pendingNavigationActionRef.current = null;
+        setExitDialogVisible(true);
+    };
+
+    const handleCancelExit = () => {
+        pendingNavigationActionRef.current = null;
+        setExitDialogVisible(false);
+    };
+
+    const handleConfirmExit = () => {
+        allowExitRef.current = true;
+        resetBattery();
+        setExitDialogVisible(false);
+
+        if (pendingNavigationActionRef.current) {
+            navigation.dispatch(pendingNavigationActionRef.current as never);
+            pendingNavigationActionRef.current = null;
+            return;
+        }
+
+        router.replace(`/(app)/patients/${id}` as never);
+    };
 
     const handleFinalize = async () => {
         if (!user || !id || !activeBatteryId) return;
@@ -40,11 +83,12 @@ export default function NewBatteryScreen() {
         try {
             const battery = await createBattery(id, user.id, undefined, isOnline);
             await saveBatteryResults(battery.id, results, isOnline);
+            allowExitRef.current = true;
             resetBattery();
-            setSnackbar({ visible: true, message: 'Batería guardada exitosamente ✓', type: 'success' });
-            setTimeout(() => router.back(), 1500);
+            setSnackbar({ visible: true, message: 'Bateria guardada exitosamente', type: 'success' });
+            setTimeout(() => router.replace(`/(app)/patients/${id}` as never), 1500);
         } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Error al guardar batería.';
+            const msg = error instanceof Error ? error.message : 'Error al guardar bateria.';
             setSnackbar({ visible: true, message: msg, type: 'error' });
         } finally {
             setIsSaving(false);
@@ -53,16 +97,26 @@ export default function NewBatteryScreen() {
 
     return (
         <View style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-                {/* Progress */}
-                <View style={styles.progressSection}>
+            <View style={styles.topBar}>
+                <View style={styles.topBarText}>
+                    <Text style={styles.modeLabel}>Realizar bateria SFT</Text>
                     <Text style={styles.progressText}>
-                        Progreso: {completedTests.length} de {SFT_TESTS.length} pruebas
+                        {completedTests.length} de {SFT_TESTS.length} pruebas completadas
                     </Text>
-                    <ProgressBar progress={progress} color={theme.colors.primary} style={styles.progressBar} />
                 </View>
+                <IconButton
+                    icon="close"
+                    mode="contained-tonal"
+                    size={20}
+                    onPress={handleRequestExit}
+                    accessibilityLabel="Salir de la bateria"
+                />
+            </View>
+            <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
+            </View>
 
-                {/* Test list */}
+            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
                 {SFT_TESTS.map((test) => {
                     const isCompleted = completedTests.includes(test.type);
                     const resultValue = results[test.type];
@@ -77,30 +131,60 @@ export default function NewBatteryScreen() {
                     );
                 })}
 
-                {/* Finalize button */}
                 {allComplete && (
                     <AppButton
-                        label="Guardar batería completa"
+                        label="Guardar bateria completa"
                         variant="filled"
                         icon="check-all"
                         onPress={handleFinalize}
                         loading={isSaving}
                         style={styles.saveBtn}
-                        accessibilityLabel="Guardar batería completa"
+                        accessibilityLabel="Guardar bateria completa"
                     />
                 )}
             </ScrollView>
 
-            <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
+            <AppSnackbar
+                visible={snackbar.visible}
+                message={snackbar.message}
+                type={snackbar.type}
+                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
+            />
+            <Portal>
+                <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
+                    <Dialog.Title>Salir de la bateria</Dialog.Title>
+                    <Dialog.Content>
+                        <Text>Si sales ahora se perderan los resultados no guardados. Deseas salir?</Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <PaperButton onPress={handleCancelExit}>Continuar bateria</PaperButton>
+                        <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
+    topBar: {
+        backgroundColor: '#ffffff',
+        borderBottomColor: '#e5e7eb',
+        borderBottomWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingTop: 14,
+        paddingBottom: 10,
+    },
+    topBarText: { flex: 1, paddingRight: 12 },
+    modeLabel: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 2 },
+    progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
+    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden' },
+    progressFill: { height: 6 },
+    content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 32 },
-    progressSection: { marginBottom: 16 },
-    progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937', marginBottom: 8 },
-    progressBar: { borderRadius: 4, height: 8 },
     saveBtn: { marginTop: 20 },
 });

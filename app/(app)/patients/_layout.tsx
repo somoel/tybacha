@@ -26,7 +26,7 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/edit" options={{ title: 'Editar adulto mayor' }} />
             <Stack.Screen name="[id]/assign-caregiver" options={{ title: 'Asignar Cuidador' }} />
             <Stack.Screen name="[id]/batteries/index" options={{ title: 'Historial Baterías' }} />
-            <Stack.Screen name="[id]/batteries/new" options={{ title: 'Nueva Batería SFT' }} />
+            <Stack.Screen name="[id]/batteries/new" options={{ headerShown: false, title: 'Realizar bateria' }} />
             <Stack.Screen name="[id]/batteries/[batteryId]" options={{ title: 'Resultados' }} />
         </Stack>
     );

@@ -1,7 +1,7 @@
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
@@ -13,7 +13,18 @@ import { useTheme } from 'react-native-paper';
  */
 export default function AppLayout() {
     const theme = useTheme();
+    const pathname = usePathname();
     const isOnline = useSyncStore((s) => s.isOnline);
+    const isBatteryMode = /\/patients\/[^/]+\/batteries\/new/.test(pathname) || /\/tests\/[^/]+\/active/.test(pathname);
+    const tabBarStyle = isBatteryMode
+        ? { display: 'none' as const }
+        : {
+            borderTopColor: theme.colors.outlineVariant,
+            backgroundColor: theme.colors.surface,
+            height: 64,
+            paddingBottom: 8,
+            paddingTop: 4,
+        };
 
     return (
         <View style={styles.container}>
@@ -27,13 +38,7 @@ export default function AppLayout() {
                         fontFamily: 'Montserrat_600SemiBold',
                         fontSize: 11,
                     },
-                    tabBarStyle: {
-                        borderTopColor: theme.colors.outlineVariant,
-                        backgroundColor: theme.colors.surface,
-                        height: 64,
-                        paddingBottom: 8,
-                        paddingTop: 4,
-                    },
+                    tabBarStyle,
                     headerStyle: {
                         backgroundColor: theme.colors.surface,
                     },
@@ -80,6 +85,7 @@ export default function AppLayout() {
                     options={{
                         title: 'Pruebas',
                         headerShown: false,
+                        href: null,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
                                 name={focused ? 'clipboard-list' : 'clipboard-list-outline'}
