@@ -8,7 +8,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Divider, Text, useTheme } from 'react-native-paper';
 
 interface Assignment {
@@ -63,14 +63,23 @@ export default function ProfileScreen() {
         );
     };
 
+    const performLogout = async () => {
+        await logout();
+        router.replace('/(auth)/login' as never);
+    };
+
     const handleLogout = () => {
+        if (Platform.OS === 'web') {
+            void performLogout();
+            return;
+        }
+
         Alert.alert('Cerrar sesión', '¿Desea cerrar sesión?', [
             { text: 'Cancelar', style: 'cancel' },
             {
                 text: 'Cerrar sesión',
-                onPress: async () => {
-                    await logout();
-                    router.replace('/(auth)/login' as never);
+                onPress: () => {
+                    void performLogout();
                 },
             },
         ]);
