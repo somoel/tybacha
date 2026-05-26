@@ -1,7 +1,9 @@
 import { AppButton } from '@/src/components/ui/AppButton';
+import { AppCard } from '@/src/components/ui/AppCard';
 import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { fetchApiUsers } from '@/src/api/usersApi';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { createPatient } from '@/src/services/patientService';
@@ -9,11 +11,13 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text } from 'react-native-paper';
+import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import type { ApiUserSummary } from '@/src/types/apiUser.types';
 import { z } from 'zod';
 
 const patientSchema = z.object({
@@ -32,17 +36,23 @@ type PatientFormValues = z.infer<typeof patientSchema>;
  * RF-02: Register a new patient (professional only).
  */
 export default function NewPatientScreen() {
+    const theme = useTheme();
     const router = useRouter();
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
+    const canAssignCaregiver = user?.rol === 'cuidador'
+        ? false
+        : isAdmin || isProfessional || user?.rol === 'administrador' || user?.rol === 'profesional' || !user;
     const { addPatient } = usePatientsStore();
     const isOnline = useSyncStore((s) => s.isOnline);
 
     const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingCaregivers, setIsLoadingCaregivers] = useState(false);
+    const [caregivers, setCaregivers] = useState<ApiUserSummary[]>([]);
     const [birthDate, setBirthDate] = useState(new Date(1950, 0, 1));
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
-    const { control, handleSubmit } = useForm<PatientFormValues>({
+    const { control, handleSubmit, setValue, watch } = useForm<PatientFormValues>({
         resolver: zodResolver(patientSchema),
         defaultValues: {
             first_name: '',
@@ -54,10 +64,32 @@ export default function NewPatientScreen() {
             pathologies: '',
         },
     });
+    const selectedCaregiverId = watch('id_cuidador');
+
+    useEffect(() => {
+        const loadCaregivers = async () => {
+            if (!canAssignCaregiver) return;
+            setIsLoadingCaregivers(true);
+            try {
+                const users = await fetchApiUsers();
+                setCaregivers(users.filter((item) => item.rol === 'cuidador' && item.estado === 'activo'));
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Error cargando cuidadores.';
+                setSnackbar({ visible: true, message, type: 'error' });
+            } finally {
+                setIsLoadingCaregivers(false);
+            }
+        };
+
+        void loadCaregivers();
+    }, [canAssignCaregiver]);
+
+    const caregiverName = (caregiver: ApiUserSummary) =>
+        [caregiver.nombres, caregiver.apellidos].filter(Boolean).join(' ') || caregiver.correo;
 
     const onSubmit = async (data: PatientFormValues) => {
         if (!user) return;
-        const requiresCaregiver = isAdmin || isProfessional;
+        const requiresCaregiver = canAssignCaregiver;
         if (requiresCaregiver && !data.id_cuidador) {
             setSnackbar({ visible: true, message: 'Debe asignar un cuidador al adulto mayor.', type: 'error' });
             return;
@@ -123,15 +155,48 @@ export default function NewPatientScreen() {
                         )}
                     />
 
-                    {(isAdmin || isProfessional) && (
-                        <AppInput
-                            control={control}
-                            name="id_cuidador"
-                            label="ID del cuidador asignado *"
-                            placeholder="Ej. 12"
-                            keyboardType="numeric"
-                            accessibilityLabel="ID del cuidador asignado"
-                        />
+                    {canAssignCaregiver && (
+                        <View style={styles.caregiverSection}>
+                            <Text style={styles.fieldLabel}>Cuidador asignado *</Text>
+                            {isLoadingCaregivers ? (
+                                <Text style={styles.helperText}>Cargando cuidadores...</Text>
+                            ) : caregivers.length === 0 ? (
+                                <AppCard>
+                                    <View style={styles.emptyCaregivers}>
+                                        <MaterialCommunityIcons name="account-alert-outline" size={22} color={theme.colors.outline} />
+                                        <Text style={styles.helperText}>No tienes cuidadores disponibles para asignar.</Text>
+                                    </View>
+                                </AppCard>
+                            ) : (
+                                <View style={styles.caregiverList}>
+                                    {caregivers.map((caregiver) => {
+                                        const id = String(caregiver.idUsuario);
+                                        const selected = selectedCaregiverId === id;
+
+                                        return (
+                                            <AppCard
+                                                key={id}
+                                                onPress={() => setValue('id_cuidador', id, { shouldValidate: true })}
+                                                style={selected ? styles.selectedCaregiver : styles.caregiverCard}
+                                                accessibilityLabel={`Seleccionar cuidador ${caregiverName(caregiver)}`}
+                                            >
+                                                <View style={styles.caregiverRow}>
+                                                    <MaterialCommunityIcons
+                                                        name={selected ? 'radiobox-marked' : 'radiobox-blank'}
+                                                        size={22}
+                                                        color={selected ? theme.colors.primary : theme.colors.outline}
+                                                    />
+                                                    <View style={styles.caregiverInfo}>
+                                                        <Text style={styles.caregiverName}>{caregiverName(caregiver)}</Text>
+                                                        <Text style={styles.caregiverEmail}>{caregiver.correo}</Text>
+                                                    </View>
+                                                </View>
+                                            </AppCard>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
                     )}
 
                     <AppInput
@@ -183,6 +248,16 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         marginTop: 4,
     },
+    caregiverSection: { marginBottom: 12 },
+    caregiverList: { gap: 8 },
+    caregiverCard: { marginBottom: 0 },
+    selectedCaregiver: { marginBottom: 0, borderWidth: 2, borderColor: '#006d77' },
+    caregiverRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    caregiverInfo: { flex: 1 },
+    caregiverName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
+    caregiverEmail: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
+    emptyCaregivers: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    helperText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
     segmented: { marginBottom: 16 },
     submitButton: { marginTop: 16 },
 });
