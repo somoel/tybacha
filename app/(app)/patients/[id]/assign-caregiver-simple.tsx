@@ -198,7 +198,7 @@ export default function AssignCaregiverScreen() {
                     </View>
                 </AppCard>
             ) : (
-                <Text style={styles.emptyText}>No hay un cuidador asignado a este paciente.</Text>
+                <Text style={styles.emptyText}>No hay un cuidador asignado a este adulto mayor.</Text>
             )}
 
             <AppSnackbar 

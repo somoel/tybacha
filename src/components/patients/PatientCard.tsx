@@ -13,7 +13,7 @@ interface PatientCardProps {
 }
 
 /**
- * Patient card showing photo placeholder, name, age, gender,
+ * Adulto mayor card showing photo placeholder, name, age, gender,
  * and last battery date.
  */
 export function PatientCard({ patient, lastBatteryDate, onPress }: PatientCardProps) {
@@ -26,7 +26,7 @@ export function PatientCard({ patient, lastBatteryDate, onPress }: PatientCardPr
     const genderLabel = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Femenino' : 'Otro';
 
     return (
-        <AppCard onPress={onPress} accessibilityLabel={`Paciente ${fullName}`}>
+        <AppCard onPress={onPress} accessibilityLabel={`Adulto mayor ${fullName}`}>
             <View style={styles.row}>
                 <View style={[styles.avatar, { backgroundColor: theme.colors.primaryContainer }]}>
                     <Text style={[styles.initials, { color: theme.colors.onPrimaryContainer }]}>

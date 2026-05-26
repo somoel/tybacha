@@ -44,7 +44,7 @@ export default function HomeScreen() {
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
             } catch (error) {
-                console.error('Error cargando pacientes:', error);
+                console.error('Error cargando adultos mayores:', error);
             } finally {
                 setLoading(false);
             }
@@ -89,7 +89,7 @@ export default function HomeScreen() {
                                 <View style={styles.statContent}>
                                     <MaterialCommunityIcons name="account-group" size={28} color={theme.colors.primary} />
                                     <Text style={styles.statNumber}>{patients.length}</Text>
-                                    <Text style={styles.statLabel}>Pacientes</Text>
+                                    <Text style={styles.statLabel}>Adultos mayores</Text>
                                 </View>
                             </AppCard>
                             <AppCard style={styles.statCard}>
@@ -115,7 +115,7 @@ export default function HomeScreen() {
 
                     {/* Recent patients */}
                     <Text style={styles.sectionTitle}>
-                        {hasStaffAccess ? 'Pacientes recientes' : 'Mis pacientes asignados'}
+                        {hasStaffAccess ? 'Adultos mayores recientes' : 'Mis adultos mayores asignados'}
                     </Text>
 
                     {patients.length === 0 ? (
@@ -124,8 +124,8 @@ export default function HomeScreen() {
                                 <MaterialCommunityIcons name="account-question" size={48} color={theme.colors.outline} />
                                 <Text style={styles.emptyText}>
                                     {hasStaffAccess
-                                        ? 'No tiene pacientes registrados aún.'
-                                        : 'No tiene pacientes asignados aún.'}
+                                        ? 'No tiene adultos mayores registrados aún.'
+                                        : 'No tiene adultos mayores asignados aún.'}
                                 </Text>
                             </View>
                         </AppCard>
@@ -144,7 +144,7 @@ export default function HomeScreen() {
                             style={styles.seeAll}
                             onPress={() => router.push('/(app)/patients' as never)}
                         >
-                            Ver todos los pacientes →
+                            Ver todos los adultos mayores →
                         </Text>
                     )}
                 </View>
@@ -155,11 +155,11 @@ export default function HomeScreen() {
                 <Pressable
                     style={[styles.fab, { backgroundColor: theme.colors.primary }]}
                     onPress={() => router.push('/(app)/patients/new' as never)}
-                    accessibilityLabel="Registrar nuevo paciente"
+                    accessibilityLabel="Registrar nuevo adulto mayor"
                     accessibilityRole="button"
                 >
                     <MaterialCommunityIcons name="plus" size={20} color={theme.colors.onPrimary} />
-                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Nuevo paciente</Text>
+                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Nuevo adulto mayor</Text>
                 </Pressable>
             )}
         </View>

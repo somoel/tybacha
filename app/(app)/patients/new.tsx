@@ -1,4 +1,5 @@
 import { AppButton } from '@/src/components/ui/AppButton';
+import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
@@ -8,7 +9,6 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { zodResolver } from '@hookform/resolvers/zod';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
@@ -40,7 +40,6 @@ export default function NewPatientScreen() {
 
     const [isLoading, setIsLoading] = useState(false);
     const [birthDate, setBirthDate] = useState(new Date(1950, 0, 1));
-    const [showDatePicker, setShowDatePicker] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const { control, handleSubmit } = useForm<PatientFormValues>({
@@ -75,18 +74,14 @@ export default function NewPatientScreen() {
                 isOnline
             );
             addPatient(patient);
-            setSnackbar({ visible: true, message: 'Paciente registrado exitosamente ✓', type: 'success' });
+            setSnackbar({ visible: true, message: 'Adulto mayor registrado exitosamente ✓', type: 'success' });
             setTimeout(() => router.back(), 1500);
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Error al registrar paciente.';
+            const message = error instanceof Error ? error.message : 'Error al registrar adulto mayor.';
             setSnackbar({ visible: true, message, type: 'error' });
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const formatDate = (date: Date): string => {
-        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
     };
 
     return (
@@ -101,27 +96,13 @@ export default function NewPatientScreen() {
                     <AppInput control={control} name="first_lastname" label="Primer apellido *" accessibilityLabel="Primer apellido" />
                     <AppInput control={control} name="second_lastname" label="Segundo apellido" accessibilityLabel="Segundo apellido" />
 
-                    {/* Date picker */}
-                    <Text style={styles.fieldLabel}>Fecha de nacimiento *</Text>
-                    <AppButton
-                        label={formatDate(birthDate)}
-                        variant="outlined"
-                        icon="calendar"
-                        onPress={() => setShowDatePicker(true)}
+                    <DateField
+                        label="Fecha de nacimiento *"
+                        value={birthDate}
+                        onChange={setBirthDate}
+                        maximumDate={new Date()}
                         accessibilityLabel="Seleccionar fecha de nacimiento"
-                        style={styles.dateButton}
                     />
-                    {showDatePicker && (
-                        <DateTimePicker
-                            value={birthDate}
-                            mode="date"
-                            maximumDate={new Date()}
-                            onChange={(_, date) => {
-                                setShowDatePicker(Platform.OS === 'ios');
-                                if (date) setBirthDate(date);
-                            }}
-                        />
-                    )}
 
                     {/* Gender selector */}
                     <Text style={styles.fieldLabel}>Género *</Text>
@@ -160,16 +141,16 @@ export default function NewPatientScreen() {
                         placeholder="Hipertensión, diabetes, osteoporosis..."
                         multiline
                         numberOfLines={3}
-                        accessibilityLabel="Patologías del paciente"
+                        accessibilityLabel="Patologías del adulto mayor"
                     />
 
                     <AppButton
-                        label="Registrar paciente"
+                        label="Registrar adulto mayor"
                         onPress={handleSubmit(onSubmit)}
                         variant="filled"
                         loading={isLoading}
                         icon="account-plus"
-                        accessibilityLabel="Registrar paciente"
+                        accessibilityLabel="Registrar adulto mayor"
                         style={styles.submitButton}
                     />
                 </View>
@@ -202,7 +183,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         marginTop: 4,
     },
-    dateButton: { marginBottom: 12, alignSelf: 'flex-start' },
     segmented: { marginBottom: 16 },
     submitButton: { marginTop: 16 },
 });

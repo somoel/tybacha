@@ -63,7 +63,7 @@ export default function AppLayout() {
                 <Tabs.Screen
                     name="patients"
                     options={{
-                        title: 'Pacientes',
+                        title: 'Adultos mayores',
                         headerShown: false,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
@@ -72,7 +72,7 @@ export default function AppLayout() {
                                 color={color}
                             />
                         ),
-                        tabBarAccessibilityLabel: 'Pacientes',
+                        tabBarAccessibilityLabel: 'Adultos mayores',
                     }}
                 />
                 <Tabs.Screen

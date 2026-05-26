@@ -40,8 +40,8 @@ export default function ProfileScreen() {
 
     const handleUnlink = (assignment: Assignment) => {
         Alert.alert(
-            'Desasociarse del paciente',
-            `¿Está seguro de desasociarse de ${assignment.patients?.first_name ?? 'este paciente'}? No tendrá acceso a sus datos.`,
+            'Desasociarse del adulto mayor',
+            `¿Está seguro de desasociarse de ${assignment.patients?.first_name ?? 'este adulto mayor'}? No tendrá acceso a sus datos.`,
             [
                 { text: 'Cancelar', style: 'cancel' },
                 {
@@ -142,7 +142,7 @@ export default function ProfileScreen() {
             {/* Caregiver: assigned patients with unlinking (RF-07) */}
             {isCaregiver && assignments.length > 0 && (
                 <>
-                    <Text style={styles.sectionTitle}>Mis pacientes asignados</Text>
+                    <Text style={styles.sectionTitle}>Mis adultos mayores asignados</Text>
                     {assignments.map((a) => (
                         <AppCard key={a.id}>
                             <View style={styles.assignmentRow}>

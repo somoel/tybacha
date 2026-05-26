@@ -42,7 +42,7 @@ export default function PatientsListScreen() {
                     setSections(getSectionedPatients(data, counts, plans));
                 }
             } catch (error) {
-                console.error('Error cargando pacientes:', error);
+                console.error('Error cargando adultos mayores:', error);
             } finally {
                 setLoading(false);
             }
@@ -61,19 +61,19 @@ export default function PatientsListScreen() {
     };
 
     if (isLoading) {
-        return <AppLoader message="Cargando pacientes..." />;
+        return <AppLoader message="Cargando adultos mayores..." />;
     }
 
     return (
         <View style={styles.container}>
             <View style={styles.searchContainer}>
                 <Searchbar
-                    placeholder="Buscar paciente..."
+                    placeholder="Buscar adulto mayor..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     style={styles.searchbar}
                     inputStyle={styles.searchInput}
-                    accessibilityLabel="Buscar paciente"
+                    accessibilityLabel="Buscar adulto mayor"
                 />
             </View>
 
@@ -102,7 +102,7 @@ export default function PatientsListScreen() {
                 <Pressable
                     style={styles.fab}
                     onPress={() => router.push('/(app)/patients/new' as never)}
-                    accessibilityLabel="Agregar nuevo paciente"
+                    accessibilityLabel="Agregar nuevo adulto mayor"
                     accessibilityRole="button"
                 >
                     <MaterialCommunityIcons name="plus" size={26} color="#FFFFFF" />

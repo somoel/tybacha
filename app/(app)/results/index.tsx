@@ -118,7 +118,7 @@ export default function ResultsScreen() {
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
             {/* Patient selector */}
-            <Text style={styles.sectionTitle}>Seleccionar paciente</Text>
+            <Text style={styles.sectionTitle}>Seleccionar adulto mayor</Text>
             <FlatList
                 data={patients}
                 horizontal
@@ -148,7 +148,7 @@ export default function ResultsScreen() {
                         <AppCard>
                             <View style={styles.empty}>
                                 <MaterialCommunityIcons name="chart-line-variant" size={40} color={theme.colors.outline} />
-                                <Text style={styles.emptyText}>No hay baterías registradas para este paciente.</Text>
+                                <Text style={styles.emptyText}>No hay baterías registradas para este adulto mayor.</Text>
                             </View>
                         </AppCard>
                     )}

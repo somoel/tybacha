@@ -19,7 +19,7 @@ interface SectionData {
 }
 
 /**
- * RF-10: Sectioned patient list for professionals.
+ * RF-10: Sectioned older adult list for professionals.
  * - Sin baterías realizadas
  * - Pendiente por recomendar ejercicio
  * - En ejecución de plan de ejercicio

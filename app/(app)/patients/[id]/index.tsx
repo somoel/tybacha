@@ -51,8 +51,8 @@ export default function PatientDetailScreen() {
         load();
     }, [id]);
 
-    if (isLoading) return <AppLoader message="Cargando paciente..." />;
-    if (!patient) return <AppLoader message="Paciente no encontrado" />;
+    if (isLoading) return <AppLoader message="Cargando adulto mayor..." />;
+    if (!patient) return <AppLoader message="Adulto mayor no encontrado" />;
 
     const age = differenceInYears(new Date(), new Date(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
@@ -116,11 +116,11 @@ export default function PatientDetailScreen() {
                     <>
                         <Divider style={styles.divider} />
                         <AppButton
-                            label="Editar paciente"
+                            label="Editar adulto mayor"
                             variant="outlined"
                             icon="pencil"
                             onPress={() => router.push(`/(app)/patients/${id}/edit` as never)}
-                            accessibilityLabel="Editar paciente"
+                            accessibilityLabel="Editar adulto mayor"
                         />
                         <AppButton
                             label="Asignar cuidador"

@@ -117,7 +117,7 @@ export default function AssignCaregiverScreen() {
         if (!id) {
             setSnackbar({ 
                 visible: true, 
-                message: 'Error: ID de paciente no encontrado', 
+                message: 'Error: ID de adulto mayor no encontrado', 
                 type: 'error' 
             });
             return;
