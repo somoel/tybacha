@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
 import { z } from 'zod';
 
@@ -31,6 +31,15 @@ const patientSchema = z.object({
 });
 
 type PatientFormValues = z.infer<typeof patientSchema>;
+
+const MIN_SUBMIT_LOADING_MS = 650;
+
+const waitForMinimumSubmitLoading = async (startedAt: number) => {
+    const remainingMs = MIN_SUBMIT_LOADING_MS - (Date.now() - startedAt);
+    if (remainingMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, remainingMs));
+    }
+};
 
 /**
  * RF-02: Register a new patient (professional only).
@@ -88,12 +97,14 @@ export default function NewPatientScreen() {
         [caregiver.nombres, caregiver.apellidos].filter(Boolean).join(' ') || caregiver.correo;
 
     const onSubmit = async (data: PatientFormValues) => {
+        if (isLoading) return;
         if (!user) return;
         const requiresCaregiver = canAssignCaregiver;
         if (requiresCaregiver && !data.id_cuidador) {
             setSnackbar({ visible: true, message: 'Debe asignar un cuidador al adulto mayor.', type: 'error' });
             return;
         }
+        const startedAt = Date.now();
         setIsLoading(true);
         try {
             const patient = await createPatient(
@@ -106,9 +117,11 @@ export default function NewPatientScreen() {
                 isOnline
             );
             addPatient(patient);
+            await waitForMinimumSubmitLoading(startedAt);
             setSnackbar({ visible: true, message: 'Adulto mayor registrado exitosamente ✓', type: 'success' });
             setTimeout(() => router.back(), 1500);
         } catch (error) {
+            await waitForMinimumSubmitLoading(startedAt);
             const message = error instanceof Error ? error.message : 'Error al registrar adulto mayor.';
             setSnackbar({ visible: true, message, type: 'error' });
         } finally {
@@ -176,7 +189,11 @@ export default function NewPatientScreen() {
                                         return (
                                             <AppCard
                                                 key={id}
-                                                onPress={() => setValue('id_cuidador', id, { shouldValidate: true })}
+                                                onPress={() => {
+                                                    if (!isLoading) {
+                                                        setValue('id_cuidador', id, { shouldValidate: true });
+                                                    }
+                                                }}
                                                 style={selected ? styles.selectedCaregiver : styles.caregiverCard}
                                                 accessibilityLabel={`Seleccionar cuidador ${caregiverName(caregiver)}`}
                                             >
@@ -210,14 +227,22 @@ export default function NewPatientScreen() {
                     />
 
                     <AppButton
-                        label="Registrar adulto mayor"
+                        label={isLoading ? 'Registrando...' : 'Registrar adulto mayor'}
                         onPress={handleSubmit(onSubmit)}
                         variant="filled"
                         loading={isLoading}
+                        disabled={isLoading || isLoadingCaregivers}
                         icon="account-plus"
                         accessibilityLabel="Registrar adulto mayor"
                         style={styles.submitButton}
                     />
+
+                    {isLoading && (
+                        <View style={styles.loadingStatus} accessibilityRole="progressbar">
+                            <ActivityIndicator size="small" color={theme.colors.primary} />
+                            <Text style={styles.loadingStatusText}>Registrando adulto mayor...</Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
 
@@ -260,4 +285,21 @@ const styles = StyleSheet.create({
     helperText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
     segmented: { marginBottom: 16 },
     submitButton: { marginTop: 16 },
+    loadingStatus: {
+        marginTop: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        backgroundColor: '#ecfdf5',
+        borderWidth: 1,
+        borderColor: '#a7f3d0',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    loadingStatusText: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 13,
+        color: '#065f46',
+    },
 });

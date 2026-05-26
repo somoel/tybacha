@@ -67,7 +67,7 @@ export function AppButton({
             buttonColor={isError ? 'transparent' : undefined}
             textColor={isError ? '#c62828' : undefined}
         >
-            {loading ? '' : label}
+            {label}
         </Button>
     );
 }
