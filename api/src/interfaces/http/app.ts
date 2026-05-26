@@ -19,7 +19,9 @@ import { registerUserRoutes } from './modules/users/routes.js';
 
 export async function buildApp() {
   const app = Fastify({
-    logger: true,
+    logger: {
+      level: process.env.LOG_LEVEL ?? 'info',
+    },
   });
 
   const allowedOrigins = new Set(
@@ -29,13 +31,55 @@ export async function buildApp() {
       .filter(Boolean),
   );
 
+  app.log.info(
+    {
+      event: 'app_boot',
+      nodeEnv: env.NODE_ENV,
+      allowedOrigins: [...allowedOrigins],
+      hasTidbHost: Boolean(env.TIDB_HOST),
+      tidbDatabase: env.TIDB_DATABASE,
+      hasGeminiKey: Boolean(env.GEMINI_API_KEY),
+    },
+    'API app booting',
+  );
+
+  app.addHook('onRequest', async (request) => {
+    request.log.info(
+      {
+        event: 'request_in',
+        method: request.method,
+        url: request.url,
+        origin: request.headers.origin,
+        accessControlRequestMethod: request.headers['access-control-request-method'],
+        accessControlRequestHeaders: request.headers['access-control-request-headers'],
+      },
+      'Incoming request',
+    );
+  });
+
+  app.addHook('onResponse', async (request, reply) => {
+    request.log.info(
+      {
+        event: 'request_out',
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        origin: request.headers.origin,
+        corsAllowOrigin: reply.getHeader('access-control-allow-origin'),
+      },
+      'Request completed',
+    );
+  });
+
   await app.register(cors, {
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.has(origin)) {
+        app.log.info({ event: 'cors_allowed', origin }, 'CORS origin allowed');
         callback(null, true);
         return;
       }
 
+      app.log.warn({ event: 'cors_blocked', origin }, 'CORS origin blocked');
       callback(null, false);
     },
     credentials: true,
@@ -50,7 +94,27 @@ export async function buildApp() {
   });
 
   app.setErrorHandler((error, request, reply) => {
-    request.log.error(error);
+    const errorDetails =
+      error instanceof Error
+        ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        : {
+            message: String(error),
+          };
+
+    request.log.error(
+      {
+        event: 'request_error',
+        method: request.method,
+        url: request.url,
+        origin: request.headers.origin,
+        error: errorDetails,
+      },
+      'Request failed',
+    );
 
     if (error instanceof ZodError) {
       return reply.status(400).send({

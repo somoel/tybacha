@@ -24,4 +24,20 @@ const envSchema = z.object({
   SEED_ADMIN_LASTNAMES: z.string().default('Tybacha'),
 });
 
-export const env = envSchema.parse(process.env);
+const parsedEnv = envSchema.safeParse(process.env);
+
+if (!parsedEnv.success) {
+  console.error(
+    JSON.stringify({
+      event: 'env_validation_failed',
+      issues: parsedEnv.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    }),
+  );
+
+  throw parsedEnv.error;
+}
+
+export const env = parsedEnv.data;
