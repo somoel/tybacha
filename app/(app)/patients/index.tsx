@@ -9,9 +9,9 @@ import { getSectionedPatients, usePatientsStore } from '@/src/stores/patientsSto
 import type { Patient, SectionedPatients } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
-import { Searchbar } from 'react-native-paper';
+import { ActivityIndicator, Searchbar } from 'react-native-paper';
 
 /**
  * RF-05 / RF-10: Patient list with search and optional sectioned view.
@@ -22,33 +22,48 @@ export default function PatientsListScreen() {
     const { isAdmin, isProfessional } = usePermissions();
     const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading } = usePatientsStore();
     const [sections, setSections] = useState<SectionedPatients | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
-    useEffect(() => {
-        const load = async () => {
-            if (!user) return;
+    const loadPatients = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
+        if (!user) return;
+
+        if (mode === 'refresh') {
+            setIsRefreshing(true);
+        } else {
             setLoading(true);
-            try {
-                const hasStaffAccess = isAdmin || isProfessional;
-                const role = hasStaffAccess ? 'profesional' : 'cuidador';
-                const data = await fetchPatients(user.id, role);
-                setPatients(data);
+        }
 
-                if (hasStaffAccess && data.length > 0) {
-                    const ids = data.map((p) => p.id);
-                    const [counts, plans] = await Promise.all([
-                        fetchBatteryCountsForPatients(ids),
-                        fetchActivePlanStatus(ids),
-                    ]);
-                    setSections(getSectionedPatients(data, counts, plans));
-                }
-            } catch (error) {
-                console.error('Error cargando adultos mayores:', error);
-            } finally {
+        try {
+            const hasStaffAccess = isAdmin || isProfessional;
+            const role = hasStaffAccess ? 'profesional' : 'cuidador';
+            const data = await fetchPatients(user.id, role);
+            setPatients(data);
+
+            if (hasStaffAccess && data.length > 0) {
+                const ids = data.map((p) => p.id);
+                const [counts, plans] = await Promise.all([
+                    fetchBatteryCountsForPatients(ids),
+                    fetchActivePlanStatus(ids),
+                ]);
+                setSections(getSectionedPatients(data, counts, plans));
+            } else {
+                setSections(null);
+            }
+        } catch (error) {
+            console.error('Error cargando adultos mayores:', error);
+        } finally {
+            if (mode === 'refresh') {
+                setIsRefreshing(false);
+            } else {
                 setLoading(false);
             }
-        };
-        load();
+        }
     }, [user, isAdmin, isProfessional, setPatients, setLoading]);
+
+    useEffect(() => {
+        void loadPatients();
+    }, [loadPatients]);
+
     const hasStaffAccess = isAdmin || isProfessional;
 
     const filteredPatients = patients.filter((p) => {
@@ -67,14 +82,29 @@ export default function PatientsListScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.searchContainer}>
-                <Searchbar
-                    placeholder="Buscar adulto mayor..."
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    style={styles.searchbar}
-                    inputStyle={styles.searchInput}
-                    accessibilityLabel="Buscar adulto mayor"
-                />
+                <View style={styles.searchRow}>
+                    <Searchbar
+                        placeholder="Buscar adulto mayor..."
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        style={styles.searchbar}
+                        inputStyle={styles.searchInput}
+                        accessibilityLabel="Buscar adulto mayor"
+                    />
+                    <Pressable
+                        style={[styles.refreshButton, isRefreshing && styles.refreshButtonDisabled]}
+                        onPress={() => void loadPatients('refresh')}
+                        disabled={isRefreshing}
+                        accessibilityLabel="Refrescar adultos mayores"
+                        accessibilityRole="button"
+                    >
+                        {isRefreshing ? (
+                            <ActivityIndicator size="small" color="#006d77" />
+                        ) : (
+                            <MaterialCommunityIcons name="refresh" size={24} color="#006d77" />
+                        )}
+                    </Pressable>
+                </View>
             </View>
 
             {hasStaffAccess && sections && !searchQuery ? (
@@ -121,7 +151,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
     },
+    searchRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
     searchbar: {
+        flex: 1,
         borderRadius: 12,
         elevation: 1,
     },
@@ -132,6 +168,20 @@ const styles = StyleSheet.create({
     list: {
         paddingHorizontal: 16,
         paddingBottom: 24,
+    },
+    refreshButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#ffffff',
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 1,
+    },
+    refreshButtonDisabled: {
+        opacity: 0.7,
     },
     fab: {
         position: 'absolute',
