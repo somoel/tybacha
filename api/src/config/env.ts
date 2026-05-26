@@ -15,6 +15,7 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(24),
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
   SEED_ADMIN_EMAIL: z.string().email().default('admin@tybacha.local'),
@@ -24,4 +25,3 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
-

@@ -9,8 +9,13 @@
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "dist/vercel.js"
+      "dest": "dist/vercel.js",
+      "headers": {
+        "Access-Control-Allow-Origin": "https://tybacha.vercel.app",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      }
     }
   ]
 }
-

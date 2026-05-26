@@ -2,6 +2,7 @@ import cors from '@fastify/cors';
 import multipart from '@fastify/multipart';
 import Fastify from 'fastify';
 import { ZodError } from 'zod';
+import { env } from '../../config/env.js';
 import { HttpError } from './httpErrors.js';
 import { registerAuditRoutes } from './modules/audit/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
@@ -21,9 +22,25 @@ export async function buildApp() {
     logger: true,
   });
 
+  const allowedOrigins = new Set(
+    (env.CORS_ALLOWED_ORIGINS ?? 'https://tybacha.vercel.app,http://localhost:8081,http://localhost:19006,http://localhost:8082')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
+
   await app.register(cors, {
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(null, false);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   await app.register(multipart, {
