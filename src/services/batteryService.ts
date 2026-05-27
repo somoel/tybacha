@@ -22,6 +22,32 @@ const TEST_TYPE_BY_ORDER: Record<number, SFTTestType> = {
     7: 'up_and_go',
 };
 
+const TEST_TYPE_BY_NORMALIZED_NAME: Record<string, SFTTestType> = {
+    'sentarse y levantarse de silla': 'chair_stand',
+    'flexion de codo': 'arm_curl',
+    'flexion de codo arm curl': 'arm_curl',
+    'caminata de 6 minutos': 'six_min_walk',
+    'marcha estacionaria 2 minutos': 'two_min_step',
+    'sentado y extenderse': 'chair_sit_reach',
+    'sentado y extenderse chair sit and reach': 'chair_sit_reach',
+    'rascarse la espalda': 'back_scratch',
+    'rascarse la espalda back scratch': 'back_scratch',
+    '8 foot up and go': 'up_and_go',
+};
+
+function normalizeTestName(name: string | null): string {
+    return (name ?? '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]+/g, ' ')
+        .trim()
+        .toLowerCase();
+}
+
+function getTestTypeForApiTest(test: { orden: number; nombre?: string | null }): SFTTestType | undefined {
+    return TEST_TYPE_BY_ORDER[test.orden] ?? TEST_TYPE_BY_NORMALIZED_NAME[normalizeTestName(test.nombre ?? null)];
+}
+
 export async function createBattery(
     patientId: string,
     performedBy: string,
@@ -52,7 +78,9 @@ export async function saveBatteryResults(
     }
 
     const batteries = await fetchActiveSftBatteries();
-    const activeBattery = batteries[0];
+    const activeBattery =
+        batteries.find((battery) => battery.nombre.trim().toLowerCase() === 'senior fitness test') ??
+        batteries.find((battery) => battery.nombre.trim().toLowerCase().includes('senior fitness test'));
     if (!activeBattery) {
         throw new Error('No hay bateria SFT activa en el servidor.');
     }
@@ -60,7 +88,7 @@ export async function saveBatteryResults(
     const tests = await fetchSftBatteryTests(activeBattery.idBateriaSft);
     const payloadResults = tests
         .map((test) => {
-            const testType = TEST_TYPE_BY_ORDER[test.orden];
+            const testType = getTestTypeForApiTest(test);
             const value = testType ? results[testType] : undefined;
             if (value === undefined) return null;
 
@@ -70,6 +98,10 @@ export async function saveBatteryResults(
             };
         })
         .filter((item): item is { idPruebaSft: number; valorNumerico: number } => item !== null);
+
+    if (payloadResults.length === 0) {
+        throw new Error('No hay resultados SFT para guardar. Revisa que las pruebas tengan valores registrados.');
+    }
 
     const created = await createOlderAdultSftApplication(Number(context.patientId), {
         idBateriaSft: activeBattery.idBateriaSft,
@@ -81,7 +113,7 @@ export async function saveBatteryResults(
 
     return payloadResults.map((result) => {
         const test = tests.find((item) => item.idPruebaSft === result.idPruebaSft);
-        const testType = test ? TEST_TYPE_BY_ORDER[test.orden] : undefined;
+        const testType = test ? getTestTypeForApiTest(test) : undefined;
         const definition = SFT_TESTS.find((item) => item.type === testType);
 
         return {
@@ -139,7 +171,7 @@ export async function fetchBatteryWithResults(batteryId: string): Promise<Batter
         notes: application.observaciones ?? undefined,
         is_synced: true,
         results: application.resultados.map((result) => {
-            const testType = result.orden ? TEST_TYPE_BY_ORDER[result.orden] : undefined;
+            const testType = result.orden ? TEST_TYPE_BY_ORDER[result.orden] : TEST_TYPE_BY_NORMALIZED_NAME[normalizeTestName(result.pruebaNombre)];
             const definition = SFT_TESTS.find((item) => item.type === testType);
 
             return {

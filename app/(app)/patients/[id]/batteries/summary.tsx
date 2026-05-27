@@ -27,7 +27,8 @@ export default function BatterySummaryScreen() {
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const canCreatePlan = isAdmin || isProfessional;
-    const isComplete = completedTests.length === SFT_TESTS.length;
+    const hasAllResults = SFT_TESTS.every((test) => results[test.type] !== undefined);
+    const isComplete = completedTests.length === SFT_TESTS.length && hasAllResults;
 
     const handleBackToCorrect = () => {
         router.replace(`/(app)/tests/${SFT_TESTS[SFT_TESTS.length - 1].type}/active` as never);
@@ -35,7 +36,7 @@ export default function BatterySummaryScreen() {
 
     const finalizeAndNavigate = async (action: FinalAction) => {
         if (!user || !id || !activeBatteryId || !isComplete) {
-            setSnackbar({ visible: true, message: 'Completa todas las pruebas antes de finalizar.', type: 'error' });
+            setSnackbar({ visible: true, message: 'Completa y guarda un valor para cada prueba antes de finalizar.', type: 'error' });
             return;
         }
 
