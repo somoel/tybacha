@@ -14,6 +14,8 @@ interface BatteryState {
     startBattery: (patientId: string) => void;
     /** Save a single test result into the active battery */
     saveResult: (testType: SFTTestType, value: number) => void;
+    /** Clear a finalized session without treating it as an abandoned battery */
+    clearSession: () => void;
     /** Mark battery as complete (triggers persistence via service) */
     finalizeBattery: () => Promise<void>;
     /** Clear the active session after persistence */
@@ -52,6 +54,15 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
                 ? state.completedTests
                 : [...state.completedTests, testType],
         })),
+
+    clearSession: () =>
+        set({
+            activeBatteryId: null,
+            patientId: null,
+            results: {},
+            completedTests: [],
+            isLoading: false,
+        }),
 
     finalizeBattery: async () => {
         const state = get();

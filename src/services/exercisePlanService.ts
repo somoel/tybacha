@@ -47,10 +47,11 @@ export async function generateExercisePlan(
     patient: Patient,
     _results: SFTResult[],
     _generatedBy: string,
-    _batteryId: string,
+    batteryId: string,
 ): Promise<ExercisePlan> {
     const plan = await generateApiExercisePlan({
         idAdultoMayor: Number(patient.id),
+        idAplicacionSft: Number(batteryId),
         titulo: 'Plan semanal personalizado',
     });
 

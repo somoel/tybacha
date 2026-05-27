@@ -5,8 +5,8 @@ import type { SFTBattery } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
@@ -20,20 +20,25 @@ export default function BatteriesListScreen() {
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
+    useFocusEffect(useCallback(() => {
+        let isActive = true;
         const load = async () => {
             if (!id) return;
+            setIsLoading(true);
             try {
                 const data = await fetchBatteries(id);
-                setBatteries(data);
+                if (isActive) setBatteries(data);
             } catch (error) {
                 console.error('Error:', error);
             } finally {
-                setIsLoading(false);
+                if (isActive) setIsLoading(false);
             }
         };
         load();
-    }, [id]);
+        return () => {
+            isActive = false;
+        };
+    }, [id]));
 
     if (isLoading) return <AppLoader />;
 

@@ -11,8 +11,8 @@ import type { Patient } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Divider, Text, useTheme } from 'react-native-paper';
 
@@ -30,26 +30,32 @@ export default function PatientDetailScreen() {
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
+    useFocusEffect(useCallback(() => {
+        let isActive = true;
         const load = async () => {
             if (!id) return;
+            setIsLoading(true);
             try {
                 const [p, b, pl] = await Promise.all([
                     fetchPatientById(id),
                     fetchBatteries(id),
                     fetchExercisePlans(id),
                 ]);
+                if (!isActive) return;
                 setPatient(p);
                 setBatteries(b);
                 setPlans(pl);
             } catch (error) {
                 console.error('Error cargando detalle:', error);
             } finally {
-                setIsLoading(false);
+                if (isActive) setIsLoading(false);
             }
         };
         load();
-    }, [id]);
+        return () => {
+            isActive = false;
+        };
+    }, [id]));
 
     if (isLoading) return <AppLoader message="Cargando adulto mayor..." />;
     if (!patient) return <AppLoader message="Adulto mayor no encontrado" />;

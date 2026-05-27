@@ -148,6 +148,7 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       `select id_aplicacion_sft, id_adulto_mayor, id_bateria_sft, responsable, fecha_aplicacion, estado, observaciones
        from aplicacion_sft
        where id_adulto_mayor = :id
+         and estado = 'finalizada'
        order by fecha_aplicacion desc`,
       { id: params.id },
     );

@@ -15,7 +15,10 @@ export default function AppLayout() {
     const theme = useTheme();
     const pathname = usePathname();
     const isOnline = useSyncStore((s) => s.isOnline);
-    const isBatteryMode = /\/patients\/[^/]+\/batteries\/new/.test(pathname) || /\/tests\/[^/]+\/active/.test(pathname);
+    const isBatteryMode =
+        /\/patients\/[^/]+\/batteries\/new/.test(pathname) ||
+        /\/patients\/[^/]+\/batteries\/summary/.test(pathname) ||
+        /\/tests\/[^/]+\/active/.test(pathname);
     const tabBarStyle = isBatteryMode
         ? { display: 'none' as const }
         : {

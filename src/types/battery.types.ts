@@ -57,5 +57,6 @@ export interface BatteryState {
     startBattery: (patientId: string) => void;
     saveResult: (testType: SFTTestType, value: number) => void;
     finalizeBattery: () => Promise<void>;
+    clearSession: () => void;
     resetBattery: () => void;
 }

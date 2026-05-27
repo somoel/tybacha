@@ -15,6 +15,7 @@ import type { BatteryWithResults } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -24,6 +25,7 @@ import { Text, useTheme } from 'react-native-paper';
  */
 export default function ResultsScreen() {
     const theme = useTheme();
+    const { patientId, batteryId, createPlan } = useLocalSearchParams<{ patientId?: string; batteryId?: string; createPlan?: string }>();
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
     const { patients, setPatients } = usePatientsStore();
@@ -34,34 +36,57 @@ export default function ResultsScreen() {
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const makeFallbackPatient = (id: string): Patient => ({
+        id,
+        created_by: user?.id ?? '',
+        first_name: 'Adulto',
+        first_lastname: 'mayor',
+        birth_date: new Date().toISOString(),
+        gender: 'other',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    });
 
     useEffect(() => {
         const load = async () => {
-            if (!user) return;
+            if (!user) {
+                if (patientId) {
+                    setSelectedPatient(makeFallbackPatient(patientId));
+                }
+                setIsLoading(false);
+                return;
+            }
             try {
                 const role = isAdmin || isProfessional ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
-                if (data.length > 0) {
-                    setSelectedPatient(data[0]);
+                if (data.length > 0 || patientId) {
+                    setSelectedPatient(data.find((patient) => patient.id === patientId) ?? data[0] ?? makeFallbackPatient(patientId!));
                 }
             } catch (error) {
                 console.error('Error:', error);
+                if (patientId) {
+                    setSelectedPatient(makeFallbackPatient(patientId));
+                }
             } finally {
                 setIsLoading(false);
             }
         };
         load();
-    }, [user, isAdmin, isProfessional, setPatients]);
+    }, [user, isAdmin, isProfessional, setPatients, patientId]);
     const hasStaffAccess = isAdmin || isProfessional;
+    const isCreatePlanMode = createPlan === '1';
 
     useEffect(() => {
         const loadBatteryAndPlans = async () => {
             if (!selectedPatient) return;
             try {
                 const batteries = await fetchBatteries(selectedPatient.id);
-                if (batteries.length > 0) {
-                    const latest = await fetchBatteryWithResults(batteries[0].id);
+                const selectedBatteryId = selectedPatient.id === patientId ? batteryId : undefined;
+                const targetBatteryId = selectedBatteryId ?? batteries[0]?.id;
+
+                if (targetBatteryId) {
+                    const latest = await fetchBatteryWithResults(targetBatteryId);
                     setLatestBattery(latest);
                 } else {
                     setLatestBattery(null);
@@ -73,7 +98,7 @@ export default function ResultsScreen() {
             }
         };
         loadBatteryAndPlans();
-    }, [selectedPatient]);
+    }, [selectedPatient, patientId, batteryId]);
 
     const handleGeneratePlan = async () => {
         if (!selectedPatient || !latestBattery || !user) return;
@@ -154,8 +179,13 @@ export default function ResultsScreen() {
                     )}
 
                     {/* Generate AI plan button */}
-                    {hasStaffAccess && latestBattery && !hasActivePlan && (
+                    {hasStaffAccess && latestBattery && (!hasActivePlan || isCreatePlanMode) && (
                         <View style={styles.generateSection}>
+                            {isCreatePlanMode && (
+                                <Text style={styles.createPlanHint}>
+                                    Batería guardada. Genera el plan con estos resultados.
+                                </Text>
+                            )}
                             <AppButton
                                 label="Generar plan de ejercicios con IA"
                                 variant="filled"
@@ -208,6 +238,7 @@ const styles = StyleSheet.create({
     empty: { alignItems: 'center', gap: 8, paddingVertical: 16 },
     emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', textAlign: 'center' },
     generateSection: { marginTop: 16, gap: 8 },
+    createPlanHint: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151', textAlign: 'center' },
     errorText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#c62828', textAlign: 'center' },
     planSection: { marginTop: 16 },
     summary: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#374151', lineHeight: 20, fontStyle: 'italic' },

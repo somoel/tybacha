@@ -94,17 +94,38 @@ export async function saveBatteryResults(
     });
 }
 
+export async function saveBatteryWithResults(
+    batteryId: string,
+    results: Partial<Record<SFTTestType, number>>,
+    isOnline: boolean,
+): Promise<{ batteryId: string; results: SFTResult[] }> {
+    const savedResults = await saveBatteryResults(batteryId, results, isOnline);
+    const savedBatteryId = savedResults[0]?.battery_id;
+
+    if (!savedBatteryId) {
+        throw new Error('No se pudo identificar la bateria SFT guardada.');
+    }
+
+    return {
+        batteryId: savedBatteryId,
+        results: savedResults,
+    };
+}
+
 export async function fetchBatteries(patientId: string): Promise<SFTBattery[]> {
     const applications = await fetchOlderAdultSftApplications(Number(patientId));
 
-    return applications.map((application) => ({
-        id: String(application.idAplicacionSft),
-        patient_id: String(application.idAdultoMayor),
-        performed_by: application.responsable ? String(application.responsable) : '',
-        performed_at: application.fechaAplicacion,
-        notes: application.observaciones ?? undefined,
-        is_synced: true,
-    }));
+    return applications
+        .filter((application) => application.estado === 'finalizada')
+        .sort((left, right) => new Date(right.fechaAplicacion).getTime() - new Date(left.fechaAplicacion).getTime())
+        .map((application) => ({
+            id: String(application.idAplicacionSft),
+            patient_id: String(application.idAdultoMayor),
+            performed_by: application.responsable ? String(application.responsable) : '',
+            performed_at: application.fechaAplicacion,
+            notes: application.observaciones ?? undefined,
+            is_synced: true,
+        }));
 }
 
 export async function fetchBatteryWithResults(batteryId: string): Promise<BatteryWithResults | null> {

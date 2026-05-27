@@ -86,19 +86,29 @@ export default function ActiveTestScreen() {
     }, []);
 
     const handleSave = () => {
-        if (!test) return;
+        if (!test || !patientId) return;
         saveResult(test.type as SFTTestType, value);
         setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado` });
         allowExitRef.current = true;
-        const nextTest = SFT_TESTS.slice(currentIndex + 1).find((candidate) => candidate.type !== test.type);
+        const completedAfterSave = new Set([...completedTests, test.type]);
+        const nextTest =
+            SFT_TESTS.slice(currentIndex + 1).find((candidate) => !completedAfterSave.has(candidate.type)) ??
+            SFT_TESTS.find((candidate) => !completedAfterSave.has(candidate.type));
+
         setTimeout(() => {
             if (nextTest) {
                 router.replace(`/(app)/tests/${nextTest.type}/active` as never);
                 return;
             }
 
-            router.back();
+            router.replace(`/(app)/patients/${patientId}/batteries/summary` as never);
         }, 700);
+    };
+
+    const handleGoToBatteryOverview = () => {
+        if (!patientId) return;
+        allowExitRef.current = true;
+        router.replace(`/(app)/patients/${patientId}/batteries/new` as never);
     };
 
     if (!test) {
@@ -114,6 +124,13 @@ export default function ActiveTestScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.topBar}>
+                <IconButton
+                    icon="format-list-bulleted"
+                    mode="contained-tonal"
+                    size={20}
+                    onPress={handleGoToBatteryOverview}
+                    accessibilityLabel="Ver todas las pruebas"
+                />
                 <View style={styles.topBarText}>
                     <Text style={styles.modeLabel}>Realizar bateria SFT</Text>
                     <Text style={styles.progressText}>
@@ -224,7 +241,7 @@ const styles = StyleSheet.create({
         paddingTop: 14,
         paddingBottom: 10,
     },
-    topBarText: { flex: 1, paddingRight: 12 },
+    topBarText: { flex: 1, paddingHorizontal: 12 },
     modeLabel: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 2 },
     progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#6b7280' },
     progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden' },

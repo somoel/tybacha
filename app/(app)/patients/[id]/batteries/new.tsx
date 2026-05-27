@@ -2,10 +2,7 @@ import { TestCard } from '@/src/components/tests/TestCard';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
-import { createBattery, saveBatteryResults } from '@/src/services/batteryService';
-import { useAuthStore } from '@/src/stores/authStore';
 import { useBatteryStore } from '@/src/stores/batteryStore';
-import { useSyncStore } from '@/src/stores/syncStore';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -20,10 +17,7 @@ export default function NewBatteryScreen() {
     const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
-    const { user } = useAuthStore();
-    const isOnline = useSyncStore((s) => s.isOnline);
     const { startBattery, results, completedTests, activeBatteryId, resetBattery } = useBatteryStore();
-    const [isSaving, setIsSaving] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const allowExitRef = useRef(false);
@@ -41,7 +35,7 @@ export default function NewBatteryScreen() {
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-            if (!hasActiveSession || allowExitRef.current || isSaving) {
+            if (!hasActiveSession || allowExitRef.current) {
                 return;
             }
 
@@ -51,7 +45,7 @@ export default function NewBatteryScreen() {
         });
 
         return unsubscribe;
-    }, [hasActiveSession, isSaving, navigation, resetBattery]);
+    }, [hasActiveSession, navigation, resetBattery]);
 
     const handleRequestExit = () => {
         pendingNavigationActionRef.current = null;
@@ -77,22 +71,10 @@ export default function NewBatteryScreen() {
         router.replace(`/(app)/patients/${id}` as never);
     };
 
-    const handleFinalize = async () => {
-        if (!user || !id || !activeBatteryId) return;
-        setIsSaving(true);
-        try {
-            const battery = await createBattery(id, user.id, undefined, isOnline);
-            await saveBatteryResults(battery.id, results, isOnline);
-            allowExitRef.current = true;
-            resetBattery();
-            setSnackbar({ visible: true, message: 'Bateria guardada exitosamente', type: 'success' });
-            setTimeout(() => router.replace(`/(app)/patients/${id}` as never), 1500);
-        } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Error al guardar bateria.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
-        } finally {
-            setIsSaving(false);
-        }
+    const handleReviewSummary = () => {
+        if (!id) return;
+        allowExitRef.current = true;
+        router.replace(`/(app)/patients/${id}/batteries/summary` as never);
     };
 
     return (
@@ -133,13 +115,12 @@ export default function NewBatteryScreen() {
 
                 {allComplete && (
                     <AppButton
-                        label="Guardar bateria completa"
+                        label="Revisar resultados"
                         variant="filled"
-                        icon="check-all"
-                        onPress={handleFinalize}
-                        loading={isSaving}
+                        icon="clipboard-check"
+                        onPress={handleReviewSummary}
                         style={styles.saveBtn}
-                        accessibilityLabel="Guardar bateria completa"
+                        accessibilityLabel="Revisar resultados de la bateria"
                     />
                 )}
             </ScrollView>
