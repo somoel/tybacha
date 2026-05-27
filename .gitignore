@@ -45,3 +45,7 @@ app-example
 /ios
 /android
 .env
+
+# Agents
+.agents
+skills-lock.json
