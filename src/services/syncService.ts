@@ -34,8 +34,8 @@ export async function syncPendingItems(): Promise<number> {
         }
     }
 
-    // Legacy Supabase-era queue: keep draining unsupported entries so old local data
-    // does not block the new TiDB synchronization indicator forever.
+    // Drain legacy sync_queue entries so old local data
+    // does not block the TiDB synchronization indicator forever.
     const legacyItems = await getPendingSyncItems();
     for (const item of legacyItems) {
         await removeSyncQueueItem(item.id);

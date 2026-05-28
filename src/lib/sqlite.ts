@@ -97,7 +97,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 
 /**
  * Adds an item to the sync queue for later synchronization.
- * @param tableName - The Supabase table to sync to
+ * @param tableName - The remote table to sync to
  * @param operation - 'INSERT' | 'UPDATE' | 'DELETE'
  * @param payload - The data to sync
  */

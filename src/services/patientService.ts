@@ -38,7 +38,6 @@ function mapOlderAdultToPatient(adult: ApiOlderAdult): Patient {
 
 /**
  * Fetch adults visible for the current authenticated user.
- * Signature kept temporarily while screens migrate from Supabase-era code.
  */
 export async function fetchPatients(_userId?: string, _role?: string): Promise<Patient[]> {
     const adults = await fetchApiOlderAdults();

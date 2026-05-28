@@ -103,4 +103,3 @@ No CI workflows exist. Two manual Vercel deployments:
 - MySQL-specific files (`*MySQL.ts`, `database.ts`, `mysql.ts`) are excluded from compilation—do not reference them.
 - The `api/` directory is a completely separate Node.js project with its own `node_modules`, `package.json`, and TypeScript config. Run commands from within `api/`, not the root.
 - `metro.config.js` adds `.wasm` asset extension and custom condition names for module resolution.
-- Supabase files (`src/lib/supabase.ts`, `src/services/authService.ts`, `supabase/migrations/`) are dead code — Supabase is deprecated and will be removed.

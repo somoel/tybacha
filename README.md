@@ -4,7 +4,7 @@ Aplicación móvil para profesionales en educación física y cuidadores que eva
 
 ## 📱 Características
 
-- **Autenticación** con Supabase Auth (profesional y cuidador)
+- **Autenticación** con JWT (profesional y cuidador)
 - **Registro y gestión de pacientes** con datos demográficos y patologías
 - **Batería completa SFT** (7 pruebas) con cronómetros y contadores interactivos
 - **Resultados gráficos** con comparativas usando react-native-gifted-charts
@@ -23,7 +23,6 @@ Aplicación móvil para profesionales en educación física y cuidadores que eva
 | Expo Router | v6 (file-based) |
 | React Native Paper | v5 (MD3) |
 | Zustand | v5 + persist |
-| Supabase | v2 |
 | expo-sqlite | v14+ |
 | Gemini AI | 2.0 Flash |
 | react-native-gifted-charts | Latest |
@@ -43,25 +42,18 @@ npm install
 Editar el archivo `.env` en la raíz del proyecto:
 
 ```env
-EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...tu_anon_key
+EXPO_PUBLIC_API_URL=https://tu-api.vercel.app
 EXPO_PUBLIC_GEMINI_API_KEY=tu_clave_api_gemini
+EXPO_PUBLIC_OPENROUTER_API_KEY=tu_clave_openrouter
 ```
 
-### 3. Configurar Supabase
-
-1. Crear un proyecto en [supabase.com](https://supabase.com)
-2. Ir a **SQL Editor** y ejecutar el contenido de `supabase/migrations/001_initial.sql`
-3. En **Authentication > Settings**, habilitar el proveedor de email/password
-4. Copiar la URL y anon key a tu archivo `.env`
-
-### 4. Obtener API Key de Gemini
+### 3. Obtener API Key de Gemini
 
 1. Ir a [Google AI Studio](https://aistudio.google.com/apikey)
 2. Crear una API key
 3. Copiarla en `EXPO_PUBLIC_GEMINI_API_KEY` del `.env`
 
-### 5. Ejecutar la app
+### 4. Ejecutar la app
 
 ```bash
 # Iniciar el servidor de desarrollo
@@ -92,11 +84,10 @@ tybacha/
 │   ├── components/          # Componentes reutilizables
 │   ├── constants/           # Tema MD3, definiciones SFT
 │   ├── hooks/               # useAuth, useOffline, etc.
-│   ├── lib/                 # Clientes Supabase, SQLite, Gemini
+│   ├── lib/                 # Clientes SQLite, Gemini
 │   ├── services/            # Lógica de negocio
 │   ├── stores/              # Estado global (Zustand)
 │   └── types/               # Tipos TypeScript
-└── supabase/migrations/     # SQL de migración
 ```
 
 ## 📋 Pruebas SFT Incluidas
@@ -121,4 +112,4 @@ tybacha/
 La app detecta automáticamente la conectividad. Cuando no hay conexión:
 - Los datos se guardan en SQLite local
 - Se muestra un banner amarillo "Sin conexión"
-- Al recuperar conexión, se sincronizan automáticamente con Supabase
+- Al recuperar conexión, se sincronizan automáticamente con el backend
