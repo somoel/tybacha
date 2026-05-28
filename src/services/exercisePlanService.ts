@@ -1,4 +1,5 @@
 import {
+    createApiExercisePlan,
     fetchApiExercisePlan,
     fetchApiExercisePlans,
     generateApiExercisePlan,
@@ -7,7 +8,7 @@ import {
 import { createApiExerciseRecord } from '@/src/api/trackingApi';
 import { addOfflineOperation } from '@/src/lib/sqlite';
 import type { ApiExerciseRecordStatus } from '@/src/types/apiTracking.types';
-import type { ApiExercisePlan, ApiExercisePlanSummary, ApiPlanStatus } from '@/src/types/apiExercisePlan.types';
+import type { ApiCreateExercisePlanInput, ApiExercisePlan, ApiExercisePlanSummary, ApiPlanStatus } from '@/src/types/apiExercisePlan.types';
 import type { SFTResult } from '@/src/types/battery.types';
 import type { ExerciseLog, ExerciseLogInput, ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
@@ -55,6 +56,23 @@ export async function generateExercisePlan(
         titulo: 'Plan semanal personalizado',
     });
 
+    return mapApiPlan(plan);
+}
+
+export async function createExercisePlan(
+    patientId: string,
+    planData: {
+        titulo?: string;
+        objetivo?: string;
+        nivelDificultad?: 'bajo' | 'medio' | 'alto';
+        origen?: 'manual' | 'mixto';
+        ejercicios: ApiCreateExercisePlanInput['ejercicios'];
+    },
+): Promise<ExercisePlan> {
+    const plan = await createApiExercisePlan({
+        idAdultoMayor: Number(patientId),
+        ...planData,
+    });
     return mapApiPlan(plan);
 }
 

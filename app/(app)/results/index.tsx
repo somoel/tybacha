@@ -1,4 +1,5 @@
 import { ExercisePlanCard } from '@/src/components/results/ExercisePlanCard';
+import { ExercisePlanForm, type ExercisePlanFormData } from '@/src/components/results/ExercisePlanForm';
 import { ResultChart } from '@/src/components/results/ResultChart';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
@@ -20,8 +21,11 @@ import React, { useEffect, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
+type FormMode = 'idle' | 'generating' | 'ready';
+
 /**
- * RF-09/RF-10: Results screen with chart display and AI exercise plan generation.
+ * RF-09/RF-10: Results screen with chart display and exercise plan generation.
+ * Flow: try AI first → form (pre-filled or empty) → save.
  */
 export default function ResultsScreen() {
     const theme = useTheme();
@@ -29,13 +33,18 @@ export default function ResultsScreen() {
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
     const { patients, setPatients } = usePatientsStore();
-    const { isGenerating, setGenerating, setGenerationError, generationError, addPlan } = useExercisePlanStore();
+    const { addPlan } = useExercisePlanStore();
 
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
     const [latestBattery, setLatestBattery] = useState<BatteryWithResults | null>(null);
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+
+    const [formMode, setFormMode] = useState<FormMode>('idle');
+    const [formData, setFormData] = useState<ExercisePlanFormData | null>(null);
+    const [aiError, setAiError] = useState<string | null>(null);
+
     const makeFallbackPatient = (id: string): Patient => ({
         id,
         created_by: user?.id ?? '',
@@ -102,7 +111,8 @@ export default function ResultsScreen() {
 
     const handleGeneratePlan = async () => {
         if (!selectedPatient || !latestBattery || !user) return;
-        setGenerating(true);
+        setFormMode('generating');
+        setAiError(null);
         try {
             const plan = await generateExercisePlan(
                 selectedPatient,
@@ -110,15 +120,26 @@ export default function ResultsScreen() {
                 user.id,
                 latestBattery.id
             );
-            addPlan(plan);
-            setPlans((prev) => [plan, ...prev]);
-            setSnackbar({ visible: true, message: 'Plan generado exitosamente ✓', type: 'success' });
+            setFormData({
+                titulo: 'Plan semanal personalizado',
+                objetivo: plan.summary ?? '',
+                nivelDificultad: 'bajo',
+                ejercicios: plan.exercises.map((ex) => ({
+                    nombre: ex.name,
+                    descripcion: ex.description,
+                    series: ex.sets,
+                    repeticiones: ex.reps ?? undefined,
+                    duracionSegundos: ex.duration_seconds ?? undefined,
+                    descansoSegundos: undefined,
+                    dificultad: 'bajo',
+                    instrucciones: ex.rationale,
+                })),
+            });
+            setFormMode('ready');
         } catch (error) {
-            const msg = error instanceof Error ? error.message : 'Error generando plan.';
-            setGenerationError(msg);
-            setSnackbar({ visible: true, message: msg, type: 'error' });
-        } finally {
-            setGenerating(false);
+            setAiError(error instanceof Error ? error.message : 'Error generando plan con IA.');
+            setFormData(null);
+            setFormMode('ready');
         }
     };
 
@@ -128,11 +149,25 @@ export default function ResultsScreen() {
             await logExerciseCompletion(plans[0].id, exerciseIndex, user.id, {
                 completed: true,
             });
-            setSnackbar({ visible: true, message: 'Ejercicio registrado ✓', type: 'success' });
+            setSnackbar({ visible: true, message: 'Ejercicio registrado', type: 'success' });
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error registrando.';
             setSnackbar({ visible: true, message: msg, type: 'error' });
         }
+    };
+
+    const handlePlanSaved = async () => {
+        if (!selectedPatient) return;
+        try {
+            const patientPlans = await fetchExercisePlans(selectedPatient.id);
+            setPlans(patientPlans);
+            addPlan(patientPlans[0]);
+        } catch {
+            // silent
+        }
+        setFormMode('idle');
+        setFormData(null);
+        setAiError(null);
     };
 
     if (isLoading) return <AppLoader />;
@@ -178,30 +213,53 @@ export default function ResultsScreen() {
                         </AppCard>
                     )}
 
-                    {/* Generate AI plan button */}
+                    {/* Plan creation flow */}
                     {hasStaffAccess && latestBattery && (!hasActivePlan || isCreatePlanMode) && (
-                        <View style={styles.generateSection}>
-                            {isCreatePlanMode && (
-                                <Text style={styles.createPlanHint}>
-                                    Batería guardada. Genera el plan con estos resultados.
-                                </Text>
+                        <>
+                            {formMode === 'idle' && (
+                                <View style={styles.generateSection}>
+                                    {isCreatePlanMode && (
+                                        <Text style={styles.createPlanHint}>
+                                            Batería guardada. Genera el plan con estos resultados.
+                                        </Text>
+                                    )}
+                                    <AppButton
+                                        label="Generar plan de ejercicios con IA"
+                                        variant="filled"
+                                        icon="robot"
+                                        onPress={handleGeneratePlan}
+                                        accessibilityLabel="Generar plan de ejercicios con inteligencia artificial"
+                                    />
+                                    <AppButton
+                                        label="Crear plan manual"
+                                        variant="outlined"
+                                        icon="pencil"
+                                        onPress={() => { setFormData(null); setAiError(null); setFormMode('ready'); }}
+                                        style={styles.manualButton}
+                                        accessibilityLabel="Crear plan de ejercicios manualmente"
+                                    />
+                                </View>
                             )}
-                            <AppButton
-                                label="Generar plan de ejercicios con IA"
-                                variant="filled"
-                                icon="robot"
-                                onPress={handleGeneratePlan}
-                                loading={isGenerating}
-                                accessibilityLabel="Generar plan de ejercicios con inteligencia artificial"
-                            />
-                            {generationError && (
-                                <Text style={styles.errorText}>{generationError}</Text>
+
+                            {formMode === 'generating' && (
+                                <AppLoader message="Generando plan con IA..." />
                             )}
-                        </View>
+
+                            {formMode === 'ready' && (
+                                <ExercisePlanForm
+                                    patientId={selectedPatient.id}
+                                    initialData={formData}
+                                    isAiFailed={!!aiError}
+                                    aiError={aiError}
+                                    onSuccess={handlePlanSaved}
+                                    onCancel={() => { setFormMode('idle'); setFormData(null); setAiError(null); }}
+                                />
+                            )}
+                        </>
                     )}
 
-                    {/* Exercise plans */}
-                    {activePlan && (
+                    {/* Active exercise plan */}
+                    {activePlan && formMode === 'idle' && (
                         <View style={styles.planSection}>
                             <Text style={styles.sectionTitle}>Plan de ejercicios activo</Text>
                             {activePlan.summary && (
@@ -239,7 +297,7 @@ const styles = StyleSheet.create({
     emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', textAlign: 'center' },
     generateSection: { marginTop: 16, gap: 8 },
     createPlanHint: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151', textAlign: 'center' },
-    errorText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#c62828', textAlign: 'center' },
+    manualButton: { marginTop: 4 },
     planSection: { marginTop: 16 },
     summary: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#374151', lineHeight: 20, fontStyle: 'italic' },
     bottomPad: { height: 32 },

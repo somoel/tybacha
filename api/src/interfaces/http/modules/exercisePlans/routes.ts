@@ -38,6 +38,15 @@ const aiPlanSchema = z.object({
   ejercicios: z.array(aiExerciseSchema).length(5),
 });
 
+const createPlanSchema = z.object({
+  idAdultoMayor: z.number().int().positive(),
+  titulo: z.string().max(160).default('Plan semanal personalizado'),
+  objetivo: z.string().optional(),
+  nivelDificultad: z.enum(['bajo', 'medio', 'alto']).default('bajo'),
+  origen: z.enum(['manual', 'mixto']).default('manual'),
+  ejercicios: z.array(aiExerciseSchema).min(1).max(5),
+});
+
 interface OlderAdultContextRow extends RowDataPacket {
   id_adulto_mayor: number;
   nombres: string;
@@ -378,6 +387,83 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
         registroId: idPlanEjercicio,
         accion: 'crear',
         nuevos: parsed,
+        context: {
+          userId: actor.idUsuario,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.commit();
+      return fetchPlanWithExercises(idPlanEjercicio);
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+
+  app.post('/exercise-plans', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    if (actor.rol === 'cuidador') {
+      throw forbidden('Solo profesionales o administradores crean planes');
+    }
+
+    const body = createPlanSchema.parse(request.body);
+    await getOlderAdultContext(body.idAdultoMayor, actor.idUsuario, actor.rol);
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [insertPlan] = await connection.query<ResultSetHeader>(
+        `insert into plan_ejercicio
+          (id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad, creado_por)
+         values
+          (:idAdultoMayor, :titulo, :objetivo, :origen, 'generado', :nivelDificultad, :creadoPor)`,
+        {
+          idAdultoMayor: body.idAdultoMayor,
+          titulo: body.titulo,
+          objetivo: body.objetivo ?? null,
+          origen: body.origen,
+          nivelDificultad: body.nivelDificultad,
+          creadoPor: actor.idUsuario,
+        },
+      );
+
+      const idPlanEjercicio = insertPlan.insertId;
+
+      for (let index = 0; index < body.ejercicios.length; index++) {
+        const exercise = body.ejercicios[index]!;
+        await connection.query(
+          `insert into ejercicio_plan
+            (id_plan_ejercicio, nombre_personalizado, descripcion_personalizada, dia_semana,
+             orden, series, repeticiones, duracion_segundos, descanso_segundos, dificultad, instrucciones)
+           values
+            (:idPlanEjercicio, :nombre, :descripcion, :diaSemana,
+             :orden, :series, :repeticiones, :duracionSegundos, :descansoSegundos, :dificultad, :instrucciones)`,
+          {
+            idPlanEjercicio,
+            nombre: exercise.nombre,
+            descripcion: exercise.descripcion ?? null,
+            diaSemana: exercise.diaSemana,
+            orden: index + 1,
+            series: exercise.series ?? null,
+            repeticiones: exercise.repeticiones ?? null,
+            duracionSegundos: exercise.duracionSegundos ?? null,
+            descansoSegundos: exercise.descansoSegundos ?? null,
+            dificultad: exercise.dificultad,
+            instrucciones: exercise.instrucciones ?? null,
+          },
+        );
+      }
+
+      await insertChangeAudit(connection, {
+        tabla: 'plan_ejercicio',
+        registroId: idPlanEjercicio,
+        accion: 'crear',
+        nuevos: body,
         context: {
           userId: actor.idUsuario,
           ip: request.ip,

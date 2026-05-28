@@ -50,3 +50,22 @@ export interface ApiGenerateExercisePlanInput {
     objetivo?: string;
 }
 
+export interface ApiCreateExercisePlanInput {
+    idAdultoMayor: number;
+    titulo?: string;
+    objetivo?: string;
+    nivelDificultad?: 'bajo' | 'medio' | 'alto';
+    origen?: 'manual' | 'mixto';
+    ejercicios: {
+        diaSemana: 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes';
+        nombre: string;
+        descripcion?: string;
+        series?: number;
+        repeticiones?: number;
+        duracionSegundos?: number;
+        descansoSegundos?: number;
+        dificultad?: 'bajo' | 'medio' | 'alto';
+        instrucciones?: string;
+    }[];
+}
+

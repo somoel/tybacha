@@ -1,5 +1,6 @@
 import { apiRequest } from '@/src/api/httpClient';
 import type {
+    ApiCreateExercisePlanInput,
     ApiExercisePlan,
     ApiExercisePlanSummary,
     ApiGenerateExercisePlanInput,
@@ -16,6 +17,13 @@ export function fetchApiExercisePlan(idPlanEjercicio: number): Promise<ApiExerci
 
 export function generateApiExercisePlan(input: ApiGenerateExercisePlanInput): Promise<ApiExercisePlan> {
     return apiRequest<ApiExercisePlan>('/exercise-plans/generate', {
+        method: 'POST',
+        body: JSON.stringify(input),
+    });
+}
+
+export function createApiExercisePlan(input: ApiCreateExercisePlanInput): Promise<ApiExercisePlan> {
+    return apiRequest<ApiExercisePlan>('/exercise-plans', {
         method: 'POST',
         body: JSON.stringify(input),
     });
