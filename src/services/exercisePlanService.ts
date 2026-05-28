@@ -110,8 +110,10 @@ export async function logExerciseCompletion(
         idEjercicioPlan: exercise.idEjercicioPlan,
         idAdultoMayor: plan.idAdultoMayor,
         fechaProgramada: today,
+        fechaRealizacion: new Date().toISOString(),
         estado,
         repeticionesRealizadas: input.value_achieved,
+        duracionRealSegundos: input.duration_seconds,
         comentario: input.notes,
     };
 
