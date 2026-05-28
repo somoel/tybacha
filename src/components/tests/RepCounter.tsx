@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { IconButton, Text, TextInput, useTheme } from 'react-native-paper';
+import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { IconButton, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
 
 interface RepCounterProps {
     initialValue?: number;
@@ -12,7 +12,8 @@ interface RepCounterProps {
 
 /**
  * Counter with +/- buttons for test repetitions, or manual text input
- * for distance/time measurements. Supports negative values.
+ * for distance/time measurements. In increment mode the numeric display
+ * is tappable – it switches to an inline TextInput for direct entry.
  */
 export function RepCounter({
     initialValue = 0,
@@ -23,19 +24,34 @@ export function RepCounter({
 }: RepCounterProps) {
     const theme = useTheme();
     const [value, setValue] = useState(initialValue);
+    const [editing, setEditing] = useState(false);
+    const [editText, setEditText] = useState(String(initialValue));
     const [textValue, setTextValue] = useState(String(initialValue));
 
-    const handleIncrement = () => {
-        const newValue = value + 1;
+    const applyValue = (newValue: number) => {
         setValue(newValue);
         onValueChange(newValue);
     };
 
+    const handleIncrement = () => applyValue(value + 1);
+
     const handleDecrement = () => {
         if (!allowNegative && value <= 0) return;
-        const newValue = value - 1;
-        setValue(newValue);
-        onValueChange(newValue);
+        applyValue(value - 1);
+    };
+
+    const startEditing = () => {
+        setEditText(String(value));
+        setEditing(true);
+    };
+
+    const commitEdit = () => {
+        setEditing(false);
+        const parsed = parseInt(editText, 10);
+        if (!isNaN(parsed)) {
+            if (!allowNegative && parsed < 0) return;
+            applyValue(parsed);
+        }
     };
 
     const handleTextChange = (text: string) => {
@@ -52,7 +68,7 @@ export function RepCounter({
         return (
             <View style={styles.manualContainer}>
                 <Text style={styles.label}>{label}</Text>
-                <TextInput
+                <PaperTextInput
                     mode="outlined"
                     value={textValue}
                     onChangeText={handleTextChange}
@@ -81,9 +97,25 @@ export function RepCounter({
                     style={styles.counterButton}
                 />
                 <View style={styles.valueContainer}>
-                    <Text style={[styles.value, { color: theme.colors.primary }]}>
-                        {value}
-                    </Text>
+                    {editing ? (
+                        <TextInput
+                            value={editText}
+                            onChangeText={setEditText}
+                            keyboardType="number-pad"
+                            autoFocus
+                            onBlur={commitEdit}
+                            onSubmitEditing={commitEdit}
+                            selectTextOnFocus
+                            style={[styles.valueInput, { color: theme.colors.primary, borderColor: theme.colors.primary }]}
+                            accessibilityLabel="Editar valor"
+                        />
+                    ) : (
+                        <TouchableOpacity onPress={startEditing} accessibilityLabel={`${value}. Toca para editar`}>
+                            <Text style={[styles.value, { color: theme.colors.primary }]}>
+                                {value}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
                 <IconButton
                     icon="plus"
@@ -134,6 +166,17 @@ const styles = StyleSheet.create({
         fontFamily: 'Montserrat_800ExtraBold',
         fontSize: 48,
         lineHeight: 56,
+    },
+    valueInput: {
+        fontFamily: 'Montserrat_800ExtraBold',
+        fontSize: 48,
+        lineHeight: 56,
+        minWidth: 60,
+        textAlign: 'center',
+        borderWidth: 2,
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 0,
     },
     manualInput: {
         fontFamily: 'Montserrat_600SemiBold',
