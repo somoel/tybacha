@@ -38,7 +38,7 @@ export async function buildApp() {
       allowedOrigins: [...allowedOrigins],
       hasTidbHost: Boolean(env.TIDB_HOST),
       tidbDatabase: env.TIDB_DATABASE,
-      hasGeminiKey: Boolean(env.GEMINI_API_KEY),
+      hasCerebrasKey: Boolean(env.CEREBRAS_API_KEY),
     },
     'API app booting',
   );

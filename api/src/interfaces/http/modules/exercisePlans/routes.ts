@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
-import { generateWithGemini } from '../../../../infrastructure/ai/gemini.js';
+import { generateWithCerebras } from '../../../../infrastructure/ai/cerebras.js';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { env } from '../../../../config/env.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -19,14 +20,22 @@ const updatePlanStatusSchema = z.object({
   motivo: z.string().max(255).optional(),
 });
 
+const diaSemanaEnum = z.enum(['lunes', 'martes', 'miercoles', 'jueves', 'viernes']);
+
 const aiExerciseSchema = z.object({
-  diaSemana: z.enum(['lunes', 'martes', 'miercoles', 'jueves', 'viernes']),
+  diaSemana: z.preprocess(
+    (val) => {
+      if (typeof val !== 'string') return val;
+      return val.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+    },
+    diaSemanaEnum,
+  ),
   nombre: z.string().min(1).max(160),
   descripcion: z.string().optional(),
-  series: z.number().int().positive().optional(),
-  repeticiones: z.number().int().positive().optional(),
-  duracionSegundos: z.number().int().positive().optional(),
-  descansoSegundos: z.number().int().nonnegative().optional(),
+  series: z.number().int().positive().nullable().optional().transform(v => v ?? undefined),
+  repeticiones: z.number().int().positive().nullable().optional().transform(v => v ?? undefined),
+  duracionSegundos: z.number().int().positive().nullable().optional().transform(v => v ?? undefined),
+  descansoSegundos: z.number().int().nonnegative().nullable().optional().transform(v => v ?? undefined),
   dificultad: z.enum(['bajo', 'medio', 'alto']).default('bajo'),
   instrucciones: z.string().optional(),
 });
@@ -97,7 +106,7 @@ interface ExercisePlanRow extends RowDataPacket {
   instrucciones: string | null;
 }
 
-function normalizeGeminiJson(text: string): unknown {
+function normalizeAiJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
@@ -318,8 +327,8 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
     const connection = await pool.getConnection();
     try {
-      const responseText = await generateWithGemini(prompt);
-      const parsed = aiPlanSchema.parse(normalizeGeminiJson(responseText));
+      const responseText = await generateWithCerebras(prompt);
+      const parsed = aiPlanSchema.parse(normalizeAiJson(responseText));
 
       await connection.beginTransaction();
 
@@ -372,10 +381,10 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
         `insert into generacion_ia_plan
           (id_plan_ejercicio, proveedor, modelo, solicitud, respuesta, estado, creado_por)
          values
-          (:idPlanEjercicio, 'gemini', :modelo, :solicitud, :respuesta, 'exitosa', :creadoPor)`,
+          (:idPlanEjercicio, 'cerebras', :modelo, :solicitud, :respuesta, 'exitosa', :creadoPor)`,
         {
           idPlanEjercicio,
-          modelo: 'gemini',
+          modelo: env.CEREBRAS_MODEL,
           solicitud: JSON.stringify({ prompt }),
           respuesta: JSON.stringify(parsed),
           creadoPor: actor.idUsuario,
