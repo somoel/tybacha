@@ -79,6 +79,15 @@ export default function ActiveExerciseScreen() {
                         if (existing.repeticionesRealizadas != null) {
                             setValue(existing.repeticionesRealizadas);
                         }
+                        if (existing.esfuerzoPercibido != null) {
+                            setPerceivedEffort(existing.esfuerzoPercibido);
+                        }
+                        if (existing.dolorReportado != null) {
+                            setReportedPain(existing.dolorReportado);
+                        }
+                        if (existing.comentario) {
+                            setTestNotes(existing.comentario);
+                        }
                     }
                 } catch {
                     // silent - records are optional
@@ -95,6 +104,8 @@ export default function ActiveExerciseScreen() {
 
     useEffect(() => {
         setTestNotes('');
+        setPerceivedEffort(5);
+        setReportedPain(0);
     }, [exerciseId]);
 
     useEffect(() => {
@@ -366,31 +377,31 @@ export default function ActiveExerciseScreen() {
                 {isAlreadyCompleted ? (
                     <View style={styles.completedBanner}>
                         <MaterialCommunityIcons name="check-circle" size={20} color="#2e7d32" />
-                        <Text style={styles.completedText}>Este ejercicio ya fue completado hoy</Text>
+                        <Text style={styles.completedText}>Ejercicio completado hoy</Text>
                     </View>
-                ) : (
-                    <View style={styles.actionButtons}>
-                        <AppButton
-                            label="Marcar como completado"
-                            variant="filled"
-                            icon="check"
-                            onPress={() => handleSave('completed')}
-                            disabled={!canSave || saveMode !== null}
-                            loading={saveMode === 'completed'}
-                            style={styles.completeButton}
-                            accessibilityLabel="Marcar ejercicio como completado"
-                        />
-                        <AppButton
-                            label="Marcar como omitido"
-                            variant="outlined-error"
-                            icon="close"
-                            onPress={() => handleSave('skipped')}
-                            disabled={saveMode !== null}
-                            loading={saveMode === 'skipped'}
-                            accessibilityLabel="Marcar ejercicio como omitido"
-                        />
-                    </View>
-                )}
+                ) : null}
+
+                <View style={styles.actionButtons}>
+                    <AppButton
+                        label={isAlreadyCompleted ? "Actualizar registro" : "Marcar como completado"}
+                        variant="filled"
+                        icon="check"
+                        onPress={() => handleSave('completed')}
+                        disabled={!canSave || saveMode !== null}
+                        loading={saveMode === 'completed'}
+                        style={styles.completeButton}
+                        accessibilityLabel={isAlreadyCompleted ? "Actualizar registro del ejercicio" : "Marcar ejercicio como completado"}
+                    />
+                    <AppButton
+                        label="Marcar como omitido"
+                        variant="outlined-error"
+                        icon="close"
+                        onPress={() => handleSave('skipped')}
+                        disabled={saveMode !== null}
+                        loading={saveMode === 'skipped'}
+                        accessibilityLabel="Marcar ejercicio como omitido"
+                    />
+                </View>
 
                 <AppSnackbar
                     visible={snackbar.visible}
