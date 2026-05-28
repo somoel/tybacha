@@ -93,6 +93,11 @@ create index idx_usuario_profesional_supervisor
 create index idx_usuario_rol_estado
     on usuario (rol, estado);
 
+alter table usuario
+    add constraint fk_usuario_profesional_supervisor
+        foreign key (id_profesional_supervisor) references usuario (id_usuario)
+            on update cascade on delete set null;
+
 -- ============================================================
 -- 4. Perfil de usuario
 -- ============================================================
@@ -276,7 +281,7 @@ create table if not exists asignacion_cuidador_adulto_mayor
             on update cascade on delete set null,
     constraint fk_asignacion_cuidador
         foreign key (id_cuidador) references usuario (id_usuario)
-            on update cascade
+            on update cascade on delete restrict
 );
 
 create index idx_asignacion_adulto_estado
@@ -400,7 +405,7 @@ create index idx_auditoria_tabla_registro
     on auditoria_cambio (tabla_afectada, id_registro_afectado, creado_en);
 
 -- ============================================================
--- 9. SFT: batería, pruebas, aplicaciones, resultados
+-- 10. SFT: batería, pruebas, aplicaciones, resultados
 -- ============================================================
 
 create table if not exists bateria_sft
@@ -467,7 +472,7 @@ create table if not exists aplicacion_sft
             on update cascade on delete cascade,
     constraint fk_aplicacion_sft_bateria
         foreign key (id_bateria_sft) references bateria_sft (id_bateria_sft)
-            on update cascade,
+            on update cascade on delete restrict,
     constraint fk_aplicacion_sft_responsable
         foreign key (responsable) references usuario (id_usuario)
             on update cascade on delete set null
@@ -500,14 +505,14 @@ create table if not exists resultado_sft
             on update cascade on delete cascade,
     constraint fk_resultado_sft_prueba
         foreign key (id_prueba_sft) references prueba_sft (id_prueba_sft)
-            on update cascade
+            on update cascade on delete restrict
 );
 
 create index idx_resultado_sft_prueba
     on resultado_sft (id_prueba_sft);
 
 -- ============================================================
--- 10. Consentimiento, patología, medicamento, notas, contactos, foto
+-- 11. Consentimiento, patología, medicamento, notas, contactos, foto
 -- ============================================================
 
 create table if not exists consentimiento_adulto_mayor
@@ -693,7 +698,7 @@ create index idx_mensaje_remitente
     on mensaje_usuario (id_usuario_remitente, creado_en);
 
 -- ============================================================
--- 11. Plan de ejercicios
+-- 12. Plan de ejercicios
 -- ============================================================
 
 create table if not exists plan_ejercicio
@@ -806,7 +811,7 @@ create index idx_ejercicio_plan_ejercicio
     on ejercicio_plan (id_ejercicio);
 
 -- ============================================================
--- 12. Generación IA y cambios de estado del plan
+-- 13. Generación IA y cambios de estado del plan
 -- ============================================================
 
 create table if not exists generacion_ia_plan
@@ -861,7 +866,7 @@ create index idx_cambio_estado_plan
     on cambio_estado_plan (id_plan_ejercicio, creado_en);
 
 -- ============================================================
--- 13. Registro de actividad y ejercicios
+-- 14. Registro de actividad y ejercicios
 -- ============================================================
 
 create table if not exists registro_actividad_diaria
@@ -951,7 +956,7 @@ create index idx_registro_ejercicio_registrado_por
     on registro_ejercicio_plan (registrado_por);
 
 -- ============================================================
--- 14. Estadísticas de progreso
+-- 15. Estadísticas de progreso
 -- ============================================================
 
 create table if not exists estadistica_progreso
@@ -983,7 +988,7 @@ create index idx_estadistica_plan
     on estadistica_progreso (id_plan_ejercicio, fecha_inicio);
 
 -- ============================================================
--- 15. Alertas y notificaciones
+-- 16. Alertas y notificaciones
 -- ============================================================
 
 create table if not exists alerta_programada
@@ -1068,7 +1073,7 @@ create index idx_notificacion_destinatario_estado
     on notificacion (id_usuario_destinatario, estado, creado_en);
 
 -- ============================================================
--- 16. Reportes y archivos exportados
+-- 17. Reportes y archivos exportados
 -- ============================================================
 
 create table if not exists reporte_generado
@@ -1114,7 +1119,7 @@ create index idx_archivo_reporte
     on archivo_exportado (id_reporte_generado);
 
 -- ============================================================
--- 17. Operación de sincronización offline
+-- 18. Operación de sincronización offline
 -- ============================================================
 
 create table if not exists operacion_sincronizacion
