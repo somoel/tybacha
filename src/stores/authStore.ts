@@ -1,4 +1,4 @@
-import { logoutFromApi } from '@/src/api/authApi';
+import { logoutFromApi, updateMeApi, type UpdateMeInput } from '@/src/api/authApi';
 import type { AuthSession, AuthUser, Profile, UserRole } from '@/src/types/auth.types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -15,6 +15,7 @@ interface AuthState {
     setProfile: (profile: Profile | null) => void;
     setRole: (role: UserRole) => void;
     setLoading: (loading: boolean) => void;
+    updateProfile: (input: UpdateMeInput) => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -32,6 +33,11 @@ export const useAuthStore = create<AuthState>()(
             setProfile: (profile) => set({ profile }),
             setRole: (role) => set({ role }),
             setLoading: (isLoading) => set({ isLoading }),
+
+            updateProfile: async (input) => {
+                const profile = await updateMeApi(input);
+                set({ profile });
+            },
 
             logout: async () => {
                 try {

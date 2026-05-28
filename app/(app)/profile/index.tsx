@@ -9,7 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Divider, Text, useTheme } from 'react-native-paper';
+import { Divider, Text, TextInput, useTheme } from 'react-native-paper';
 
 interface Assignment {
     id: string;
@@ -17,18 +17,22 @@ interface Assignment {
     patients: { first_name: string; first_lastname: string } | null;
 }
 
-/**
- * Profile screen with user info, sync status, and caregiver unlink (RF-07).
- */
 export default function ProfileScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { user, profile, role, logout } = useAuthStore();
+    const { user, profile, role, logout, updateProfile } = useAuthStore();
     const { isCaregiver } = usePermissions();
     const { isOnline, isSyncing, pendingCount, syncNow } = useSyncQueue();
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+
+    const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [editNombres, setEditNombres] = useState('');
+    const [editApellidos, setEditApellidos] = useState('');
+    const [editTelefono, setEditTelefono] = useState('');
+    const [editCiudad, setEditCiudad] = useState('');
 
     useEffect(() => {
         if (isCaregiver && user) {
@@ -37,6 +41,37 @@ export default function ProfileScreen() {
             }).catch(console.error);
         }
     }, [isCaregiver, user]);
+
+    const startEditing = () => {
+        setEditNombres(profile?.nombres ?? '');
+        setEditApellidos(profile?.apellidos ?? '');
+        setEditTelefono(profile?.telefono ?? '');
+        setEditCiudad(profile?.ciudad ?? '');
+        setIsEditing(true);
+    };
+
+    const cancelEditing = () => {
+        setIsEditing(false);
+    };
+
+    const saveProfile = async () => {
+        setIsSaving(true);
+        try {
+            await updateProfile({
+                nombres: editNombres.trim() || undefined,
+                apellidos: editApellidos.trim() || undefined,
+                telefono: editTelefono.trim() || undefined,
+                ciudad: editCiudad.trim() || undefined,
+            });
+            setIsEditing(false);
+            setSnackbar({ visible: true, message: 'Perfil actualizado exitosamente', type: 'success' });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Error al actualizar el perfil.';
+            setSnackbar({ visible: true, message: msg, type: 'error' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleUnlink = (assignment: Assignment) => {
         Alert.alert(
@@ -52,7 +87,7 @@ export default function ProfileScreen() {
                         try {
                             await unassignCaregiver(user.id, assignment.patient_id);
                             setAssignments((prev) => prev.filter((a) => a.id !== assignment.id));
-                            setSnackbar({ visible: true, message: 'Desasociado exitosamente ✓', type: 'success' });
+                            setSnackbar({ visible: true, message: 'Desasociado exitosamente', type: 'success' });
                         } catch (error) {
                             const msg = error instanceof Error ? error.message : 'Error al desasociar.';
                             setSnackbar({ visible: true, message: msg, type: 'error' });
@@ -90,7 +125,7 @@ export default function ProfileScreen() {
         if (result.error) {
             setSnackbar({ visible: true, message: result.error, type: 'error' });
         } else if (result.synced > 0) {
-            setSnackbar({ visible: true, message: `${result.synced} registros sincronizados ✓`, type: 'success' });
+            setSnackbar({ visible: true, message: `${result.synced} registros sincronizados`, type: 'success' });
         } else {
             setSnackbar({ visible: true, message: 'No hay registros pendientes', type: 'success' });
         }
@@ -100,8 +135,12 @@ export default function ProfileScreen() {
     const roleLabel = role === 'administrador' ? 'Administrador' : role === 'profesional' ? 'Profesional' : 'Cuidador';
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* User info */}
+        <ScrollView
+            style={styles.container}
+            contentInsetAdjustmentBehavior="automatic"
+            showsVerticalScrollIndicator={false}
+        >
+            {/* User info + edit form */}
             <AppCard style={styles.profileCard}>
                 <View style={styles.avatarRow}>
                     <View style={[styles.avatar, { backgroundColor: theme.colors.primaryContainer }]}>
@@ -115,6 +154,82 @@ export default function ProfileScreen() {
                         </View>
                     </View>
                 </View>
+
+                <Divider style={styles.cardDivider} />
+
+                {isEditing ? (
+                    <View style={styles.editForm}>
+                        <TextInput
+                            label="Nombres"
+                            value={editNombres}
+                            onChangeText={setEditNombres}
+                            mode="outlined"
+                            style={styles.input}
+                        />
+                        <TextInput
+                            label="Apellidos"
+                            value={editApellidos}
+                            onChangeText={setEditApellidos}
+                            mode="outlined"
+                            style={styles.input}
+                        />
+                        <TextInput
+                            label="Teléfono"
+                            value={editTelefono}
+                            onChangeText={setEditTelefono}
+                            mode="outlined"
+                            keyboardType="phone-pad"
+                            style={styles.input}
+                        />
+                        <TextInput
+                            label="Ciudad"
+                            value={editCiudad}
+                            onChangeText={setEditCiudad}
+                            mode="outlined"
+                            style={styles.input}
+                        />
+                        <View style={styles.editActions}>
+                            <AppButton
+                                label="Cancelar"
+                                variant="outlined"
+                                onPress={cancelEditing}
+                                style={styles.editBtn}
+                            />
+                            <AppButton
+                                label="Guardar"
+                                onPress={saveProfile}
+                                loading={isSaving}
+                                style={styles.editBtn}
+                            />
+                        </View>
+                    </View>
+                ) : (
+                    <View style={styles.viewFields}>
+                        <View style={styles.fieldRow}>
+                            <Text style={styles.fieldLabel}>Nombres</Text>
+                            <Text selectable style={styles.fieldValue}>{profile?.nombres ?? '-'}</Text>
+                        </View>
+                        <View style={styles.fieldRow}>
+                            <Text style={styles.fieldLabel}>Apellidos</Text>
+                            <Text selectable style={styles.fieldValue}>{profile?.apellidos ?? '-'}</Text>
+                        </View>
+                        <View style={styles.fieldRow}>
+                            <Text style={styles.fieldLabel}>Teléfono</Text>
+                            <Text selectable style={styles.fieldValue}>{profile?.telefono ?? '-'}</Text>
+                        </View>
+                        <View style={styles.fieldRow}>
+                            <Text style={styles.fieldLabel}>Ciudad</Text>
+                            <Text selectable style={styles.fieldValue}>{profile?.ciudad ?? '-'}</Text>
+                        </View>
+                        <AppButton
+                            label="Editar perfil"
+                            variant="outlined"
+                            icon="pencil"
+                            onPress={startEditing}
+                            style={styles.editProfileBtn}
+                        />
+                    </View>
+                )}
             </AppCard>
 
             {/* Sync status */}
@@ -184,6 +299,16 @@ const styles = StyleSheet.create({
     email: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
     roleBadge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3, marginTop: 4 },
     roleText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 12 },
+    cardDivider: { marginVertical: 16 },
+    viewFields: { gap: 12 },
+    fieldRow: { gap: 2 },
+    fieldLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 12, color: '#6b7280' },
+    fieldValue: { fontFamily: 'Montserrat_400Regular', fontSize: 15, color: '#1f2937' },
+    editProfileBtn: { marginTop: 8, alignSelf: 'flex-start' },
+    editForm: { gap: 12 },
+    input: { fontFamily: 'Montserrat_400Regular' },
+    editActions: { flexDirection: 'row', gap: 12, marginTop: 4 },
+    editBtn: { flex: 1 },
     syncRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     syncInfo: { flex: 1 },
     syncStatus: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },

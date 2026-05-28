@@ -53,3 +53,29 @@ export async function fetchApiMe(): Promise<{ user: AuthUser; profile: Profile }
         },
     };
 }
+
+export interface UpdateMeInput {
+    nombres?: string;
+    apellidos?: string;
+    telefono?: string;
+    ciudad?: string;
+}
+
+export async function updateMeApi(input: UpdateMeInput): Promise<Profile> {
+    const me = await apiRequest<ApiMeResponse>('/me', {
+        method: 'PUT',
+        body: JSON.stringify(input),
+    });
+    const fullName = [me.perfil.nombres, me.perfil.apellidos].filter(Boolean).join(' ') || me.correo;
+
+    return {
+        id: String(me.idUsuario),
+        idUsuario: me.idUsuario,
+        full_name: fullName,
+        role: me.rol,
+        nombres: me.perfil.nombres,
+        apellidos: me.perfil.apellidos,
+        telefono: me.perfil.telefono,
+        ciudad: me.perfil.ciudad,
+    };
+}

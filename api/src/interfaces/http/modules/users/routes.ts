@@ -6,6 +6,7 @@ import { hashPassword } from '../../../../infrastructure/auth/passwords.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth, requireRoles } from '../../requireAuth.js';
+import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 
 const createUserSchema = z.object({
   correo: z.string().email(),
@@ -62,6 +63,109 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
         ciudad: row.ciudad,
       },
     };
+  });
+
+  const updateMeSchema = z.object({
+    nombres: z.string().min(1).max(120).optional(),
+    apellidos: z.string().min(1).max(120).optional(),
+    telefono: z.string().max(40).optional(),
+    ciudad: z.string().max(120).optional(),
+  });
+
+  app.put('/me', { preHandler: requireAuth(app) }, async (request) => {
+    const userId = request.authUser!.idUsuario;
+    const body = updateMeSchema.parse(request.body);
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [existingRows] = await connection.query<RowDataPacket[]>(
+        `select p.nombres, p.apellidos, p.telefono, p.ciudad
+         from perfil_usuario p
+         where p.id_usuario = :userId
+         limit 1`,
+        { userId },
+      );
+
+      const existing = existingRows[0];
+
+      if (existing) {
+        await connection.query(
+          `update perfil_usuario
+           set nombres = coalesce(:nombres, nombres),
+               apellidos = coalesce(:apellidos, apellidos),
+               telefono = coalesce(:telefono, telefono),
+               ciudad = coalesce(:ciudad, ciudad)
+           where id_usuario = :userId`,
+          {
+            userId,
+            nombres: body.nombres ?? null,
+            apellidos: body.apellidos ?? null,
+            telefono: body.telefono ?? null,
+            ciudad: body.ciudad ?? null,
+          },
+        );
+      } else {
+        await connection.query(
+          `insert into perfil_usuario (id_usuario, nombres, apellidos, telefono, ciudad)
+           values (:userId, :nombres, :apellidos, :telefono, :ciudad)`,
+          {
+            userId,
+            nombres: body.nombres ?? null,
+            apellidos: body.apellidos ?? null,
+            telefono: body.telefono ?? null,
+            ciudad: body.ciudad ?? null,
+          },
+        );
+      }
+
+      await insertChangeAudit(connection, {
+        tabla: 'perfil_usuario',
+        registroId: userId,
+        accion: 'actualizar',
+        anteriores: existing ?? {},
+        nuevos: body,
+        context: {
+          userId,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.commit();
+
+      const [updatedRows] = await pool.query<MeRow[]>(
+        `select u.id_usuario, u.correo, u.rol, u.estado,
+                u.id_profesional_supervisor, p.nombres, p.apellidos, p.telefono, p.ciudad
+         from usuario u
+         left join perfil_usuario p on p.id_usuario = u.id_usuario
+         where u.id_usuario = :userId
+         limit 1`,
+        { userId },
+      );
+
+      const row = updatedRows[0];
+      if (!row) throw notFound('Usuario no encontrado');
+
+      return {
+        idUsuario: row.id_usuario,
+        correo: row.correo,
+        rol: row.rol,
+        estado: row.estado,
+        perfil: {
+          nombres: row.nombres,
+          apellidos: row.apellidos,
+          telefono: row.telefono,
+          ciudad: row.ciudad,
+        },
+      };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   });
 
   app.get('/users', { preHandler: requireRoles(app, ['administrador', 'profesional']) }, async (request) => {
