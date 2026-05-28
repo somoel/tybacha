@@ -15,6 +15,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'increment',
         allowNegative: false,
         inputLabel: 'Repeticiones',
+        normativeRanges: {
+            belowBelowAvg: 8,
+            belowAvg: 12,
+            avg: 15,
+            aboveAvg: 19,
+            excellent: 23,
+            higherIsBetter: true,
+        },
     },
     {
         type: 'arm_curl',
@@ -29,6 +37,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'increment',
         allowNegative: false,
         inputLabel: 'Repeticiones',
+        normativeRanges: {
+            belowBelowAvg: 10,
+            belowAvg: 13,
+            avg: 16,
+            aboveAvg: 20,
+            excellent: 24,
+            higherIsBetter: true,
+        },
     },
     {
         type: 'six_min_walk',
@@ -43,6 +59,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'manual_input',
         allowNegative: false,
         inputLabel: 'Metros recorridos',
+        normativeRanges: {
+            belowBelowAvg: 350,
+            belowAvg: 450,
+            avg: 550,
+            aboveAvg: 650,
+            excellent: 750,
+            higherIsBetter: true,
+        },
     },
     {
         type: 'two_min_step',
@@ -57,6 +81,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'increment',
         allowNegative: false,
         inputLabel: 'Pasos (rodilla derecha)',
+        normativeRanges: {
+            belowBelowAvg: 60,
+            belowAvg: 75,
+            avg: 90,
+            aboveAvg: 110,
+            excellent: 130,
+            higherIsBetter: true,
+        },
     },
     {
         type: 'chair_sit_reach',
@@ -70,6 +102,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'manual_input',
         allowNegative: true,
         inputLabel: 'Distancia (cm, puede ser negativo)',
+        normativeRanges: {
+            belowBelowAvg: -4,
+            belowAvg: -1,
+            avg: 2,
+            aboveAvg: 5,
+            excellent: 8,
+            higherIsBetter: true,
+        },
     },
     {
         type: 'back_scratch',
@@ -83,6 +123,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'manual_input',
         allowNegative: true,
         inputLabel: 'Distancia (cm, puede ser negativo)',
+        normativeRanges: {
+            belowBelowAvg: -12,
+            belowAvg: -6,
+            avg: -1,
+            aboveAvg: 4,
+            excellent: 8,
+            higherIsBetter: true,
+        },
     },
     {
         type: 'up_and_go',
@@ -96,6 +144,14 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'timer_result',
         allowNegative: false,
         inputLabel: 'Tiempo (segundos)',
+        normativeRanges: {
+            belowBelowAvg: 14,
+            belowAvg: 12,
+            avg: 10,
+            aboveAvg: 8,
+            excellent: 6,
+            higherIsBetter: false,
+        },
     },
 ];
 

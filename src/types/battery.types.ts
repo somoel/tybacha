@@ -13,6 +13,15 @@ export type TimerMode = 'countdown' | 'stopwatch' | 'none';
 
 export type CounterMode = 'increment' | 'manual_input' | 'timer_result';
 
+export interface NormativeRanges {
+    belowBelowAvg: number;
+    belowAvg: number;
+    avg: number;
+    aboveAvg: number;
+    excellent: number;
+    higherIsBetter: boolean;
+}
+
 export interface SFTTestDefinition {
     type: SFTTestType;
     name: string;
@@ -25,6 +34,7 @@ export interface SFTTestDefinition {
     counterMode: CounterMode;
     allowNegative: boolean;
     inputLabel: string;
+    normativeRanges?: NormativeRanges;
 }
 
 export interface SFTBattery {
