@@ -1,18 +1,18 @@
 # Migraciones TiDB
 
-El esquema base actual es el DDL entregado para TiDB. Este directorio contiene migraciones complementarias recomendadas para cerrar brechas funcionales del PDF.
+`0001_initial.sql` contiene el esquema completo de la base de datos, incluyendo todas las tablas, índices, constraints y foreign keys.
 
-Orden sugerido:
+## Aplicación
 
-1. Aplicar el DDL base completo de TiDB.
-2. Aplicar `0002_foto_perfil_usuario.sql`.
-3. Aplicar `0003_profesional_cuidador.sql`.
-4. Ejecutar `npm --prefix api run seed` para crear permisos y administrador inicial.
+En una base de datos limpia, ejecutar únicamente:
 
-`0003_profesional_cuidador.sql` formaliza la relacion profesional-cuidador:
-un profesional puede tener muchos cuidadores y un cuidador solo puede tener una
-asignacion activa. La migracion backfillea las relaciones existentes desde
-`usuario.id_profesional_supervisor` cuando apuntan a un usuario con rol
-`profesional`.
+```bash
+0001_initial.sql
+```
 
-Las credenciales reales de TiDB deben vivir en `api/.env`, que no se versiona.
+Luego ejecutar `npm --prefix api run seed` para crear permisos y administrador inicial.
+
+## Notas
+
+- Las credenciales reales de TiDB deben vivir en `api/.env`, que no se versiona.
+- La tabla `profesional_cuidador` ya incluye el esquema final con soporte para la relación formal profesional ↔ cuidador (columnas `asignado_por`, `fecha_inicio`, `id_cuidador_activo`, etc.).
