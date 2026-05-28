@@ -36,6 +36,8 @@ export interface ExerciseLogInput {
     completed: boolean;
     value_achieved?: number;
     duration_seconds?: number;
+    perceived_effort?: number;
+    reported_pain?: number;
     notes?: string;
 }
 

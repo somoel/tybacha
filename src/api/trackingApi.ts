@@ -1,5 +1,5 @@
 import { apiRequest } from '@/src/api/httpClient';
-import type { ApiCreateExerciseRecordInput, ApiExerciseRecord } from '@/src/types/apiTracking.types';
+import type { ApiCreateExerciseRecordInput, ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTracking.types';
 
 export function createApiExerciseRecord(input: ApiCreateExerciseRecordInput): Promise<ApiExerciseRecord> {
     return apiRequest<ApiExerciseRecord>('/tracking/exercise-records', {
@@ -20,6 +20,14 @@ export function fetchApiExerciseRecords(
 
     return apiRequest<ApiExerciseRecord[]>(
         `/older-adults/${idAdultoMayor}/exercise-records${query ? `?${query}` : ''}`,
+    );
+}
+
+export function fetchApiProgressStats(
+    idAdultoMayor: number,
+): Promise<ApiProgressStats[]> {
+    return apiRequest<ApiProgressStats[]>(
+        `/older-adults/${idAdultoMayor}/progress-stats`,
     );
 }
 

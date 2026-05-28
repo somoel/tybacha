@@ -6,14 +6,14 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchApiExerciseRecords } from '@/src/api/trackingApi';
+import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import type { SFTBattery } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
-import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
+import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -52,6 +52,7 @@ export default function PatientDetailScreen() {
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [exerciseRecords, setExerciseRecords] = useState<ApiExerciseRecord[]>([]);
+    const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     const hasStaffAccess = isAdmin || isProfessional;
@@ -72,6 +73,13 @@ export default function PatientDetailScreen() {
                     setPatient(p);
                     setBatteries(b);
                     setPlans(pl);
+
+                    try {
+                        const stats = await fetchApiProgressStats(Number(id));
+                        if (isActive) setProgressStats(stats);
+                    } catch {
+                        // silent
+                    }
                 } else {
                     const [p, pl] = await Promise.all([
                         fetchPatientById(id),
@@ -361,6 +369,33 @@ export default function PatientDetailScreen() {
                 ))
             )}
 
+            {/* Exercise progress summary for staff */}
+            {hasActivePlan && progressStats.length > 0 && (
+                <>
+                    <Text style={styles.sectionTitle}>Progreso de ejercicios</Text>
+                    <AppCard
+                        style={styles.progressCard}
+                        onPress={() => router.push(`/(app)/patients/${id}/progress` as never)}
+                    >
+                        <View style={styles.progressHeader}>
+                            <MaterialCommunityIcons name="chart-line" size={20} color={theme.colors.primary} />
+                            <Text style={styles.progressTitle}>Ver progreso completo</Text>
+                            <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
+                        </View>
+                        {progressStats[0] && (
+                            <View style={styles.progressSummary}>
+                                <Text style={styles.progressPercent}>
+                                    {Math.round(progressStats[0].porcentaje_cumplimiento)}% cumplimiento
+                                </Text>
+                                <Text style={styles.progressDetail}>
+                                    {progressStats[0].ejercicios_completados} completados · {progressStats[0].ejercicios_omitidos} omitidos
+                                </Text>
+                            </View>
+                        )}
+                    </AppCard>
+                </>
+            )}
+
             <View style={styles.bottomPadding} />
         </ScrollView>
     );
@@ -391,4 +426,10 @@ const styles = StyleSheet.create({
     emptyCard: { marginBottom: 8 },
     emptyContent: { alignItems: 'center', paddingVertical: 16, gap: 8 },
     viewPlanButton: { marginTop: 16 },
+    progressCard: { marginBottom: 8 },
+    progressHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    progressTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937', flex: 1 },
+    progressSummary: { marginTop: 8 },
+    progressPercent: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
+    progressDetail: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2 },
 });

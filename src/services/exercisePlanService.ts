@@ -114,6 +114,8 @@ export async function logExerciseCompletion(
         estado,
         repeticionesRealizadas: input.value_achieved,
         duracionRealSegundos: input.duration_seconds,
+        esfuerzoPercibido: input.perceived_effort,
+        dolorReportado: input.reported_pain,
         comentario: input.notes,
     };
 

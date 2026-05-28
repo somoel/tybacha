@@ -28,3 +28,18 @@ export interface ApiExerciseRecord {
     comentario: string | null;
 }
 
+export interface ApiProgressStats {
+    id_estadistica_progreso: number;
+    id_adulto_mayor: number;
+    id_plan_ejercicio: number;
+    tipo_periodo: 'semana';
+    fecha_inicio: string;
+    fecha_fin: string;
+    ejercicios_programados: number;
+    ejercicios_completados: number;
+    ejercicios_omitidos: number;
+    porcentaje_cumplimiento: number;
+    datos_metricas: string | null;
+    calculado_en: string;
+}
+

@@ -30,6 +30,8 @@ export default function ActiveExerciseScreen() {
 
     const [value, setValue] = useState(0);
     const [testNotes, setTestNotes] = useState('');
+    const [perceivedEffort, setPerceivedEffort] = useState(5);
+    const [reportedPain, setReportedPain] = useState(0);
     const [timerCompleted, setTimerCompleted] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
@@ -156,6 +158,8 @@ export default function ActiveExerciseScreen() {
                 estado: mode === 'completed' ? 'completado' as const : 'omitido' as const,
                 repeticionesRealizadas: hasReps ? value : undefined,
                 duracionRealSegundos: hasTimer ? (timerCompleted ? (hasBoth ? undefined : value) : undefined) : undefined,
+                esfuerzoPercibido: mode === 'completed' ? perceivedEffort : undefined,
+                dolorReportado: mode === 'completed' ? reportedPain : undefined,
                 comentario: testNotes || undefined,
             };
 
@@ -305,6 +309,60 @@ export default function ActiveExerciseScreen() {
                     accessibilityLabel="Observaciones del ejercicio"
                 />
 
+                {!isAlreadyCompleted && (
+                    <View style={styles.metricsContainer}>
+                        <Text style={styles.metricsTitle}>Cómo se sintió</Text>
+
+                        <View style={styles.metricRow}>
+                            <View style={styles.metricLabelRow}>
+                                <MaterialCommunityIcons name="arm-flex" size={18} color={theme.colors.primary} />
+                                <Text style={styles.metricLabel}>Esfuerzo percibido</Text>
+                                <Text style={[styles.metricValue, { color: theme.colors.primary }]}>{perceivedEffort}/10</Text>
+                            </View>
+                            <View style={styles.sliderRow}>
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                                    <View
+                                        key={n}
+                                        style={[
+                                            styles.sliderDot,
+                                            n <= perceivedEffort && { backgroundColor: theme.colors.primary },
+                                        ]}
+                                        onTouchEnd={() => setPerceivedEffort(n)}
+                                    />
+                                ))}
+                            </View>
+                            <View style={styles.sliderLabels}>
+                                <Text style={styles.sliderLabelText}>Nada</Text>
+                                <Text style={styles.sliderLabelText}>Máximo</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.metricRow}>
+                            <View style={styles.metricLabelRow}>
+                                <MaterialCommunityIcons name="heart-pulse" size={18} color="#c62828" />
+                                <Text style={styles.metricLabel}>Dolor reportado</Text>
+                                <Text style={[styles.metricValue, { color: '#c62828' }]}>{reportedPain}/10</Text>
+                            </View>
+                            <View style={styles.sliderRow}>
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                                    <View
+                                        key={n}
+                                        style={[
+                                            styles.sliderDot,
+                                            n <= reportedPain && { backgroundColor: '#c62828' },
+                                        ]}
+                                        onTouchEnd={() => setReportedPain(n)}
+                                    />
+                                ))}
+                            </View>
+                            <View style={styles.sliderLabels}>
+                                <Text style={styles.sliderLabelText}>Ninguno</Text>
+                                <Text style={styles.sliderLabelText}>Intenso</Text>
+                            </View>
+                        </View>
+                    </View>
+                )}
+
                 {isAlreadyCompleted ? (
                     <View style={styles.completedBanner}>
                         <MaterialCommunityIcons name="check-circle" size={20} color="#2e7d32" />
@@ -409,6 +467,46 @@ const styles = StyleSheet.create({
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
     notesInput: { marginTop: 20 },
     notesOutline: { borderRadius: 12 },
+    metricsContainer: {
+        marginTop: 20,
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    metricsTitle: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 15,
+        color: '#1f2937',
+        marginBottom: 16,
+    },
+    metricRow: { marginBottom: 16 },
+    metricLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    metricLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151', flex: 1 },
+    metricValue: { fontFamily: 'Montserrat_700Bold', fontSize: 14 },
+    sliderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 4,
+    },
+    sliderDot: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#e5e7eb',
+    },
+    sliderLabels: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 4,
+    },
+    sliderLabelText: { fontFamily: 'Montserrat_400Regular', fontSize: 10, color: '#94a3b8' },
     actionButtons: { gap: 10, marginTop: 24 },
     completeButton: { marginBottom: 4 },
     completedBanner: {
