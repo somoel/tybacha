@@ -19,7 +19,7 @@ interface ExerciseDayGroupProps {
     completedIndices: Set<number>;
     exerciseResults: Record<number, { reps?: number; duration?: number }>;
     isToday: boolean;
-    onExercisePress: (exercise: Exercise) => void;
+    onExercisePress?: (exercise: Exercise) => void;
 }
 
 export function ExerciseDayGroup({ dayKey, exercises, completedIndices, exerciseResults, isToday, onExercisePress }: ExerciseDayGroupProps) {
@@ -64,7 +64,7 @@ export function ExerciseDayGroup({ dayKey, exercises, completedIndices, exercise
                     }
                     resultValue={exerciseResults[exercise.index]?.reps ?? exerciseResults[exercise.index]?.duration}
                     resultUnit={exerciseResults[exercise.index]?.reps !== undefined ? 'reps' : exerciseResults[exercise.index]?.duration !== undefined ? 's' : undefined}
-                    onPress={() => onExercisePress(exercise)}
+                    onPress={isToday && onExercisePress ? () => onExercisePress(exercise) : undefined}
                 />
             ))}
         </View>

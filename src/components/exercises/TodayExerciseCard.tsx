@@ -12,7 +12,7 @@ interface TodayExerciseCardProps {
     status: ExerciseStatus;
     resultValue?: number;
     resultUnit?: string;
-    onPress: () => void;
+    onPress?: () => void;
 }
 
 export function TodayExerciseCard({ exercise, status, resultValue, resultUnit, onPress }: TodayExerciseCardProps) {
@@ -66,7 +66,7 @@ export function TodayExerciseCard({ exercise, status, resultValue, resultUnit, o
                 </View>
             )}
 
-            {isPending && (
+            {isPending && onPress && (
                 <View style={styles.actionRow}>
                     <Text style={[styles.actionText, { color: theme.colors.primary }]}>
                         Iniciar ejercicio
