@@ -6,6 +6,9 @@ import { pool } from '../../../../infrastructure/db/pool.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
+const ALLOWED_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_PHOTO_BYTES = 1 * 1024 * 1024;
+
 const genderSchema = z.enum(['femenino', 'masculino', 'otro', 'no_informa']);
 
 const createOlderAdultSchema = z.object({
@@ -46,6 +49,13 @@ interface OlderAdultRow extends RowDataPacket {
   id_cuidador: number | null;
   cuidador_nombres: string | null;
   cuidador_apellidos: string | null;
+  has_photo?: number | null;
+}
+
+interface PhotoRow extends RowDataPacket {
+  foto_binaria: Buffer;
+  tipo_mime: string;
+  tamano_bytes: number;
 }
 
 function mapOlderAdult(row: OlderAdultRow) {
@@ -63,6 +73,7 @@ function mapOlderAdult(row: OlderAdultRow) {
     ciudad: row.ciudad,
     estado: row.estado,
     idProfesionalResponsable: row.id_profesional_responsable,
+    hasPhoto: Boolean(row.has_photo),
     cuidador: row.id_cuidador
       ? {
           idUsuario: row.id_cuidador,
@@ -71,6 +82,32 @@ function mapOlderAdult(row: OlderAdultRow) {
         }
       : null,
   };
+}
+
+async function assertOlderAdultExists(idAdultoMayor: number): Promise<OlderAdultRow> {
+  const [rows] = await pool.query<OlderAdultRow[]>(
+    `select a.*,
+            ac.id_cuidador,
+            null as cuidador_nombres,
+            null as cuidador_apellidos
+     from adulto_mayor a
+     left join asignacion_cuidador_adulto_mayor ac
+       on ac.id_adulto_mayor = a.id_adulto_mayor and ac.estado = 'activa'
+     where a.id_adulto_mayor = :id
+     limit 1`,
+    { id: idAdultoMayor },
+  );
+  const row = rows[0];
+  if (!row) throw notFound('Adulto mayor no encontrado');
+  return row;
+}
+
+function assertActorAllowed(actor: { rol: string; idUsuario: number }, row: OlderAdultRow): void {
+  const allowed =
+    actor.rol === 'administrador' ||
+    row.id_profesional_responsable === actor.idUsuario ||
+    row.id_cuidador === actor.idUsuario;
+  if (!allowed) throw forbidden();
 }
 
 async function assertCaregiverExists(idCuidador: number, idProfesional?: number): Promise<void> {
@@ -114,7 +151,8 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
       `select a.*,
               ac.id_cuidador,
               pc.nombres as cuidador_nombres,
-              pc.apellidos as cuidador_apellidos
+              pc.apellidos as cuidador_apellidos,
+              (select 1 from foto_perfil_adulto_mayor fp where fp.id_adulto_mayor = a.id_adulto_mayor limit 1) as has_photo
        from adulto_mayor a
        left join asignacion_cuidador_adulto_mayor ac
          on ac.id_adulto_mayor = a.id_adulto_mayor and ac.estado = 'activa'
@@ -184,7 +222,23 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
       },
     });
 
-    return mapOlderAdult(row);
+    const adult = mapOlderAdult(row);
+
+    const [photoRows] = await pool.query<PhotoRow[]>(
+      `select foto_binaria, tipo_mime, tamano_bytes
+       from foto_perfil_adulto_mayor
+       where id_adulto_mayor = :id
+       limit 1`,
+      { id: params.id },
+    );
+
+    const photo = photoRows[0];
+    return {
+      ...adult,
+      photoData: photo
+        ? `data:${photo.tipo_mime};base64,${photo.foto_binaria.toString('base64')}`
+        : null,
+    };
   });
 
   app.post('/older-adults', { preHandler: requireAuth(app) }, async (request) => {
@@ -372,5 +426,95 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
     } finally {
       connection.release();
     }
+  });
+
+  app.post('/older-adults/:id/photo', { preHandler: requireAuth(app) }, async (request, reply) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+
+    const row = await assertOlderAdultExists(params.id);
+    assertActorAllowed(actor, row);
+
+    const file = await request.file();
+    if (!file) throw badRequest('No se envio ningun archivo');
+
+    const mimetype = file.mimetype;
+    if (!ALLOWED_PHOTO_MIMES.has(mimetype)) {
+      throw badRequest('Formato de imagen no soportado. Use JPG, PNG o WebP');
+    }
+
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+    for await (const chunk of file.file) {
+      totalBytes += chunk.length;
+      if (totalBytes > MAX_PHOTO_BYTES) {
+        throw badRequest('La imagen supera el limite de 1 MB');
+      }
+      chunks.push(chunk);
+    }
+    const fotoBuffer = Buffer.concat(chunks);
+
+    await pool.query(
+      `insert into foto_perfil_adulto_mayor
+         (id_adulto_mayor, foto_binaria, tipo_mime, tamano_bytes, creada_por)
+       values
+         (:idAdultoMayor, :fotoBinaria, :tipoMime, :tamanoBytes, :creadoPor)
+       on duplicate key update
+         foto_binaria = values(foto_binaria),
+         tipo_mime = values(tipo_mime),
+         tamano_bytes = values(tamano_bytes),
+         creada_por = values(creada_por),
+         actualizado_en = current_timestamp(3)`,
+      {
+        idAdultoMayor: params.id,
+        fotoBinaria: fotoBuffer,
+        tipoMime: mimetype,
+        tamanoBytes: totalBytes,
+        creadoPor: actor.idUsuario,
+      },
+    );
+
+    reply.code(201);
+    return { ok: true };
+  });
+
+  app.get('/older-adults/:id/photo', { preHandler: requireAuth(app) }, async (request, reply) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+
+    const row = await assertOlderAdultExists(params.id);
+    assertActorAllowed(actor, row);
+
+    const [photoRows] = await pool.query<PhotoRow[]>(
+      `select foto_binaria, tipo_mime
+       from foto_perfil_adulto_mayor
+       where id_adulto_mayor = :id
+       limit 1`,
+      { id: params.id },
+    );
+
+    const photo = photoRows[0];
+    if (!photo) throw notFound('Foto de perfil no encontrada');
+
+    reply.header('Content-Type', photo.tipo_mime);
+    reply.header('Cache-Control', 'private, max-age=86400');
+    return reply.send(photo.foto_binaria);
+  });
+
+  app.delete('/older-adults/:id/photo', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+
+    const row = await assertOlderAdultExists(params.id);
+    assertActorAllowed(actor, row);
+
+    const [result] = await pool.query<ResultSetHeader>(
+      `delete from foto_perfil_adulto_mayor where id_adulto_mayor = :id`,
+      { id: params.id },
+    );
+
+    if (result.affectedRows === 0) throw notFound('Foto de perfil no encontrada');
+
+    return { ok: true };
   });
 }

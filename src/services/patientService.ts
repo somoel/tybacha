@@ -1,14 +1,17 @@
 import {
     createApiOlderAdult,
+    deletePatientPhotoApi,
     fetchApiOlderAdult,
     fetchApiOlderAdults,
     updateApiOlderAdult,
+    uploadPatientPhotoApi,
 } from '@/src/api/olderAdultsApi';
 import { fetchApiUsers } from '@/src/api/usersApi';
 import { addOfflineOperation } from '@/src/lib/sqlite';
 import type { ApiGender, ApiOlderAdult } from '@/src/types/apiOlderAdult.types';
 import type { Patient, PatientFormData } from '@/src/types/patient.types';
 import { format } from 'date-fns';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 function mapGenderFromApi(gender: ApiOlderAdult['genero']) {
     if (gender === 'masculino') return 'male';
@@ -31,6 +34,8 @@ function mapOlderAdultToPatient(adult: ApiOlderAdult): Patient {
         birth_date: adult.fechaNacimiento,
         gender: mapGenderFromApi(adult.genero),
         caregiver_email: adult.cuidador ? String(adult.cuidador.idUsuario) : undefined,
+        has_photo: adult.hasPhoto,
+        photo_data: adult.photoData ?? null,
         created_at: '',
         updated_at: '',
     };
@@ -195,4 +200,29 @@ export async function fetchCaregiverAssignments(..._args: unknown[]) {
             first_lastname: adult.apellidos,
         },
     }));
+}
+
+const MAX_PHOTO_DIMENSION = 400;
+const WEBP_QUALITY = 0.7;
+
+export async function compressAndConvertPhoto(imageUri: string): Promise<Blob> {
+    const manipulated = await ImageManipulator.manipulateAsync(
+        imageUri,
+        [{ resize: { width: MAX_PHOTO_DIMENSION, height: MAX_PHOTO_DIMENSION } }],
+        { compress: WEBP_QUALITY, format: ImageManipulator.SaveFormat.WEBP },
+    );
+
+    const response = await fetch(manipulated.uri);
+    return response.blob();
+}
+
+export async function uploadPatientPhoto(patientId: string, imageUri: string): Promise<void> {
+    const blob = await compressAndConvertPhoto(imageUri);
+    const formData = new FormData();
+    formData.append('file', blob, 'photo.webp');
+    await uploadPatientPhotoApi(Number(patientId), formData);
+}
+
+export async function deletePatientPhoto(patientId: string): Promise<void> {
+    await deletePatientPhotoApi(Number(patientId));
 }

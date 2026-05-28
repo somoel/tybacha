@@ -30,3 +30,16 @@ export function updateApiOlderAdult(
     });
 }
 
+export function uploadPatientPhotoApi(idAdultoMayor: number, formData: FormData): Promise<{ ok: true }> {
+    return apiRequest<{ ok: true }>(`/older-adults/${idAdultoMayor}/photo`, {
+        method: 'POST',
+        body: formData,
+    });
+}
+
+export function deletePatientPhotoApi(idAdultoMayor: number): Promise<{ ok: true }> {
+    return apiRequest<{ ok: true }>(`/older-adults/${idAdultoMayor}/photo`, {
+        method: 'DELETE',
+    });
+}
+

@@ -15,6 +15,8 @@ export interface ApiOlderAdult {
     ciudad: string | null;
     estado: ApiOlderAdultStatus;
     idProfesionalResponsable: number | null;
+    hasPhoto: boolean;
+    photoData?: string | null;
     cuidador: {
         idUsuario: number;
         nombres: string | null;

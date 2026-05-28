@@ -10,8 +10,10 @@ export interface Patient {
     birth_date: string;
     gender: Gender;
     pathologies?: string;
-    caregiver_email?: string;  // Email del cuidador asignado
+    caregiver_email?: string;
     id_cuidador?: number;
+    has_photo?: boolean;
+    photo_data?: string | null;
     created_at: string;
     updated_at: string;
 }

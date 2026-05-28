@@ -2,20 +2,22 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
+import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { fetchApiUsers } from '@/src/api/usersApi';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { createPatient } from '@/src/services/patientService';
+import { createPatient, uploadPatientPhoto } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
 import { z } from 'zod';
@@ -59,6 +61,7 @@ export default function NewPatientScreen() {
     const [isLoadingCaregivers, setIsLoadingCaregivers] = useState(false);
     const [caregivers, setCaregivers] = useState<ApiUserSummary[]>([]);
     const [birthDate, setBirthDate] = useState(new Date(1950, 0, 1));
+    const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const { control, handleSubmit, setValue, watch } = useForm<PatientFormValues>({
@@ -96,6 +99,30 @@ export default function NewPatientScreen() {
     const caregiverName = (caregiver: ApiUserSummary) =>
         [caregiver.nombres, caregiver.apellidos].filter(Boolean).join(' ') || caregiver.correo;
 
+    const handlePickPhoto = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            setSnackbar({ visible: true, message: 'Se necesita permiso para acceder a las fotos.', type: 'error' });
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+        if (!result.canceled && result.assets[0]) {
+            setPhotoUri(result.assets[0].uri);
+        }
+    };
+
+    const handleRemovePhoto = () => {
+        Alert.alert('Eliminar foto', '¿Desea eliminar la foto seleccionada?', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Eliminar', style: 'destructive', onPress: () => setPhotoUri(null) },
+        ]);
+    };
+
     const onSubmit = async (data: PatientFormValues) => {
         if (isLoading) return;
         if (!user) return;
@@ -117,6 +144,13 @@ export default function NewPatientScreen() {
                 isOnline
             );
             addPatient(patient);
+            if (photoUri) {
+                try {
+                    await uploadPatientPhoto(patient.id, photoUri);
+                } catch {
+                    // Photo upload failed but patient was created
+                }
+            }
             await waitForMinimumSubmitLoading(startedAt);
             setSnackbar({ visible: true, message: 'Adulto mayor registrado exitosamente ✓', type: 'success' });
             setTimeout(() => router.back(), 1500);
@@ -226,6 +260,36 @@ export default function NewPatientScreen() {
                         accessibilityLabel="Patologías del adulto mayor"
                     />
 
+                    <View style={styles.photoSection}>
+                        <Text style={styles.fieldLabel}>Foto de perfil (opcional)</Text>
+                        <View style={styles.photoRow}>
+                            <PatientAvatar
+                                photoData={photoUri}
+                                firstName={watch('first_name') || 'A'}
+                                firstLastname={watch('first_lastname') || 'M'}
+                                size={72}
+                            />
+                            <View style={styles.photoActions}>
+                                <AppButton
+                                    label={photoUri ? 'Cambiar foto' : 'Agregar foto'}
+                                    onPress={handlePickPhoto}
+                                    variant="outlined"
+                                    icon="camera"
+                                    accessibilityLabel="Seleccionar foto de perfil"
+                                />
+                                {photoUri && (
+                                    <AppButton
+                                        label="Eliminar"
+                                        onPress={handleRemovePhoto}
+                                        variant="outlined-error"
+                                        icon="delete"
+                                        accessibilityLabel="Eliminar foto seleccionada"
+                                    />
+                                )}
+                            </View>
+                        </View>
+                    </View>
+
                     <AppButton
                         label={isLoading ? 'Registrando...' : 'Registrar adulto mayor'}
                         onPress={handleSubmit(onSubmit)}
@@ -284,6 +348,9 @@ const styles = StyleSheet.create({
     emptyCaregivers: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     helperText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
     segmented: { marginBottom: 16 },
+    photoSection: { marginBottom: 12 },
+    photoRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+    photoActions: { flex: 1, gap: 8 },
     submitButton: { marginTop: 16 },
     loadingStatus: {
         marginTop: 12,

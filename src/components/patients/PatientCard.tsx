@@ -33,6 +33,9 @@ export function PatientCard({ patient, lastBatteryDate, batteryCount, onPress }:
                     <Text style={[styles.initials, { color: theme.colors.onPrimaryContainer }]}>
                         {initials}
                     </Text>
+                    {patient.has_photo && (
+                        <View style={[styles.photoIndicator, { backgroundColor: theme.colors.primary }]} />
+                    )}
                 </View>
                 <View style={styles.info}>
                     <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
@@ -71,6 +74,16 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    photoIndicator: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        borderWidth: 2,
+        borderColor: '#fff',
     },
     initials: {
         fontFamily: 'Montserrat_700Bold',
