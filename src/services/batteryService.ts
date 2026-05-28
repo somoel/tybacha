@@ -70,6 +70,7 @@ export async function createBattery(
 export async function saveBatteryResults(
     batteryId: string,
     results: Partial<Record<SFTTestType, number>>,
+    resultNotes: Partial<Record<SFTTestType, string>> = {},
     _isOnline: boolean,
 ): Promise<SFTResult[]> {
     const context = pendingBatteryContext.get(batteryId);
@@ -92,12 +93,14 @@ export async function saveBatteryResults(
             const value = testType ? results[testType] : undefined;
             if (value === undefined) return null;
 
+            const note = testType ? resultNotes[testType] : undefined;
             return {
                 idPruebaSft: test.idPruebaSft,
                 valorNumerico: value,
+                ...(note ? { observaciones: note } : {}),
             };
         })
-        .filter((item): item is { idPruebaSft: number; valorNumerico: number } => item !== null);
+        .filter((item): item is { idPruebaSft: number; valorNumerico: number; observaciones?: string } => item !== null);
 
     if (payloadResults.length === 0) {
         throw new Error('No hay resultados SFT para guardar. Revisa que las pruebas tengan valores registrados.');
@@ -122,6 +125,7 @@ export async function saveBatteryResults(
             test_type: testType ?? 'chair_stand',
             value: result.valorNumerico,
             unit: definition?.unit ?? 'reps',
+            notes: result.observaciones,
         };
     });
 }
@@ -129,9 +133,10 @@ export async function saveBatteryResults(
 export async function saveBatteryWithResults(
     batteryId: string,
     results: Partial<Record<SFTTestType, number>>,
+    resultNotes: Partial<Record<SFTTestType, string>>,
     isOnline: boolean,
 ): Promise<{ batteryId: string; results: SFTResult[] }> {
-    const savedResults = await saveBatteryResults(batteryId, results, isOnline);
+    const savedResults = await saveBatteryResults(batteryId, results, resultNotes, isOnline);
     const savedBatteryId = savedResults[0]?.battery_id;
 
     if (!savedBatteryId) {

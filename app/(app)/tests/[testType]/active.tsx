@@ -9,7 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } from 'react-native-paper';
+import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 
 /**
  * Active test screen inside the dedicated SFT battery mode.
@@ -23,6 +23,7 @@ export default function ActiveTestScreen() {
 
     const test = getSFTTest(testType ?? '');
     const [value, setValue] = useState(0);
+    const [testNotes, setTestNotes] = useState('');
     const [timerCompleted, setTimerCompleted] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
@@ -34,6 +35,10 @@ export default function ActiveTestScreen() {
     const currentIsAlreadyComplete = completedTests.includes(testType as SFTTestType);
     const progress = currentIndex >= 0 ? (completedTests.length + (currentIsAlreadyComplete ? 0 : 1)) / totalTests : 0;
     const hasActiveSession = Boolean(activeBatteryId);
+
+    useEffect(() => {
+        setTestNotes('');
+    }, [testType]);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -87,7 +92,7 @@ export default function ActiveTestScreen() {
 
     const handleSave = () => {
         if (!test || !patientId) return;
-        saveResult(test.type as SFTTestType, value);
+        saveResult(test.type as SFTTestType, value, testNotes || undefined);
         setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado` });
         allowExitRef.current = true;
         const completedAfterSave = new Set([...completedTests, test.type]);
@@ -195,6 +200,18 @@ export default function ActiveTestScreen() {
                     </View>
                 )}
 
+                <TextInput
+                    label="Observaciones (opcional)"
+                    value={testNotes}
+                    onChangeText={setTestNotes}
+                    mode="outlined"
+                    multiline
+                    numberOfLines={3}
+                    style={styles.notesInput}
+                    outlineStyle={styles.notesOutline}
+                    accessibilityLabel="Observaciones de la prueba"
+                />
+
                 <AppButton
                     label="Guardar resultado"
                     variant="filled"
@@ -254,5 +271,7 @@ const styles = StyleSheet.create({
     timerResultContainer: { alignItems: 'center', paddingVertical: 16 },
     timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
+    notesInput: { marginTop: 20 },
+    notesOutline: { borderRadius: 12 },
     saveBtn: { marginTop: 24 },
 });

@@ -11,7 +11,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { IconButton, Text, useTheme } from 'react-native-paper';
+import { IconButton, Text, TextInput, useTheme } from 'react-native-paper';
 
 type FinalAction = 'patient' | 'plan';
 
@@ -22,7 +22,7 @@ export default function BatterySummaryScreen() {
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
-    const { activeBatteryId, clearSession, completedTests, results } = useBatteryStore();
+    const { activeBatteryId, clearSession, completedTests, notes: generalNotes, resultNotes, results, setNotes } = useBatteryStore();
     const [savingAction, setSavingAction] = useState<FinalAction | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
@@ -42,8 +42,8 @@ export default function BatterySummaryScreen() {
 
         setSavingAction(action);
         try {
-            const battery = await createBattery(id, user.id, 'Bateria SFT completada', isOnline);
-            const savedBattery = await saveBatteryWithResults(battery.id, results, isOnline);
+            const battery = await createBattery(id, user.id, generalNotes || undefined, isOnline);
+            const savedBattery = await saveBatteryWithResults(battery.id, results, resultNotes, isOnline);
 
             clearSession();
 
@@ -118,6 +118,18 @@ export default function BatterySummaryScreen() {
                     );
                 })}
 
+                <TextInput
+                    label="Observaciones generales (opcional)"
+                    value={generalNotes}
+                    onChangeText={setNotes}
+                    mode="outlined"
+                    multiline
+                    numberOfLines={3}
+                    style={styles.notesInput}
+                    outlineStyle={styles.notesOutline}
+                    accessibilityLabel="Observaciones generales de la bateria"
+                />
+
                 <AppButton
                     label={canCreatePlan ? 'Crear plan de ejercicios' : 'Volver al adulto mayor'}
                     icon={canCreatePlan ? 'robot' : 'account-arrow-left'}
@@ -169,5 +181,7 @@ const styles = StyleSheet.create({
     valueContainer: { alignItems: 'flex-end', minWidth: 72 },
     value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
+    notesInput: { marginTop: 16 },
+    notesOutline: { borderRadius: 12 },
     finalButton: { marginTop: 16 },
 });

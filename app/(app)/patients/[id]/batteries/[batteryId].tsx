@@ -73,6 +73,9 @@ export default function BatteryDetailScreen() {
                                 <Text style={styles.unit}>{result ? test.unit : ''}</Text>
                             </View>
                         </View>
+                        {result?.notes ? (
+                            <Text style={styles.resultNotes}>{result.notes}</Text>
+                        ) : null}
                     </AppCard>
                 );
             })}
@@ -95,5 +98,6 @@ const styles = StyleSheet.create({
     valueContainer: { alignItems: 'flex-end' },
     value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
+    resultNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#374151', marginTop: 6, fontStyle: 'italic' },
     bottomPadding: { height: 32 },
 });

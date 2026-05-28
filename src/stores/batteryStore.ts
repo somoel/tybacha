@@ -7,13 +7,17 @@ interface BatteryState {
     activeBatteryId: string | null;
     patientId: string | null;
     results: Partial<Record<SFTTestType, number>>;
+    resultNotes: Partial<Record<SFTTestType, string>>;
     completedTests: SFTTestType[];
+    notes: string;
     isLoading: boolean;
 
     /** Start a new battery session for a patient */
     startBattery: (patientId: string) => void;
     /** Save a single test result into the active battery */
-    saveResult: (testType: SFTTestType, value: number) => void;
+    saveResult: (testType: SFTTestType, value: number, notes?: string) => void;
+    /** Set general observation notes for the battery */
+    setNotes: (notes: string) => void;
     /** Clear a finalized session without treating it as an abandoned battery */
     clearSession: () => void;
     /** Mark battery as complete (triggers persistence via service) */
@@ -35,7 +39,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
     activeBatteryId: null,
     patientId: null,
     results: {},
+    resultNotes: {},
     completedTests: [],
+    notes: '',
     isLoading: false,
 
     startBattery: (patientId) =>
@@ -43,24 +49,33 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             activeBatteryId: generateUUID(),
             patientId,
             results: {},
+            resultNotes: {},
             completedTests: [],
+            notes: '',
             isLoading: false,
         }),
 
-    saveResult: (testType, value) =>
+    saveResult: (testType, value, note) =>
         set((state) => ({
             results: { ...state.results, [testType]: value },
+            resultNotes: note !== undefined
+                ? { ...state.resultNotes, [testType]: note }
+                : state.resultNotes,
             completedTests: state.completedTests.includes(testType)
                 ? state.completedTests
                 : [...state.completedTests, testType],
         })),
+
+    setNotes: (notes) => set({ notes }),
 
     clearSession: () =>
         set({
             activeBatteryId: null,
             patientId: null,
             results: {},
+            resultNotes: {},
             completedTests: [],
+            notes: '',
             isLoading: false,
         }),
 
@@ -77,10 +92,10 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             const battery = await createBattery(
                 state.patientId,
                 user?.id || 'unknown',
-                'Bateria SFT completada',
+                state.notes || undefined,
                 true,
             );
-            await saveBatteryResults(battery.id, state.results, true);
+            await saveBatteryResults(battery.id, state.results, state.resultNotes, true);
         } catch (error) {
             throw error;
         }
@@ -91,7 +106,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             activeBatteryId: null,
             patientId: null,
             results: {},
+            resultNotes: {},
             completedTests: [],
+            notes: '',
         }),
 
     resetBattery: () =>
@@ -99,7 +116,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             activeBatteryId: null,
             patientId: null,
             results: {},
+            resultNotes: {},
             completedTests: [],
+            notes: '',
             isLoading: false,
         }),
 

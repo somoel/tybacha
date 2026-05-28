@@ -53,9 +53,12 @@ export interface BatteryState {
     activeBatteryId: string | null;
     patientId: string | null;
     results: Partial<Record<SFTTestType, number>>;
+    resultNotes: Partial<Record<SFTTestType, string>>;
     completedTests: SFTTestType[];
+    notes: string;
     startBattery: (patientId: string) => void;
-    saveResult: (testType: SFTTestType, value: number) => void;
+    saveResult: (testType: SFTTestType, value: number, notes?: string) => void;
+    setNotes: (notes: string) => void;
     finalizeBattery: () => Promise<void>;
     clearSession: () => void;
     resetBattery: () => void;
