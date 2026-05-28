@@ -1,3 +1,4 @@
+import { ExercisePlanSection } from '@/src/components/results/ExercisePlanSection';
 import { ResultChart } from '@/src/components/results/ResultChart';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
@@ -9,13 +10,13 @@ import { es } from 'date-fns/locale';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Divider, Text, useTheme } from 'react-native-paper';
 
 /**
- * Battery detail — shows all results with chart.
+ * Battery detail — shows all results with chart and exercise plan section.
  */
 export default function BatteryDetailScreen() {
-    const { batteryId } = useLocalSearchParams<{ batteryId: string }>();
+    const { id: patientId, batteryId, createPlan } = useLocalSearchParams<{ id: string; batteryId: string; createPlan?: string }>();
     const theme = useTheme();
     const [battery, setBattery] = useState<BatteryWithResults | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +80,19 @@ export default function BatteryDetailScreen() {
                     </AppCard>
                 );
             })}
+
+            {/* Exercise plan section */}
+            {patientId && (
+                <>
+                    <Divider style={styles.divider} />
+                    <ExercisePlanSection
+                        patientId={patientId}
+                        battery={battery}
+                        forceCreatePlan={createPlan === '1'}
+                    />
+                </>
+            )}
+
             <View style={styles.bottomPadding} />
         </ScrollView>
     );
@@ -99,5 +113,6 @@ const styles = StyleSheet.create({
     value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
     resultNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#374151', marginTop: 6, fontStyle: 'italic' },
+    divider: { marginTop: 24, marginBottom: 8 },
     bottomPadding: { height: 32 },
 });

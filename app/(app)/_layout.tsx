@@ -104,6 +104,7 @@ export default function AppLayout() {
                     options={{
                         title: 'Resultados',
                         headerTitle: 'Resultados',
+                        href: null,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
                                 name={focused ? 'chart-bar' : 'chart-line'}

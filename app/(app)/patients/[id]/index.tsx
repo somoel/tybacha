@@ -1,6 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
+import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
@@ -72,11 +73,12 @@ export default function PatientDetailScreen() {
             {/* Patient info card */}
             <AppCard style={styles.infoCard}>
                 <View style={styles.header}>
-                    <View style={[styles.avatar, { backgroundColor: theme.colors.primaryContainer }]}>
-                        <Text style={[styles.initials, { color: theme.colors.onPrimaryContainer }]}>
-                            {patient.first_name[0]}{patient.first_lastname[0]}
-                        </Text>
-                    </View>
+                    <PatientAvatar
+                        photoData={patient.photo_data}
+                        firstName={patient.first_name}
+                        firstLastname={patient.first_lastname}
+                        size={56}
+                    />
                     <View style={styles.headerInfo}>
                         <Text style={styles.fullName}>{fullName}</Text>
                         <Text style={styles.detailText}>{genderLabel} · {age} años</Text>
@@ -114,7 +116,7 @@ export default function PatientDetailScreen() {
                         label="Generar plan IA"
                         variant="filled"
                         icon="robot"
-                        onPress={() => router.push(`/(app)/results` as never)}
+                        onPress={() => router.push(`/(app)/patients/${id}/batteries/${batteries[0].id}` as never)}
                         accessibilityLabel="Generar plan de ejercicios con IA"
                     />
                 )}
@@ -174,8 +176,6 @@ const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 16 },
     infoCard: { marginBottom: 16 },
     header: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-    avatar: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-    initials: { fontFamily: 'Montserrat_700Bold', fontSize: 20 },
     headerInfo: { flex: 1, gap: 2 },
     fullName: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
     detailText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
