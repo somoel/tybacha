@@ -9,6 +9,7 @@ import { Text, useTheme } from 'react-native-paper';
 interface PatientCardProps {
     patient: Patient;
     lastBatteryDate?: string;
+    batteryCount?: number;
     onPress: () => void;
 }
 
@@ -16,7 +17,7 @@ interface PatientCardProps {
  * Adulto mayor card showing photo placeholder, name, age, gender,
  * and last battery date.
  */
-export function PatientCard({ patient, lastBatteryDate, onPress }: PatientCardProps) {
+export function PatientCard({ patient, lastBatteryDate, batteryCount, onPress }: PatientCardProps) {
     const theme = useTheme();
     const age = differenceInYears(new Date(), new Date(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
@@ -46,7 +47,9 @@ export function PatientCard({ patient, lastBatteryDate, onPress }: PatientCardPr
                     <View style={styles.detailRow}>
                         <MaterialCommunityIcons name="clipboard-text-outline" size={14} color={theme.colors.onSurfaceVariant} />
                         <Text style={styles.detail}>
-                            {lastBatteryDate ? `Última batería: ${lastBatteryDate}` : 'Sin baterías aún'}
+                            {batteryCount != null && batteryCount > 0
+                                ? `${batteryCount} batería${batteryCount !== 1 ? 's' : ''}`
+                                : 'Sin baterías aún'}
                         </Text>
                     </View>
                 </View>

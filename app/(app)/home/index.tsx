@@ -3,6 +3,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
+import { fetchActivePlanStatus, fetchBatteryCountsForPatients } from '@/src/services/batteryService';
 import { fetchPatients } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
@@ -28,6 +29,8 @@ export default function HomeScreen() {
     const { patients, setPatients, setLoading, isLoading } = usePatientsStore();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
+    const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
+    const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
 
     useEffect(() => {
         const hour = new Date().getHours();
@@ -43,6 +46,16 @@ export default function HomeScreen() {
                 const role = isAdmin || isProfessional ? 'profesional' : 'cuidador';
                 const data = await fetchPatients(user.id, role);
                 setPatients(data);
+
+                if (data.length > 0) {
+                    const ids = data.map((p) => p.id);
+                    const [counts, plans] = await Promise.all([
+                        fetchBatteryCountsForPatients(ids),
+                        fetchActivePlanStatus(ids),
+                    ]);
+                    setBatteryCounts(counts);
+                    setActivePlanMap(plans);
+                }
             } catch (error) {
                 console.error('Error cargando adultos mayores:', error);
             } finally {
@@ -96,7 +109,7 @@ export default function HomeScreen() {
                                 <View style={styles.statContent}>
                                     <MaterialCommunityIcons name="clipboard-check" size={28} color="#2e7d32" />
                                     <Text style={styles.statNumber}>
-                                        {patients.length > 0 ? Math.min(patients.length, 3) : 0}
+                                        {Object.values(activePlanMap).filter(Boolean).length}
                                     </Text>
                                     <Text style={styles.statLabel}>Con plan activo</Text>
                                 </View>
@@ -134,6 +147,7 @@ export default function HomeScreen() {
                             <PatientCard
                                 key={patient.id}
                                 patient={patient}
+                                batteryCount={batteryCounts[patient.id]}
                                 onPress={() => router.push(`/(app)/patients/${patient.id}` as never)}
                             />
                         ))
