@@ -9,7 +9,7 @@ import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 
 function getTodayKey(): string {
@@ -332,13 +332,13 @@ export default function ActiveExerciseScreen() {
                             </View>
                             <View style={styles.sliderRow}>
                                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                    <View
+                                    <TouchableOpacity
                                         key={n}
                                         style={[
                                             styles.sliderDot,
                                             n <= perceivedEffort && { backgroundColor: theme.colors.primary },
                                         ]}
-                                        onTouchEnd={() => setPerceivedEffort(n)}
+                                        onPress={() => setPerceivedEffort(n)}
                                     />
                                 ))}
                             </View>
@@ -356,13 +356,13 @@ export default function ActiveExerciseScreen() {
                             </View>
                             <View style={styles.sliderRow}>
                                 {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                    <View
+                                    <TouchableOpacity
                                         key={n}
                                         style={[
                                             styles.sliderDot,
                                             n <= reportedPain && { backgroundColor: '#c62828' },
                                         ]}
-                                        onTouchEnd={() => setReportedPain(n)}
+                                        onPress={() => setReportedPain(n)}
                                     />
                                 ))}
                             </View>
