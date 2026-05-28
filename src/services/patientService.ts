@@ -3,6 +3,7 @@ import {
     deletePatientPhotoApi,
     fetchApiOlderAdult,
     fetchApiOlderAdults,
+    fetchApiOlderAdultsPhotos,
     updateApiOlderAdult,
     uploadPatientPhotoApi,
 } from '@/src/api/olderAdultsApi';
@@ -225,4 +226,8 @@ export async function uploadPatientPhoto(patientId: string, imageUri: string): P
 
 export async function deletePatientPhoto(patientId: string): Promise<void> {
     await deletePatientPhotoApi(Number(patientId));
+}
+
+export async function fetchPatientThumbnails(): Promise<Record<string, string>> {
+    return fetchApiOlderAdultsPhotos();
 }

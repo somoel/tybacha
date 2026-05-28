@@ -4,7 +4,7 @@ import { AppLoader } from '@/src/components/ui/AppLoader';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
 import { fetchActivePlanStatus, fetchBatteryCountsForPatients } from '@/src/services/batteryService';
-import { fetchPatients } from '@/src/services/patientService';
+import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,7 +26,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const { user, profile } = useAuthStore();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
-    const { patients, setPatients, setLoading, isLoading } = usePatientsStore();
+    const { patients, setPatients, setLoading, isLoading, setPhotoThumbnails } = usePatientsStore();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
     const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
@@ -56,6 +56,9 @@ export default function HomeScreen() {
                     setBatteryCounts(counts);
                     setActivePlanMap(plans);
                 }
+
+                const thumbnails = await fetchPatientThumbnails();
+                setPhotoThumbnails(thumbnails);
             } catch (error) {
                 console.error('Error cargando adultos mayores:', error);
             } finally {
@@ -63,7 +66,7 @@ export default function HomeScreen() {
             }
         };
         void loadPatients();
-    }, [user, isAdmin, isProfessional, setPatients, setLoading]);
+    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails]);
 
     const userName = profile?.full_name ?? 'Usuario';
     const hasStaffAccess = isAdmin || isProfessional;

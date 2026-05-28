@@ -43,3 +43,7 @@ export function deletePatientPhotoApi(idAdultoMayor: number): Promise<{ ok: true
     });
 }
 
+export function fetchApiOlderAdultsPhotos(): Promise<Record<string, string>> {
+    return apiRequest<Record<string, string>>('/older-adults/photos');
+}
+

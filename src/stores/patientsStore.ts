@@ -14,6 +14,7 @@ interface PatientsState {
     searchQuery: string;
     isLoading: boolean;
     sectionedPatients: SectionedPatients;
+    photoThumbnails: Record<string, string>;
 
     /** Replace the entire patients list */
     setPatients: (patients: Patient[]) => void;
@@ -31,6 +32,8 @@ interface PatientsState {
     setLoading: (loading: boolean) => void;
     /** Set sectioned patients */
     setSectionedPatients: (sectioned: SectionedPatients) => void;
+    /** Set photo thumbnails map */
+    setPhotoThumbnails: (thumbnails: Record<string, string>) => void;
 
     /** Async operations */
     loadPatients: (userId: string, userRole: string) => Promise<void>;
@@ -51,6 +54,7 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     searchQuery: '',
     isLoading: false,
     sectionedPatients: { noBatteries: [], pendingRecommendation: [], inProgress: [] },
+    photoThumbnails: {},
 
     setPatients: (patients) => set({ patients }),
 
@@ -77,6 +81,8 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     setLoading: (isLoading) => set({ isLoading }),
 
     setSectionedPatients: (sectionedPatients) => set({ sectionedPatients }),
+
+    setPhotoThumbnails: (photoThumbnails) => set({ photoThumbnails }),
 
     // Async operations
     loadPatients: async (userId: string, userRole: string) => {

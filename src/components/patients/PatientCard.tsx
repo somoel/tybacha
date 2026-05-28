@@ -1,4 +1,6 @@
 import { AppCard } from '@/src/components/ui/AppCard';
+import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
+import { usePatientsStore } from '@/src/stores/patientsStore';
 import type { Patient } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears } from 'date-fns';
@@ -19,24 +21,23 @@ interface PatientCardProps {
  */
 export function PatientCard({ patient, lastBatteryDate, batteryCount, onPress }: PatientCardProps) {
     const theme = useTheme();
+    const photoThumbnails = usePatientsStore((s) => s.photoThumbnails);
     const age = differenceInYears(new Date(), new Date(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
         .filter(Boolean)
         .join(' ');
-    const initials = `${patient.first_name[0]}${patient.first_lastname[0]}`.toUpperCase();
     const genderLabel = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Femenino' : 'Otro';
+    const photoData = photoThumbnails[patient.id] ?? patient.photo_data ?? null;
 
     return (
         <AppCard onPress={onPress} accessibilityLabel={`Adulto mayor ${fullName}`}>
             <View style={styles.row}>
-                <View style={[styles.avatar, { backgroundColor: theme.colors.primaryContainer }]}>
-                    <Text style={[styles.initials, { color: theme.colors.onPrimaryContainer }]}>
-                        {initials}
-                    </Text>
-                    {patient.has_photo && (
-                        <View style={[styles.photoIndicator, { backgroundColor: theme.colors.primary }]} />
-                    )}
-                </View>
+                <PatientAvatar
+                    photoData={photoData}
+                    firstName={patient.first_name}
+                    firstLastname={patient.first_lastname}
+                    size={48}
+                />
                 <View style={styles.info}>
                     <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
                     <View style={styles.detailRow}>
@@ -67,27 +68,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-    },
-    avatar: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    photoIndicator: {
-        position: 'absolute',
-        bottom: 0,
-        right: 0,
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        borderWidth: 2,
-        borderColor: '#fff',
-    },
-    initials: {
-        fontFamily: 'Montserrat_700Bold',
-        fontSize: 18,
     },
     info: {
         flex: 1,

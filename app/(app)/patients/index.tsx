@@ -3,7 +3,7 @@ import { PatientSectionList } from '@/src/components/patients/PatientSectionList
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchActivePlanStatus, fetchBatteryCountsForPatients } from '@/src/services/batteryService';
-import { fetchPatients } from '@/src/services/patientService';
+import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { getSectionedPatients, usePatientsStore } from '@/src/stores/patientsStore';
 import type { Patient, SectionedPatients } from '@/src/types/patient.types';
@@ -20,7 +20,7 @@ export default function PatientsListScreen() {
     const router = useRouter();
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
-    const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading } = usePatientsStore();
+    const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading, setPhotoThumbnails } = usePatientsStore();
     const [sections, setSections] = useState<SectionedPatients | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -49,6 +49,9 @@ export default function PatientsListScreen() {
             } else {
                 setSections(null);
             }
+
+            const thumbnails = await fetchPatientThumbnails();
+            setPhotoThumbnails(thumbnails);
         } catch (error) {
             console.error('Error cargando adultos mayores:', error);
         } finally {
@@ -58,7 +61,7 @@ export default function PatientsListScreen() {
                 setLoading(false);
             }
         }
-    }, [user, isAdmin, isProfessional, setPatients, setLoading]);
+    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails]);
 
     useEffect(() => {
         void loadPatients();

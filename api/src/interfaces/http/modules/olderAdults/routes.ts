@@ -517,4 +517,51 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
 
     return { ok: true };
   });
+
+  app.get('/older-adults/photos', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+
+    let where = '';
+    const params: Record<string, string | number> = {};
+
+    if (actor.rol === 'profesional') {
+      where = 'where a.id_profesional_responsable = :actorId';
+      params.actorId = actor.idUsuario;
+    } else if (actor.rol === 'cuidador') {
+      where = `where exists (
+        select 1 from asignacion_cuidador_adulto_mayor ac
+        where ac.id_adulto_mayor = a.id_adulto_mayor
+          and ac.id_cuidador = :actorId
+          and ac.estado = 'activa'
+      )`;
+      params.actorId = actor.idUsuario;
+    }
+
+    interface PhotoBatchRow extends RowDataPacket {
+      id_adulto_mayor: number;
+      foto_binaria: Buffer | null;
+      tipo_mime: string | null;
+    }
+
+    const [rows] = await pool.query<PhotoBatchRow[]>(
+      `select a.id_adulto_mayor,
+              fp.foto_binaria,
+              fp.tipo_mime
+       from adulto_mayor a
+       inner join foto_perfil_adulto_mayor fp on fp.id_adulto_mayor = a.id_adulto_mayor
+       ${where}
+       order by a.id_adulto_mayor`,
+      params,
+    );
+
+    const photos: Record<string, string> = {};
+    for (const row of rows) {
+      if (row.foto_binaria && row.tipo_mime) {
+        photos[String(row.id_adulto_mayor)] =
+          `data:${row.tipo_mime};base64,${row.foto_binaria.toString('base64')}`;
+      }
+    }
+
+    return photos;
+  });
 }
