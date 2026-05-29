@@ -12,10 +12,10 @@ import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTrackin
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { IconButton, Text, useTheme } from 'react-native-paper';
 
 function getWeekRange(): { from: string; to: string } {
     const now = new Date();
@@ -34,6 +34,7 @@ function getWeekRange(): { from: string; to: string } {
 export default function ProgressScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const theme = useTheme();
+    const router = useRouter();
 
     const [patient, setPatient] = useState<Patient | null>(null);
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
@@ -98,8 +99,19 @@ export default function ProgressScreen() {
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <Text style={styles.screenTitle}>Progreso de ejercicios</Text>
-            <Text style={styles.screenSubtitle}>{firstName}</Text>
+            <View style={styles.headerRow}>
+                <IconButton
+                    icon="arrow-left"
+                    mode="contained-tonal"
+                    size={20}
+                    onPress={() => router.back()}
+                    accessibilityLabel="Volver"
+                />
+                <View style={styles.headerText}>
+                    <Text style={styles.screenTitle}>Progreso de ejercicios</Text>
+                    <Text style={styles.screenSubtitle}>{firstName}</Text>
+                </View>
+            </View>
 
             {/* Current week summary */}
             {currentWeekStats ? (
@@ -190,8 +202,10 @@ export default function ProgressScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 16 },
+    headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    headerText: { flex: 1, marginLeft: 4 },
     screenTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 20, color: '#1f2937' },
-    screenSubtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', marginBottom: 16 },
+    screenSubtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280' },
     summaryCard: { marginBottom: 16 },
     summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
     summaryTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937' },
