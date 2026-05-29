@@ -122,6 +122,7 @@ export default function PatientsListScreen() {
                     renderItem={({ item }) => (
                         <PatientCard
                             patient={item}
+                            showStatusBadge={false}
                             onPress={() => handlePatientPress(item)}
                         />
                     )}

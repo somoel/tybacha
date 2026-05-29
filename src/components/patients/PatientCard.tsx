@@ -18,6 +18,7 @@ interface PatientCardProps {
     hasActivePlan?: boolean;
     weeklyExerciseData?: WeeklyExerciseData;
     showQuickActions?: boolean;
+    showStatusBadge?: boolean;
     onExercisePress?: () => void;
     onPress: () => void;
 }
@@ -47,6 +48,7 @@ export function PatientCard({
     hasActivePlan,
     weeklyExerciseData,
     showQuickActions = false,
+    showStatusBadge = true,
     onExercisePress,
     onPress,
 }: PatientCardProps) {
@@ -78,7 +80,9 @@ export function PatientCard({
                 <View style={styles.info}>
                     <View style={styles.nameRow}>
                         <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
-                        <StatusBadge status={status} label={statusLabel} size="small" />
+                        {showStatusBadge && (
+                            <StatusBadge status={status} label={statusLabel} size="small" />
+                        )}
                     </View>
                     <View style={styles.detailRow}>
                         <MaterialCommunityIcons

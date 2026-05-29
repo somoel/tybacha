@@ -61,6 +61,7 @@ export function PatientSectionList({
                     <PatientCard
                         patient={item}
                         lastBatteryDate={lastBatteryDates?.[item.id]}
+                        showStatusBadge={false}
                         onPress={() => onPatientPress(item)}
                     />
                 </View>

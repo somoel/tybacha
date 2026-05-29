@@ -1,4 +1,5 @@
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, usePathname } from 'expo-router';
@@ -14,6 +15,7 @@ import { useTheme } from 'react-native-paper';
 export default function AppLayout() {
     const theme = useTheme();
     const pathname = usePathname();
+    const { isCaregiver } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
     const isBatteryMode =
         /\/patients\/[^/]+\/batteries\/new/.test(pathname) ||
@@ -135,6 +137,7 @@ export default function AppLayout() {
                     options={{
                         title: 'Admin',
                         headerTitle: 'Administracion',
+                        href: isCaregiver ? null : undefined,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
                                 name={focused ? 'shield-account' : 'shield-account-outline'}
