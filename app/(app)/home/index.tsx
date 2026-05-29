@@ -1,6 +1,6 @@
 import { PatientCard } from '@/src/components/patients/PatientCard';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { HomeSkeleton } from '@/src/components/ui/HomeSkeleton';
 import { ActivityFeed } from '@/src/components/ui/ActivityFeed';
 import type { ActivityItem } from '@/src/components/ui/ActivityFeed';
 import { usePermissions } from '@/src/hooks/usePermissions';
@@ -102,7 +102,7 @@ export default function HomeScreen() {
         : 0;
 
     if (isLoading) {
-        return <AppLoader message="Cargando datos..." />;
+        return <HomeSkeleton />;
     }
 
     return (
