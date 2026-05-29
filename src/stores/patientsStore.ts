@@ -1,4 +1,5 @@
 import type { Patient, PatientFormData, SectionedPatients } from '@/src/types/patient.types';
+import type { WeeklyExerciseData } from '@/src/services/batteryService';
 import {
     createPatient,
     deletePatient,
@@ -15,6 +16,7 @@ interface PatientsState {
     isLoading: boolean;
     sectionedPatients: SectionedPatients;
     photoThumbnails: Record<string, string>;
+    exerciseData: Record<string, WeeklyExerciseData>;
 
     /** Replace the entire patients list */
     setPatients: (patients: Patient[]) => void;
@@ -34,6 +36,8 @@ interface PatientsState {
     setSectionedPatients: (sectioned: SectionedPatients) => void;
     /** Set photo thumbnails map */
     setPhotoThumbnails: (thumbnails: Record<string, string>) => void;
+    /** Set exercise data map (today status + weekly compliance) */
+    setExerciseData: (data: Record<string, WeeklyExerciseData>) => void;
 
     /** Async operations */
     loadPatients: (userId: string, userRole: string) => Promise<void>;
@@ -55,6 +59,7 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     isLoading: false,
     sectionedPatients: { noBatteries: [], pendingRecommendation: [], inProgress: [] },
     photoThumbnails: {},
+    exerciseData: {},
 
     setPatients: (patients) => set({ patients }),
 
@@ -83,6 +88,8 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     setSectionedPatients: (sectionedPatients) => set({ sectionedPatients }),
 
     setPhotoThumbnails: (photoThumbnails) => set({ photoThumbnails }),
+
+    setExerciseData: (exerciseData) => set({ exerciseData }),
 
     // Async operations
     loadPatients: async (userId: string, userRole: string) => {

@@ -1,9 +1,11 @@
 import { PatientCard } from '@/src/components/patients/PatientCard';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
+import { ActivityFeed } from '@/src/components/ui/ActivityFeed';
+import type { ActivityItem } from '@/src/components/ui/ActivityFeed';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
-import { fetchActivePlanStatus, fetchBatteryCountsForPatients } from '@/src/services/batteryService';
+import { fetchActivePlanStatus, fetchBatteryCountsForPatients, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
 import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
@@ -19,18 +21,19 @@ import { Text, useTheme } from 'react-native-paper';
 /**
  * Dashboard screen showing role-specific content.
  * Professional: summary stats + recent evaluations + FAB to add patient.
- * Caregiver: assigned patients with quick action buttons.
+ * Caregiver: exercise compliance stats + patients with quick actions + activity feed.
  */
 export default function HomeScreen() {
     const theme = useTheme();
     const router = useRouter();
     const { user, profile } = useAuthStore();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
-    const { patients, setPatients, setLoading, isLoading, setPhotoThumbnails } = usePatientsStore();
+    const { patients, setPatients, setLoading, isLoading, setPhotoThumbnails, exerciseData, setExerciseData } = usePatientsStore();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
     const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
     const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
+    const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
 
     useEffect(() => {
         const hour = new Date().getHours();
@@ -49,12 +52,32 @@ export default function HomeScreen() {
 
                 if (data.length > 0) {
                     const ids = data.map((p) => p.id);
-                    const [counts, plans] = await Promise.all([
+                    const [counts, plans, weeklyData] = await Promise.all([
                         fetchBatteryCountsForPatients(ids),
                         fetchActivePlanStatus(ids),
+                        fetchWeeklyExerciseDataForPatients(ids),
                     ]);
                     setBatteryCounts(counts);
                     setActivePlanMap(plans);
+                    setExerciseData(weeklyData);
+
+                    // Build recent activity from exercise data
+                    const activity: ActivityItem[] = [];
+                    for (const patient of data) {
+                        const exData = weeklyData[patient.id];
+                        if (exData?.lastExerciseDate) {
+                            const fullName = [patient.first_name, patient.first_lastname].filter(Boolean).join(' ');
+                            activity.push({
+                                patientName: fullName,
+                                action: exData.todayCompleted > 0 ? 'Ejercicio completado' : 'Último ejercicio registrado',
+                                date: exData.lastExerciseDate,
+                                icon: 'dumbbell',
+                                iconColor: '#2e7d32',
+                            });
+                        }
+                    }
+                    activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                    setRecentActivity(activity);
                 }
 
                 const thumbnails = await fetchPatientThumbnails();
@@ -66,10 +89,28 @@ export default function HomeScreen() {
             }
         };
         void loadPatients();
-    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails]);
+    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails, setExerciseData]);
 
     const userName = profile?.full_name ?? 'Usuario';
     const hasStaffAccess = isAdmin || isProfessional;
+
+    // Caregiver stats
+    const totalTodayCompleted = Object.values(exerciseData).reduce((sum, d) => sum + d.todayCompleted, 0);
+    const totalTodayExercises = Object.values(exerciseData).reduce((sum, d) => sum + d.todayTotal, 0);
+    const avgCompliance = patients.length > 0
+        ? Math.round(Object.values(exerciseData).reduce((sum, d) => sum + d.weeklyCompliance, 0) / patients.length)
+        : 0;
+
+    // Attention section: patients with incomplete exercises today or no active plan
+    const attentionPatients = isCaregiver
+        ? patients.filter((p) => {
+            const hasPlan = activePlanMap[p.id];
+            const data = exerciseData[p.id];
+            if (!hasPlan) return true;
+            if (data && data.todayTotal > 0 && data.todayCompleted < data.todayTotal) return true;
+            return false;
+        })
+        : [];
 
     if (isLoading) {
         return <AppLoader message="Cargando datos..." />;
@@ -129,9 +170,87 @@ export default function HomeScreen() {
                         </View>
                     )}
 
+                    {/* Summary stats for caregiver */}
+                    {isCaregiver && patients.length > 0 && (
+                        <View style={styles.statsRow}>
+                            <AppCard style={styles.statCard}>
+                                <View style={styles.statContent}>
+                                    <MaterialCommunityIcons name="account-group" size={28} color={theme.colors.primary} />
+                                    <Text style={styles.statNumber}>{patients.length}</Text>
+                                    <Text style={styles.statLabel}>Adultos mayores</Text>
+                                </View>
+                            </AppCard>
+                            <AppCard style={styles.statCard}>
+                                <View style={styles.statContent}>
+                                    <MaterialCommunityIcons name="dumbbell" size={28} color="#2e7d32" />
+                                    <Text style={styles.statNumber}>
+                                        {totalTodayExercises > 0 ? totalTodayExercises - totalTodayCompleted : '0'}
+                                    </Text>
+                                    <Text style={styles.statLabel}>Pendientes hoy</Text>
+                                </View>
+                            </AppCard>
+                            <AppCard style={styles.statCard}>
+                                <View style={styles.statContent}>
+                                    <MaterialCommunityIcons name="chart-line" size={28} color={avgCompliance >= 80 ? '#2e7d32' : avgCompliance >= 50 ? '#f57c0b' : '#c62828'} />
+                                    <Text style={styles.statNumber}>{avgCompliance}%</Text>
+                                    <Text style={styles.statLabel}>Cumplimiento</Text>
+                                </View>
+                            </AppCard>
+                        </View>
+                    )}
+
+                    {/* Attention section for caregivers */}
+                    {isCaregiver && attentionPatients.length > 0 && (
+                        <>
+                            <View style={styles.attentionHeader}>
+                                <MaterialCommunityIcons name="alert-circle" size={20} color="#f57c0b" />
+                                <Text style={styles.attentionTitle}>Requiere atención</Text>
+                            </View>
+                            {attentionPatients.slice(0, 3).map((patient) => {
+                                const hasPlan = activePlanMap[patient.id];
+                                const data = exerciseData[patient.id];
+                                return (
+                                    <AppCard
+                                        key={patient.id}
+                                        style={styles.attentionCard}
+                                        onPress={() => router.push(`/(app)/patients/${patient.id}` as never)}
+                                    >
+                                        <View style={styles.attentionRow}>
+                                            <MaterialCommunityIcons
+                                                name={hasPlan ? 'alert' : 'account-remove'}
+                                                size={20}
+                                                color="#f57c0b"
+                                            />
+                                            <View style={styles.attentionInfo}>
+                                                <Text style={styles.attentionName}>
+                                                    {[patient.first_name, patient.first_lastname].filter(Boolean).join(' ')}
+                                                </Text>
+                                                <Text style={styles.attentionReason}>
+                                                    {!hasPlan ? 'Sin plan activo' :
+                                                        data && data.todayTotal > 0 && data.todayCompleted < data.todayTotal
+                                                            ? `Pendientes hoy: ${data.todayTotal - data.todayCompleted}`
+                                                            : 'Ejercicios pendientes'}
+                                                </Text>
+                                            </View>
+                                            <MaterialCommunityIcons name="chevron-right" size={20} color="#94a3b8" />
+                                        </View>
+                                    </AppCard>
+                                );
+                            })}
+                            {attentionPatients.length > 3 && (
+                                <Text
+                                    style={styles.seeAll}
+                                    onPress={() => router.push('/(app)/patients' as never)}
+                                >
+                                    Ver todos ({attentionPatients.length}) →
+                                </Text>
+                            )}
+                        </>
+                    )}
+
                     {/* Recent patients */}
                     <Text style={styles.sectionTitle}>
-                        {hasStaffAccess ? 'Adultos mayores recientes' : 'Mis adultos mayores asignados'}
+                        {hasStaffAccess ? 'Adultos mayores recientes' : 'Mis adultos mayores'}
                     </Text>
 
                     {patients.length === 0 ? (
@@ -151,6 +270,10 @@ export default function HomeScreen() {
                                 key={patient.id}
                                 patient={patient}
                                 batteryCount={batteryCounts[patient.id]}
+                                hasActivePlan={activePlanMap[patient.id]}
+                                weeklyExerciseData={exerciseData[patient.id]}
+                                showQuickActions={isCaregiver}
+                                onExercisePress={() => router.push(`/(app)/patients/${patient.id}/exercise` as never)}
                                 onPress={() => router.push(`/(app)/patients/${patient.id}` as never)}
                             />
                         ))
@@ -163,6 +286,16 @@ export default function HomeScreen() {
                         >
                             Ver todos los adultos mayores →
                         </Text>
+                    )}
+
+                    {/* Activity feed for caregivers */}
+                    {isCaregiver && recentActivity.length > 0 && (
+                        <>
+                            <Text style={[styles.sectionTitle, styles.activitySection]}>Actividad reciente</Text>
+                            <AppCard>
+                                <ActivityFeed items={recentActivity} maxItems={5} />
+                            </AppCard>
+                        </>
                     )}
                 </View>
             </ScrollView>
@@ -251,11 +384,48 @@ const styles = StyleSheet.create({
         color: '#6b7280',
         textAlign: 'center',
     },
+    attentionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    attentionTitle: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 16,
+        color: '#f57c0b',
+    },
+    attentionCard: {
+        backgroundColor: '#fff8f0',
+        borderLeftWidth: 3,
+        borderLeftColor: '#f57c0b',
+    },
+    attentionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    attentionInfo: {
+        flex: 1,
+    },
+    attentionName: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 14,
+        color: '#1f2937',
+    },
+    attentionReason: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 12,
+        color: '#f57c0b',
+    },
     sectionTitle: {
         fontFamily: 'Montserrat_700Bold',
         fontSize: 18,
         color: '#1f2937',
         marginBottom: 12,
+    },
+    activitySection: {
+        marginTop: 24,
     },
     emptyContainer: {
         alignItems: 'center',
