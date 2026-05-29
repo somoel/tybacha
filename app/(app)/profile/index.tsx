@@ -254,24 +254,6 @@ export default function ProfileScreen() {
                 </View>
             </AppCard>
 
-            {/* Caregiver: assigned patients with unlinking (RF-07) */}
-            {isCaregiver && assignments.length > 0 && (
-                <>
-                    <Text style={styles.sectionTitle}>Mis adultos mayores asignados</Text>
-                    {assignments.map((a) => (
-                        <AppCard key={a.id}>
-                            <View style={styles.assignmentRow}>
-                                <MaterialCommunityIcons name="account" size={24} color={theme.colors.primary} />
-                                <Text style={styles.patientName}>
-                                    {a.patients?.first_name ?? ''} {a.patients?.first_lastname ?? ''}
-                                </Text>
-                                <AppButton label="Desasociarme" variant="outlined-error" onPress={() => handleUnlink(a)} />
-                            </View>
-                        </AppCard>
-                    ))}
-                </>
-            )}
-
             <Divider style={styles.divider} />
 
             <AppButton
