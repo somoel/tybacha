@@ -34,7 +34,8 @@ function getTodayLabel(completed: number, total: number): string {
     if (total === 0) return 'Sin ejercicios';
     if (completed === total) return 'Bien';
     if (completed > 0) return 'En progreso';
-    return 'Pendientes';
+    const pending = total - completed;
+    return `Pendientes: ${pending} ejercicio${pending !== 1 ? 's' : ''} para hoy`;
 }
 
 /**
@@ -92,16 +93,7 @@ export function PatientCard({
                         />
                         <Text style={styles.detail}>{genderLabel} · {age} años</Text>
                     </View>
-                    {hasActivePlan ? (
-                        <View style={styles.detailRow}>
-                            <MaterialCommunityIcons name="dumbbell" size={14} color={theme.colors.onSurfaceVariant} />
-                            <Text style={styles.detail}>
-                                {todayCompleted === todayTotal && todayTotal > 0
-                                    ? 'Ejercicios de hoy completados ✓'
-                                    : `Ejercicios pendientes para hoy: ${todayTotal - todayCompleted}`}
-                            </Text>
-                        </View>
-                    ) : (
+                    {!hasActivePlan && (
                         <View style={styles.detailRow}>
                             <MaterialCommunityIcons name="clipboard-text-outline" size={14} color={theme.colors.onSurfaceVariant} />
                             <Text style={styles.detail}>

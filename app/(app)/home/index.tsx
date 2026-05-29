@@ -101,17 +101,6 @@ export default function HomeScreen() {
         ? Math.round(Object.values(exerciseData).reduce((sum, d) => sum + d.weeklyCompliance, 0) / patients.length)
         : 0;
 
-    // Attention section: patients with incomplete exercises today or no active plan
-    const attentionPatients = isCaregiver
-        ? patients.filter((p) => {
-            const hasPlan = activePlanMap[p.id];
-            const data = exerciseData[p.id];
-            if (!hasPlan) return true;
-            if (data && data.todayTotal > 0 && data.todayCompleted < data.todayTotal) return true;
-            return false;
-        })
-        : [];
-
     if (isLoading) {
         return <AppLoader message="Cargando datos..." />;
     }
@@ -199,55 +188,6 @@ export default function HomeScreen() {
                         </View>
                     )}
 
-                    {/* Attention section for caregivers */}
-                    {isCaregiver && attentionPatients.length > 0 && (
-                        <>
-                            <View style={styles.attentionHeader}>
-                                <MaterialCommunityIcons name="alert-circle" size={20} color="#f57c0b" />
-                                <Text style={styles.attentionTitle}>Requiere atención</Text>
-                            </View>
-                            {attentionPatients.slice(0, 3).map((patient) => {
-                                const hasPlan = activePlanMap[patient.id];
-                                const data = exerciseData[patient.id];
-                                return (
-                                    <AppCard
-                                        key={patient.id}
-                                        style={styles.attentionCard}
-                                        onPress={() => router.push(`/(app)/patients/${patient.id}` as never)}
-                                    >
-                                        <View style={styles.attentionRow}>
-                                            <MaterialCommunityIcons
-                                                name={hasPlan ? 'alert' : 'account-remove'}
-                                                size={20}
-                                                color="#f57c0b"
-                                            />
-                                            <View style={styles.attentionInfo}>
-                                                <Text style={styles.attentionName}>
-                                                    {[patient.first_name, patient.first_lastname].filter(Boolean).join(' ')}
-                                                </Text>
-                                                <Text style={styles.attentionReason}>
-                                                    {!hasPlan ? 'Sin plan activo' :
-                                                        data && data.todayTotal > 0 && data.todayCompleted < data.todayTotal
-                                                            ? `Pendientes hoy: ${data.todayTotal - data.todayCompleted}`
-                                                            : 'Ejercicios pendientes'}
-                                                </Text>
-                                            </View>
-                                            <MaterialCommunityIcons name="chevron-right" size={20} color="#94a3b8" />
-                                        </View>
-                                    </AppCard>
-                                );
-                            })}
-                            {attentionPatients.length > 3 && (
-                                <Text
-                                    style={styles.seeAll}
-                                    onPress={() => router.push('/(app)/patients' as never)}
-                                >
-                                    Ver todos ({attentionPatients.length}) →
-                                </Text>
-                            )}
-                        </>
-                    )}
-
                     {/* Recent patients */}
                     <Text style={styles.sectionTitle}>
                         {hasStaffAccess ? 'Adultos mayores recientes' : 'Mis adultos mayores'}
@@ -273,7 +213,7 @@ export default function HomeScreen() {
                                 hasActivePlan={activePlanMap[patient.id]}
                                 weeklyExerciseData={exerciseData[patient.id]}
                                 showQuickActions={isCaregiver}
-                                onExercisePress={() => router.push(`/(app)/patients/${patient.id}/exercise` as never)}
+                                onExercisePress={() => router.push(`/(app)/patients/${patient.id}` as never)}
                                 onPress={() => router.push(`/(app)/patients/${patient.id}` as never)}
                             />
                         ))
@@ -383,40 +323,6 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#6b7280',
         textAlign: 'center',
-    },
-    attentionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
-    attentionTitle: {
-        fontFamily: 'Montserrat_700Bold',
-        fontSize: 16,
-        color: '#f57c0b',
-    },
-    attentionCard: {
-        backgroundColor: '#fff8f0',
-        borderLeftWidth: 3,
-        borderLeftColor: '#f57c0b',
-    },
-    attentionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    attentionInfo: {
-        flex: 1,
-    },
-    attentionName: {
-        fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 14,
-        color: '#1f2937',
-    },
-    attentionReason: {
-        fontFamily: 'Montserrat_400Regular',
-        fontSize: 12,
-        color: '#f57c0b',
     },
     sectionTitle: {
         fontFamily: 'Montserrat_700Bold',
