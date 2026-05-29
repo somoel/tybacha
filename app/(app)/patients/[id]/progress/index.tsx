@@ -15,7 +15,7 @@ import { es } from 'date-fns/locale';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 
 function getWeekRange(): { from: string; to: string } {
     const now = new Date();
@@ -33,6 +33,7 @@ function getWeekRange(): { from: string; to: string } {
 
 export default function ProgressScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
+    const theme = useTheme();
 
     const [patient, setPatient] = useState<Patient | null>(null);
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
