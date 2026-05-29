@@ -1,4 +1,5 @@
 import type { Patient, SectionedPatients } from '@/src/types/patient.types';
+import type { WeeklyExerciseData } from '@/src/services/batteryService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { SectionList, StyleSheet, View } from 'react-native';
@@ -7,6 +8,10 @@ import { PatientCard } from './PatientCard';
 
 interface PatientSectionListProps {
     sections: SectionedPatients;
+    activePlanMap: Record<string, boolean>;
+    exerciseData: Record<string, WeeklyExerciseData>;
+    batteryCounts: Record<string, number>;
+    isCaregiver: boolean;
     onPatientPress: (patient: Patient) => void;
     lastBatteryDates?: Record<string, string>;
 }
@@ -26,6 +31,10 @@ interface SectionData {
  */
 export function PatientSectionList({
     sections,
+    activePlanMap,
+    exerciseData,
+    batteryCounts,
+    isCaregiver,
     onPatientPress,
     lastBatteryDates,
 }: PatientSectionListProps) {
@@ -61,7 +70,11 @@ export function PatientSectionList({
                     <PatientCard
                         patient={item}
                         lastBatteryDate={lastBatteryDates?.[item.id]}
-                        showStatusBadge={false}
+                        batteryCount={batteryCounts[item.id]}
+                        hasActivePlan={activePlanMap[item.id]}
+                        weeklyExerciseData={exerciseData[item.id]}
+                        showQuickActions={isCaregiver}
+                        onExercisePress={() => onPatientPress(item)}
                         onPress={() => onPatientPress(item)}
                     />
                 </View>

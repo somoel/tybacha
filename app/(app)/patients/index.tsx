@@ -2,7 +2,7 @@ import { PatientCard } from '@/src/components/patients/PatientCard';
 import { PatientSectionList } from '@/src/components/patients/PatientSectionList';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchActivePlanStatus, fetchBatteryCountsForPatients } from '@/src/services/batteryService';
+import { fetchActivePlanStatus, fetchBatteryCountsForPatients, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
 import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { getSectionedPatients, usePatientsStore } from '@/src/stores/patientsStore';
@@ -19,10 +19,12 @@ import { ActivityIndicator, Searchbar } from 'react-native-paper';
 export default function PatientsListScreen() {
     const router = useRouter();
     const { user } = useAuthStore();
-    const { isAdmin, isProfessional } = usePermissions();
-    const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading, setPhotoThumbnails } = usePatientsStore();
+    const { isAdmin, isProfessional, isCaregiver } = usePermissions();
+    const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading, setPhotoThumbnails, exerciseData, setExerciseData } = usePatientsStore();
     const [sections, setSections] = useState<SectionedPatients | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
+    const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
 
     const loadPatients = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
         if (!user) return;
@@ -39,13 +41,22 @@ export default function PatientsListScreen() {
             const data = await fetchPatients(user.id, role);
             setPatients(data);
 
-            if (hasStaffAccess && data.length > 0) {
+            if (data.length > 0) {
                 const ids = data.map((p) => p.id);
-                const [counts, plans] = await Promise.all([
+                const [counts, plans, weeklyData] = await Promise.all([
                     fetchBatteryCountsForPatients(ids),
                     fetchActivePlanStatus(ids),
+                    fetchWeeklyExerciseDataForPatients(ids),
                 ]);
-                setSections(getSectionedPatients(data, counts, plans));
+                setBatteryCounts(counts);
+                setActivePlanMap(plans);
+                setExerciseData(weeklyData);
+
+                if (hasStaffAccess) {
+                    setSections(getSectionedPatients(data, counts, plans));
+                } else {
+                    setSections(null);
+                }
             } else {
                 setSections(null);
             }
@@ -61,7 +72,7 @@ export default function PatientsListScreen() {
                 setLoading(false);
             }
         }
-    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails]);
+    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails, setExerciseData]);
 
     useEffect(() => {
         void loadPatients();
@@ -113,6 +124,10 @@ export default function PatientsListScreen() {
             {hasStaffAccess && sections && !searchQuery ? (
                 <PatientSectionList
                     sections={sections}
+                    activePlanMap={activePlanMap}
+                    exerciseData={exerciseData}
+                    batteryCounts={batteryCounts}
+                    isCaregiver={false}
                     onPatientPress={handlePatientPress}
                 />
             ) : (
@@ -122,7 +137,11 @@ export default function PatientsListScreen() {
                     renderItem={({ item }) => (
                         <PatientCard
                             patient={item}
-                            showStatusBadge={false}
+                            batteryCount={batteryCounts[item.id]}
+                            hasActivePlan={activePlanMap[item.id]}
+                            weeklyExerciseData={exerciseData[item.id]}
+                            showQuickActions={isCaregiver}
+                            onExercisePress={() => router.push(`/(app)/patients/${item.id}/exercise` as never)}
                             onPress={() => handlePatientPress(item)}
                         />
                     )}
