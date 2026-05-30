@@ -9,7 +9,7 @@
   "crons": [
     {
       "path": "/cron/process-alerts",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 15 * * *"
     }
   ],
   "routes": [
