@@ -29,6 +29,16 @@ export function createApiExercisePlan(input: ApiCreateExercisePlanInput): Promis
     });
 }
 
+export function updateApiExercisePlan(
+    idPlanEjercicio: number,
+    input: ApiCreateExercisePlanInput,
+): Promise<ApiExercisePlan> {
+    return apiRequest<ApiExercisePlan>(`/exercise-plans/${idPlanEjercicio}`, {
+        method: 'PUT',
+        body: JSON.stringify(input),
+    });
+}
+
 export function updateApiExercisePlanStatus(
     idPlanEjercicio: number,
     estado: ApiPlanStatus,

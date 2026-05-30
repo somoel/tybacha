@@ -3,6 +3,7 @@ import {
     fetchApiExercisePlan,
     fetchApiExercisePlans,
     generateApiExercisePlan,
+    updateApiExercisePlan,
     updateApiExercisePlanStatus,
 } from '@/src/api/exercisePlansApi';
 import { createApiExerciseRecord } from '@/src/api/trackingApi';
@@ -71,6 +72,22 @@ export async function createExercisePlan(
 ): Promise<ExercisePlan> {
     const plan = await createApiExercisePlan({
         idAdultoMayor: Number(patientId),
+        ...planData,
+    });
+    return mapApiPlan(plan);
+}
+
+export async function updateExercisePlan(
+    planId: string,
+    planData: {
+        titulo?: string;
+        objetivo?: string;
+        nivelDificultad?: 'bajo' | 'medio' | 'alto';
+        ejercicios: ApiCreateExercisePlanInput['ejercicios'];
+    },
+): Promise<ExercisePlan> {
+    const plan = await updateApiExercisePlan(Number(planId), {
+        idAdultoMayor: 0,
         ...planData,
     });
     return mapApiPlan(plan);

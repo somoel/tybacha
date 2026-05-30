@@ -2,7 +2,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { createExercisePlan } from '@/src/services/exercisePlanService';
+import { createExercisePlan, updateExercisePlan } from '@/src/services/exercisePlanService';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -54,6 +54,8 @@ interface ExercisePlanFormProps {
     initialData?: ExercisePlanFormData | null;
     isAiFailed?: boolean;
     aiError?: string | null;
+    editMode?: boolean;
+    planId?: string;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
@@ -82,6 +84,8 @@ export function ExercisePlanForm({
     initialData,
     isAiFailed = false,
     aiError,
+    editMode = false,
+    planId,
     onSuccess,
     onCancel,
 }: ExercisePlanFormProps) {
@@ -118,15 +122,23 @@ export function ExercisePlanForm({
                 };
             });
 
-            await createExercisePlan(patientId, {
+            const planData = {
                 titulo: data.titulo,
                 objetivo: data.objetivo || undefined,
                 nivelDificultad: data.nivelDificultad,
-                origen: initialData ? 'mixto' : 'manual',
                 ejercicios,
-            });
+            };
 
-            setSnackbar({ visible: true, message: 'Plan guardado exitosamente', type: 'success' });
+            if (editMode && planId) {
+                await updateExercisePlan(planId, planData);
+            } else {
+                await createExercisePlan(patientId, {
+                    ...planData,
+                    origen: initialData ? 'mixto' : 'manual',
+                });
+            }
+
+            setSnackbar({ visible: true, message: editMode ? 'Plan actualizado exitosamente' : 'Plan guardado exitosamente', type: 'success' });
             setTimeout(() => onSuccess?.(), 1000);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Error al guardar el plan.';
@@ -146,12 +158,14 @@ export function ExercisePlanForm({
             )}
 
             <Text style={styles.sectionTitle}>
-                {initialData ? 'Revisar plan generado' : 'Crear plan manual'}
+                {editMode ? 'Editar plan de ejercicios' : initialData ? 'Revisar plan generado' : 'Crear plan manual'}
             </Text>
             <Text style={styles.sectionSubtitle}>
-                {initialData
-                    ? 'Modifica los ejercicios antes de guardar.'
-                    : 'Completa los datos de los 5 ejercicios semanales.'}
+                {editMode
+                    ? 'Modifica los datos del plan y sus ejercicios.'
+                    : initialData
+                        ? 'Modifica los ejercicios antes de guardar.'
+                        : 'Completa los datos de los 5 ejercicios semanales.'}
             </Text>
 
             <AppInput control={control} name="titulo" label="Titulo del plan *" accessibilityLabel="Titulo del plan" />
@@ -283,13 +297,13 @@ export function ExercisePlanForm({
                     />
                 )}
                 <AppButton
-                    label={isSaving ? 'Guardando...' : 'Guardar plan'}
+                    label={isSaving ? (editMode ? 'Actualizando...' : 'Guardando...') : (editMode ? 'Actualizar plan' : 'Guardar plan')}
                     variant="filled"
                     icon="content-save"
                     onPress={handleSubmit(onSubmit)}
                     loading={isSaving}
                     disabled={isSaving}
-                    accessibilityLabel="Guardar plan de ejercicios"
+                    accessibilityLabel={editMode ? 'Actualizar plan de ejercicios' : 'Guardar plan de ejercicios'}
                 />
             </View>
 

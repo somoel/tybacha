@@ -56,6 +56,13 @@ const createPlanSchema = z.object({
   ejercicios: z.array(aiExerciseSchema).min(1).max(5),
 });
 
+const updatePlanSchema = z.object({
+  titulo: z.string().max(160).optional(),
+  objetivo: z.string().optional(),
+  nivelDificultad: z.enum(['bajo', 'medio', 'alto']).optional(),
+  ejercicios: z.array(aiExerciseSchema).min(1).max(5).optional(),
+});
+
 interface OlderAdultContextRow extends RowDataPacket {
   id_adulto_mayor: number;
   nombres: string;
@@ -540,6 +547,113 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
           actorId: actor.idUsuario,
         },
       );
+
+      await connection.commit();
+      return fetchPlanWithExercises(params.id);
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+
+  app.put('/exercise-plans/:id', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    if (actor.rol === 'cuidador') {
+      throw forbidden('Solo profesionales o administradores editan planes');
+    }
+
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+    const body = updatePlanSchema.parse(request.body);
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [rows] = await connection.query<PlanRow[]>(
+        `select id_plan_ejercicio, id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad,
+                fecha_inicio, fecha_fin, creado_por, revisado_por, asignado_por, creado_en
+         from plan_ejercicio
+         where id_plan_ejercicio = :id
+         limit 1`,
+        { id: params.id },
+      );
+
+      const plan = rows[0];
+      if (!plan) throw notFound('Plan no encontrado');
+      await getOlderAdultContext(plan.id_adulto_mayor, actor.idUsuario, actor.rol);
+
+      if (plan.estado === 'finalizado' || plan.estado === 'cancelado') {
+        throw badRequest('No se puede editar un plan finalizado o cancelado');
+      }
+
+      const setClauses: string[] = [];
+      const bindValues: { id: number; titulo?: string; objetivo?: string | null; nivelDificultad?: string } = { id: params.id };
+
+      if (body.titulo !== undefined) {
+        setClauses.push('titulo = :titulo');
+        bindValues.titulo = body.titulo;
+      }
+      if (body.objetivo !== undefined) {
+        setClauses.push('objetivo = :objetivo');
+        bindValues.objetivo = body.objetivo;
+      }
+      if (body.nivelDificultad !== undefined) {
+        setClauses.push('nivel_dificultad = :nivelDificultad');
+        bindValues.nivelDificultad = body.nivelDificultad;
+      }
+
+      if (setClauses.length > 0) {
+        await connection.query(
+          `update plan_ejercicio set ${setClauses.join(', ')} where id_plan_ejercicio = :id`,
+          bindValues,
+        );
+      }
+
+      if (body.ejercicios) {
+        await connection.query(
+          `update ejercicio_plan set activo = 0 where id_plan_ejercicio = :id`,
+          { id: params.id },
+        );
+
+        for (let index = 0; index < body.ejercicios.length; index++) {
+          const exercise = body.ejercicios[index]!;
+          await connection.query(
+            `insert into ejercicio_plan
+              (id_plan_ejercicio, nombre_personalizado, descripcion_personalizada, dia_semana,
+               orden, series, repeticiones, duracion_segundos, descanso_segundos, dificultad, instrucciones)
+             values
+              (:idPlanEjercicio, :nombre, :descripcion, :diaSemana,
+               :orden, :series, :repeticiones, :duracionSegundos, :descansoSegundos, :dificultad, :instrucciones)`,
+            {
+              idPlanEjercicio: params.id,
+              nombre: exercise.nombre,
+              descripcion: exercise.descripcion ?? null,
+              diaSemana: exercise.diaSemana,
+              orden: index + 1,
+              series: exercise.series ?? null,
+              repeticiones: exercise.repeticiones ?? null,
+              duracionSegundos: exercise.duracionSegundos ?? null,
+              descansoSegundos: exercise.descansoSegundos ?? null,
+              dificultad: exercise.dificultad,
+              instrucciones: exercise.instrucciones ?? null,
+            },
+          );
+        }
+      }
+
+      await insertChangeAudit(connection, {
+        tabla: 'plan_ejercicio',
+        registroId: params.id,
+        accion: 'actualizar',
+        nuevos: body,
+        context: {
+          userId: actor.idUsuario,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
 
       await connection.commit();
       return fetchPlanWithExercises(params.id);

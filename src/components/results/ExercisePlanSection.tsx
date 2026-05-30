@@ -15,7 +15,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
-type FormMode = 'idle' | 'generating' | 'ready';
+type FormMode = 'idle' | 'generating' | 'ready' | 'editing';
 
 interface ExercisePlanSectionProps {
     patientId: string;
@@ -37,6 +37,7 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [formMode, setFormMode] = useState<FormMode>(forceCreatePlan ? 'idle' : 'idle');
     const [formData, setFormData] = useState<ExercisePlanFormData | null>(null);
+    const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
@@ -105,6 +106,26 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
         }
     };
 
+    const handleEditPlan = (plan: ExercisePlan) => {
+        setEditingPlanId(plan.id);
+        setFormData({
+            titulo: 'Plan semanal personalizado',
+            objetivo: plan.summary ?? '',
+            nivelDificultad: 'bajo',
+            ejercicios: plan.exercises.map((ex) => ({
+                nombre: ex.name,
+                descripcion: ex.description,
+                series: ex.sets,
+                repeticiones: ex.reps ?? undefined,
+                duracionSegundos: ex.duration_seconds ?? undefined,
+                descansoSegundos: undefined,
+                dificultad: 'bajo',
+                instrucciones: ex.rationale,
+            })),
+        });
+        setFormMode('editing');
+    };
+
     const handlePlanSaved = async () => {
         try {
             const patientPlans = await fetchExercisePlans(patientId);
@@ -115,6 +136,7 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
         }
         setFormMode('idle');
         setFormData(null);
+        setEditingPlanId(null);
         setAiError(null);
         onPlanSaved?.();
     };
@@ -175,7 +197,18 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
             {/* Active exercise plan */}
             {activePlan && formMode === 'idle' && (
                 <View style={styles.planSection}>
-                    <Text style={styles.sectionTitle}>Plan de ejercicios activo</Text>
+                    <View style={styles.planHeader}>
+                        <Text style={styles.sectionTitle}>Plan de ejercicios activo</Text>
+                        {hasStaffAccess && (
+                            <AppButton
+                                label="Editar"
+                                variant="outlined"
+                                icon="pencil"
+                                onPress={() => handleEditPlan(activePlan)}
+                                accessibilityLabel="Editar plan de ejercicios"
+                            />
+                        )}
+                    </View>
                     {activePlan.summary && (
                         <AppCard>
                             <Text style={styles.summary}>{activePlan.summary}</Text>
@@ -189,6 +222,18 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
                         />
                     ))}
                 </View>
+            )}
+
+            {/* Edit plan form */}
+            {formMode === 'editing' && editingPlanId && formData && (
+                <ExercisePlanForm
+                    patientId={patientId}
+                    initialData={formData}
+                    editMode
+                    planId={editingPlanId}
+                    onSuccess={handlePlanSaved}
+                    onCancel={() => { setFormMode('idle'); setFormData(null); setEditingPlanId(null); }}
+                />
             )}
 
             <AppSnackbar
@@ -217,11 +262,16 @@ const styles = StyleSheet.create({
     generateSection: { gap: 8 },
     manualButton: { marginTop: 4 },
     planSection: { marginTop: 8 },
+    planHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
     sectionTitle: {
         fontFamily: 'Montserrat_700Bold',
         fontSize: 16,
         color: '#1f2937',
-        marginBottom: 10,
     },
     summary: {
         fontFamily: 'Montserrat_400Regular',
