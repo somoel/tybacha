@@ -16,6 +16,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
   CORS_ALLOWED_ORIGINS: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
   CEREBRAS_API_KEY: z.string().optional(),
   CEREBRAS_MODEL: z.string().default('gpt-oss-120b'),
   SEED_ADMIN_EMAIL: z.string().email().default('admin@tybacha.local'),

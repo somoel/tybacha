@@ -351,6 +351,13 @@ export default function PatientDetailScreen() {
                             onPress={() => router.push(`/(app)/patients/${id}/assign-caregiver` as never)}
                             accessibilityLabel="Asignar cuidador"
                         />
+                        <AppButton
+                            label="Alertas programadas"
+                            variant="outlined"
+                            icon="bell-outline"
+                            onPress={() => router.push(`/(app)/patients/${id}/alerts` as never)}
+                            accessibilityLabel="Ver alertas programadas"
+                        />
                     </>
                 )}
             </View>

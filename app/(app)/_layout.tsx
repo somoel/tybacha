@@ -1,5 +1,6 @@
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Tabs, usePathname } from 'expo-router';
@@ -16,6 +17,7 @@ export default function AppLayout() {
     const theme = useTheme();
     const pathname = usePathname();
     const { isCaregiver } = usePermissions();
+    const unreadCount = useNotificationStore((s) => s.unreadCount);
     const isOnline = useSyncStore((s) => s.isOnline);
     const isBatteryMode =
         /\/patients\/[^/]+\/batteries\/new/.test(pathname) ||
@@ -83,6 +85,29 @@ export default function AppLayout() {
                             />
                         ),
                         tabBarAccessibilityLabel: 'Adultos mayores',
+                    }}
+                />
+                <Tabs.Screen
+                    name="notifications/index"
+                    options={{
+                        title: 'Notificaciones',
+                        headerShown: false,
+                        tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+                        tabBarBadgeStyle: {
+                            fontFamily: 'Montserrat_700Bold',
+                            fontSize: 10,
+                            minWidth: 18,
+                            height: 18,
+                            lineHeight: 18,
+                        },
+                        tabBarIcon: ({ color, focused }) => (
+                            <MaterialCommunityIcons
+                                name={focused ? 'bell' : 'bell-outline'}
+                                size={24}
+                                color={color}
+                            />
+                        ),
+                        tabBarAccessibilityLabel: 'Notificaciones',
                     }}
                 />
                 <Tabs.Screen

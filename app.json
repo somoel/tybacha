@@ -40,7 +40,14 @@
       ],
       "expo-secure-store",
       "expo-sqlite",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#006d77"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

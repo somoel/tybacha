@@ -198,6 +198,64 @@ function notificationTextForStatus(status: string) {
   };
 }
 
+interface CaregiverUserRow extends RowDataPacket {
+  id_usuario: number;
+}
+
+async function notifyAssignedCaregivers(input: {
+  idAdultoMayor: number;
+  titulo: string;
+  mensaje: string;
+  estado: string;
+}): Promise<void> {
+  const [caregivers] = await pool.query<CaregiverUserRow[]>(
+    `select ac.id_cuidador as id_usuario
+     from asignacion_cuidador_adulto_mayor ac
+     where ac.id_adulto_mayor = :idAdultoMayor
+       and ac.estado = 'activa'`,
+    { idAdultoMayor: input.idAdultoMayor },
+  );
+
+  for (const caregiver of caregivers) {
+    const [result] = await pool.query<ResultSetHeader>(
+      `insert into notificacion
+        (id_usuario_destinatario, id_adulto_mayor, tipo_notificacion, titulo, mensaje, canal, estado, enviada_en)
+       values
+        (:idUsuario, :idAdultoMayor, 'cumplimiento', :titulo, :mensaje, 'push', 'pendiente', current_timestamp(3))`,
+      {
+        idUsuario: caregiver.id_usuario,
+        idAdultoMayor: input.idAdultoMayor,
+        titulo: input.titulo,
+        mensaje: input.mensaje,
+      },
+    );
+
+    try {
+      await sendPushToUser({
+        idUsuario: caregiver.id_usuario,
+        title: input.titulo,
+        body: input.mensaje,
+        data: { idNotificacion: result.insertId, idAdultoMayor: input.idAdultoMayor },
+      });
+
+      await pool.query(
+        `update notificacion set estado = 'enviada', enviada_en = current_timestamp(3)
+         where id_notificacion = :idNotificacion`,
+        { idNotificacion: result.insertId },
+      );
+    } catch (error) {
+      await pool.query(
+        `update notificacion set estado = 'fallida', error_envio = :error
+         where id_notificacion = :idNotificacion`,
+        {
+          idNotificacion: result.insertId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+    }
+  }
+}
+
 async function createAndSendTrackingNotification(input: {
   idUsuario: number;
   idAdultoMayor: number;
@@ -452,6 +510,15 @@ export async function registerTrackingRoutes(app: FastifyInstance): Promise<void
         estado: body.estado,
         idRegistroEjercicioPlan: record.id_registro_ejercicio_plan,
       });
+
+      const text = notificationTextForStatus(body.estado);
+      await notifyAssignedCaregivers({
+        idAdultoMayor: body.idAdultoMayor,
+        titulo: text.title,
+        mensaje: text.body,
+        estado: body.estado,
+      }).catch(() => {});
+
       return mapExerciseRecord(record);
     } catch (error) {
       await connection.rollback();

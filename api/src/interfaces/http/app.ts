@@ -4,6 +4,8 @@ import Fastify from 'fastify';
 import { ZodError } from 'zod';
 import { env } from '../../config/env.js';
 import { HttpError } from './httpErrors.js';
+import { registerAlertRoutes } from './modules/alerts/routes.js';
+import { registerAlertCronRoutes } from './modules/alerts/cron.js';
 import { registerAuditRoutes } from './modules/audit/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerConsentRoutes } from './modules/consents/routes.js';
@@ -146,6 +148,8 @@ export async function buildApp() {
   await registerExercisePlanRoutes(app);
   await registerTrackingRoutes(app);
   await registerNotificationRoutes(app);
+  await registerAlertRoutes(app);
+  await registerAlertCronRoutes(app);
   await registerReportRoutes(app);
   await registerAuditRoutes(app);
   await registerSyncRoutes(app);

@@ -1,5 +1,6 @@
 import { TybachaTheme } from '@/src/constants/theme';
 import { useAuth } from '@/src/hooks/useAuth';
+import { useNotifications } from '@/src/hooks/useNotifications';
 import { useOffline } from '@/src/hooks/useOffline';
 import {
     Montserrat_400Regular,
@@ -35,6 +36,9 @@ export default function RootLayout() {
 
     // Initialize auth listener
     useAuth();
+
+    // Initialize notification listeners
+    useNotifications();
 
     // Initialize offline detection
     useOffline();
