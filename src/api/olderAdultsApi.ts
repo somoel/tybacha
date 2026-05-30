@@ -44,6 +44,24 @@ export function deletePatientPhotoApi(idAdultoMayor: number): Promise<{ ok: true
 }
 
 export function fetchApiOlderAdultsPhotos(): Promise<Record<string, string>> {
-    return apiRequest<Record<string, string>>('/older-adults/photos');
+  return apiRequest<Record<string, string>>('/older-adults/photos');
+}
+
+export function assignCaregiverApi(
+  idAdultoMayor: number,
+  idCuidador: number,
+): Promise<{ ok: true }> {
+  return apiRequest<{ ok: true }>(`/older-adults/${idAdultoMayor}/caregiver`, {
+    method: 'PATCH',
+    body: JSON.stringify({ idCuidador }),
+  });
+}
+
+export function unassignCaregiverApi(
+  idAdultoMayor: number,
+): Promise<{ ok: true }> {
+  return apiRequest<{ ok: true }>(`/older-adults/${idAdultoMayor}/caregiver`, {
+    method: 'DELETE',
+  });
 }
 

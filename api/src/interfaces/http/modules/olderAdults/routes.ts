@@ -249,11 +249,10 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
       throw forbidden('El administrador no crea adultos mayores directamente');
     }
 
-    const idCuidador = actor.rol === 'cuidador' ? actor.idUsuario : body.idCuidador;
-    if (!idCuidador) {
-      throw badRequest('El adulto mayor debe quedar enlazado a un cuidador');
+    const idCuidador = actor.rol === 'cuidador' ? actor.idUsuario : (body.idCuidador ?? null);
+    if (idCuidador) {
+      await assertCaregiverExists(idCuidador, actor.rol === 'profesional' ? actor.idUsuario : undefined);
     }
-    await assertCaregiverExists(idCuidador, actor.rol === 'profesional' ? actor.idUsuario : undefined);
 
     const connection = await pool.getConnection();
     try {
@@ -288,17 +287,19 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
       );
 
       const idAdultoMayor = insertResult.insertId;
-      await connection.query(
-        `insert into asignacion_cuidador_adulto_mayor
-          (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
-         values
-          (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
-        {
-          idAdultoMayor,
-          idCuidador,
-          asignadoPor: actor.idUsuario,
-        },
-      );
+      if (idCuidador) {
+        await connection.query(
+          `insert into asignacion_cuidador_adulto_mayor
+            (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
+           values
+            (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
+          {
+            idAdultoMayor,
+            idCuidador,
+            asignadoPor: actor.idUsuario,
+          },
+        );
+      }
 
       await insertChangeAudit(connection, {
         tabla: 'adulto_mayor',
@@ -317,7 +318,7 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
       return {
         idAdultoMayor,
         ...body,
-        idCuidador,
+        idCuidador: idCuidador ?? undefined,
         estado: 'activo',
       };
     } catch (error) {
@@ -563,5 +564,125 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
     }
 
     return photos;
+  });
+
+  // ── Caregiver assignment ──────────────────────────────────────────
+
+  const assignCaregiverSchema = z.object({
+    idCuidador: z.number().int().positive().nullable(),
+  });
+
+  app.patch('/older-adults/:id/caregiver', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+    const body = assignCaregiverSchema.parse(request.body);
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const existing = await assertOlderAdultExists(params.id);
+      assertActorAllowed(actor, existing);
+
+      // Finalize current active assignment if any
+      const [currentAssignment] = await connection.query<RowDataPacket[]>(
+        `select id_asignacion_cuidador_adulto_mayor
+         from asignacion_cuidador_adulto_mayor
+         where id_adulto_mayor = :idAdultoMayor and estado = 'activa'
+         limit 1`,
+        { idAdultoMayor: params.id },
+      );
+
+      if (currentAssignment[0]) {
+        await connection.query(
+          `update asignacion_cuidador_adulto_mayor
+           set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Reasignacion'
+           where id_asignacion_cuidador_adulto_mayor = :id`,
+          { id: currentAssignment[0].id_asignacion_cuidador_adulto_mayor },
+        );
+      }
+
+      // Create new assignment if idCuidador is provided
+      if (body.idCuidador) {
+        await assertCaregiverExists(body.idCuidador, actor.rol === 'profesional' ? actor.idUsuario : undefined);
+        await connection.query(
+          `insert into asignacion_cuidador_adulto_mayor
+            (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
+           values
+            (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
+          {
+            idAdultoMayor: params.id,
+            idCuidador: body.idCuidador,
+            asignadoPor: actor.idUsuario,
+          },
+        );
+      }
+
+      await insertChangeAudit(connection, {
+        tabla: 'asignacion_cuidador_adulto_mayor',
+        registroId: params.id,
+        accion: body.idCuidador ? 'actualizar' : 'inactivar',
+        anteriores: { id_cuidador_anterior: existing.id_cuidador },
+        nuevos: { id_cuidador_nuevo: body.idCuidador },
+        context: {
+          userId: actor.idUsuario,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.commit();
+      return { ok: true };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+
+  app.delete('/older-adults/:id/caregiver', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const existing = await assertOlderAdultExists(params.id);
+      assertActorAllowed(actor, existing);
+
+      const [result] = await connection.query<ResultSetHeader>(
+        `update asignacion_cuidador_adulto_mayor
+         set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Desasignacion'
+         where id_adulto_mayor = :idAdultoMayor and estado = 'activa'`,
+        { idAdultoMayor: params.id },
+      );
+
+      if (result.affectedRows === 0) {
+        await connection.rollback();
+        throw notFound('No hay cuidador asignado a este adulto mayor');
+      }
+
+      await insertChangeAudit(connection, {
+        tabla: 'asignacion_cuidador_adulto_mayor',
+        registroId: params.id,
+        accion: 'inactivar',
+        anteriores: { id_cuidador: existing.id_cuidador },
+        context: {
+          userId: actor.idUsuario,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.commit();
+      return { ok: true };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   });
 }

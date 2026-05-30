@@ -90,7 +90,7 @@ export async function apiRequest<TResponse>(
     const token = await getAccessToken();
     const headers = new Headers(options.headers);
 
-    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
         headers.set('Content-Type', 'application/json');
     }
 

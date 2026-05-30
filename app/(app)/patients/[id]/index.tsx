@@ -297,6 +297,18 @@ export default function PatientDetailScreen() {
                 )}
             </AppCard>
 
+            {/* Caregiver status indicator */}
+            {!patient.id_cuidador && hasStaffAccess && (
+                <AppCard style={styles.warningCard}>
+                    <View style={styles.warningContent}>
+                        <MaterialCommunityIcons name="account-alert-outline" size={20} color="#d97706" />
+                        <Text style={styles.warningText}>
+                            Este adulto mayor no tiene cuidador asignado. Asigne uno para poder registrar ejercicios y seguimiento.
+                        </Text>
+                    </View>
+                </AppCard>
+            )}
+
             {/* Action buttons */}
             <View style={styles.actions}>
                 <AppButton
@@ -404,6 +416,9 @@ export default function PatientDetailScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 16 },
     infoCard: { marginBottom: 16 },
+    warningCard: { marginBottom: 16, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fcd34d' },
+    warningContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    warningText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#92400e', flex: 1 },
     header: { flexDirection: 'row', gap: 14, alignItems: 'center' },
     headerInfo: { flex: 1, gap: 2 },
     fullName: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },

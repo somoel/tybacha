@@ -1,9 +1,11 @@
 import {
+    assignCaregiverApi,
     createApiOlderAdult,
     deletePatientPhotoApi,
     fetchApiOlderAdult,
     fetchApiOlderAdults,
     fetchApiOlderAdultsPhotos,
+    unassignCaregiverApi,
     updateApiOlderAdult,
     uploadPatientPhotoApi,
 } from '@/src/api/olderAdultsApi';
@@ -34,7 +36,10 @@ function mapOlderAdultToPatient(adult: ApiOlderAdult): Patient {
         first_lastname: adult.apellidos,
         birth_date: adult.fechaNacimiento,
         gender: mapGenderFromApi(adult.genero),
-        caregiver_email: adult.cuidador ? String(adult.cuidador.idUsuario) : undefined,
+        caregiver_email: adult.cuidador
+            ? `${adult.cuidador.nombres ?? ''} ${adult.cuidador.apellidos ?? ''}`.trim() || String(adult.cuidador.idUsuario)
+            : undefined,
+        id_cuidador: adult.cuidador?.idUsuario,
         has_photo: adult.hasPhoto,
         photo_data: adult.photoData ?? null,
         created_at: '',
@@ -160,12 +165,19 @@ export async function searchCaregivers(query: string) {
         }));
 }
 
-export async function assignCaregiver(..._args: unknown[]): Promise<void> {
-    throw new Error('La reasignacion de cuidadores se migrara al nuevo modulo de asignaciones.');
+export async function assignCaregiver(
+    caregiverId: string,
+    patientId: string,
+    _userId?: string,
+): Promise<void> {
+    await assignCaregiverApi(Number(patientId), Number(caregiverId));
 }
 
-export async function unassignCaregiver(..._args: unknown[]): Promise<void> {
-    throw new Error('La desasociacion se migrara al nuevo modulo de asignaciones.');
+export async function unassignCaregiver(
+    _caregiverId: string,
+    patientId: string,
+): Promise<void> {
+    await unassignCaregiverApi(Number(patientId));
 }
 
 export async function fetchAssignedCaregiver(patientId: string) {

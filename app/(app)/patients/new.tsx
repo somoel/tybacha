@@ -126,11 +126,6 @@ export default function NewPatientScreen() {
     const onSubmit = async (data: PatientFormValues) => {
         if (isLoading) return;
         if (!user) return;
-        const requiresCaregiver = canAssignCaregiver;
-        if (requiresCaregiver && !data.id_cuidador) {
-            setSnackbar({ visible: true, message: 'Debe asignar un cuidador al adulto mayor.', type: 'error' });
-            return;
-        }
         const startedAt = Date.now();
         setIsLoading(true);
         try {
@@ -204,7 +199,7 @@ export default function NewPatientScreen() {
 
                     {canAssignCaregiver && (
                         <View style={styles.caregiverSection}>
-                            <Text style={styles.fieldLabel}>Cuidador asignado *</Text>
+                            <Text style={styles.fieldLabel}>Cuidador asignado (opcional)</Text>
                             {isLoadingCaregivers ? (
                                 <Text style={styles.helperText}>Cargando cuidadores...</Text>
                             ) : caregivers.length === 0 ? (

@@ -82,24 +82,22 @@ async function applyOlderAdultCreate(
     ? actor.idUsuario
     : optionalNumber(payload, 'idCuidador');
 
-  if (!idCuidador) {
-    throw badRequest('Crear adulto mayor offline requiere idCuidador');
+  if (idCuidador) {
+    const [userRows] = await connection.query<RowDataPacket[]>(
+      `select u.id_usuario
+       from usuario u
+       left join profesional_cuidador pc
+         on pc.id_cuidador = u.id_usuario
+        and pc.estado = 'activa'
+       where u.id_usuario = :idCuidador
+         and u.rol = 'cuidador'
+         and u.estado = 'activo'
+         and (:idProfesional is null or pc.id_profesional = :idProfesional)
+       limit 1`,
+      { idCuidador, idProfesional: actor.rol === 'profesional' ? actor.idUsuario : null },
+    );
+    if (!userRows[0]) throw badRequest('Cuidador no encontrado, inactivo o no pertenece al profesional');
   }
-
-  const [userRows] = await connection.query<RowDataPacket[]>(
-    `select u.id_usuario
-     from usuario u
-     left join profesional_cuidador pc
-       on pc.id_cuidador = u.id_usuario
-      and pc.estado = 'activa'
-     where u.id_usuario = :idCuidador
-       and u.rol = 'cuidador'
-       and u.estado = 'activo'
-       and (:idProfesional is null or pc.id_profesional = :idProfesional)
-     limit 1`,
-    { idCuidador, idProfesional: actor.rol === 'profesional' ? actor.idUsuario : null },
-  );
-  if (!userRows[0]) throw badRequest('Cuidador no encontrado, inactivo o no pertenece al profesional');
 
   const [insertResult] = await connection.query<ResultSetHeader>(
     `insert into adulto_mayor
@@ -126,13 +124,15 @@ async function applyOlderAdultCreate(
   );
 
   const idAdultoMayor = insertResult.insertId;
-  await connection.query(
-    `insert into asignacion_cuidador_adulto_mayor
-      (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
-     values
-      (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
-    { idAdultoMayor, idCuidador, asignadoPor: actor.idUsuario },
-  );
+  if (idCuidador) {
+    await connection.query(
+      `insert into asignacion_cuidador_adulto_mayor
+        (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
+       values
+        (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
+      { idAdultoMayor, idCuidador, asignadoPor: actor.idUsuario },
+    );
+  }
 
   await insertChangeAudit(connection, {
     tabla: 'adulto_mayor',
