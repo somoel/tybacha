@@ -33,6 +33,7 @@ const medicalNoteSchema = z.object({
 
 const updatePathologySchema = pathologySchema.partial();
 const updateMedicationSchema = medicationSchema.partial();
+const updateMedicalNoteSchema = medicalNoteSchema.partial();
 
 // ── Row interfaces ─────────────────────────────────────────────────────────
 
@@ -566,6 +567,69 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       ...body,
       registradoPor: actor.idUsuario,
     };
+  });
+
+  // PATCH /older-adults/:id/medical-notes/:noteId
+  app.patch('/older-adults/:id/medical-notes/:noteId', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const params = z.object({
+      id: z.coerce.number().int().positive(),
+      noteId: z.coerce.number().int().positive(),
+    }).parse(request.params);
+    const body = updateMedicalNoteSchema.parse(request.body);
+
+    if (actor.rol === 'cuidador') {
+      throw forbidden('Solo profesionales o administradores modifican notas medicas');
+    }
+    await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const [existingRows] = await connection.query<MedicalNoteRow[]>(
+        `select * from nota_historial_medico
+         where id_nota_historial_medico = :noteId and id_adulto_mayor = :idAdultoMayor
+         limit 1`,
+        { noteId: params.noteId, idAdultoMayor: params.id },
+      );
+
+      const existing = existingRows[0];
+      if (!existing) throw notFound('Nota medica no encontrada');
+
+      const updates: string[] = [];
+      const vals: Record<string, unknown> = { id: params.noteId };
+      if (body.tipoNota !== undefined) { updates.push('tipo_nota = :tipoNota'); vals.tipoNota = body.tipoNota; }
+      if (body.contenido !== undefined) { updates.push('contenido = :contenido'); vals.contenido = body.contenido; }
+
+      if (updates.length > 0) {
+        await connection.query(
+          `update nota_historial_medico set ${updates.join(', ')} where id_nota_historial_medico = :id`,
+          vals,
+        );
+      }
+
+      await insertChangeAudit(connection, {
+        tabla: 'nota_historial_medico',
+        registroId: params.noteId,
+        accion: 'actualizar',
+        anteriores: existing,
+        nuevos: body,
+        context: {
+          userId: actor.idUsuario,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.commit();
+      return { ok: true };
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   });
 
   // DELETE /older-adults/:id/medical-notes/:noteId

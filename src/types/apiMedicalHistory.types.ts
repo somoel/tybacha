@@ -67,3 +67,5 @@ export interface ApiCreateMedicalNoteInput {
   tipoNota?: ApiMedicalNoteType;
   contenido: string;
 }
+
+export type ApiUpdateMedicalNoteInput = Partial<ApiCreateMedicalNoteInput>;

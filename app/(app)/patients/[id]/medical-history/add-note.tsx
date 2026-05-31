@@ -4,8 +4,8 @@ import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text } from 'react-native-paper';
@@ -27,30 +27,56 @@ const NOTE_TYPES = [
 ];
 
 export default function AddMedicalNoteScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, noteId } = useLocalSearchParams<{ id: string; noteId?: string }>();
   const router = useRouter();
-  const { addMedicalNote } = useMedicalHistoryStore();
+  const navigation = useNavigation();
+  const { addMedicalNote, updateMedicalNote, medicalNotes } = useMedicalHistoryStore();
   const [isSaving, setIsSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
-  const { control, handleSubmit } = useForm<FormValues>({
+  const isEditing = Boolean(noteId);
+  const existingItem = isEditing ? medicalNotes.find((n) => n.id === noteId) : null;
+
+  const { control, handleSubmit, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { tipoNota: 'observacion', contenido: '' },
   });
+
+  useEffect(() => {
+    if (existingItem) {
+      reset({
+        tipoNota: existingItem.tipoNota,
+        contenido: existingItem.contenido,
+      });
+      navigation.setOptions({ title: 'Editar nota médica' });
+    } else {
+      navigation.setOptions({ title: 'Agregar nota médica' });
+    }
+  }, [existingItem, reset, navigation]);
 
   const onSubmit = async (data: FormValues) => {
     if (!id || isSaving) return;
     setIsSaving(true);
     try {
-      const result = await addMedicalNote(Number(id), data);
-      if (result) {
-        setSnackbar({ visible: true, message: 'Nota registrada ✓', type: 'success' });
-        setTimeout(() => router.back(), 1200);
+      if (isEditing && noteId) {
+        const ok = await updateMedicalNote(Number(id), Number(noteId), data);
+        if (ok) {
+          setSnackbar({ visible: true, message: 'Nota actualizada ✓', type: 'success' });
+          setTimeout(() => router.back(), 1200);
+        } else {
+          setSnackbar({ visible: true, message: 'Error al actualizar nota', type: 'error' });
+        }
       } else {
-        setSnackbar({ visible: true, message: 'Error al registrar nota', type: 'error' });
+        const result = await addMedicalNote(Number(id), data);
+        if (result) {
+          setSnackbar({ visible: true, message: 'Nota registrada ✓', type: 'success' });
+          setTimeout(() => router.back(), 1200);
+        } else {
+          setSnackbar({ visible: true, message: 'Error al registrar nota', type: 'error' });
+        }
       }
     } catch {
-      setSnackbar({ visible: true, message: 'Error al registrar nota', type: 'error' });
+      setSnackbar({ visible: true, message: `Error al ${isEditing ? 'actualizar' : 'registrar'} nota`, type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -67,7 +93,16 @@ export default function AddMedicalNoteScreen() {
 
           <AppInput control={control} name="contenido" label="Contenido *" placeholder="Describa el antecedente, alergia, limitación u observación..." multiline numberOfLines={6} />
 
-          <AppButton label={isSaving ? 'Guardando...' : 'Guardar nota'} onPress={handleSubmit(onSubmit)} variant="filled" loading={isSaving} disabled={isSaving} icon="content-save" style={styles.submit} accessibilityLabel="Guardar nota médica" />
+          <AppButton
+            label={isSaving ? 'Guardando...' : isEditing ? 'Actualizar nota' : 'Guardar nota'}
+            onPress={handleSubmit(onSubmit)}
+            variant="filled"
+            loading={isSaving}
+            disabled={isSaving}
+            icon="content-save"
+            style={styles.submit}
+            accessibilityLabel={isEditing ? 'Actualizar nota médica' : 'Guardar nota médica'}
+          />
         </View>
       </ScrollView>
 

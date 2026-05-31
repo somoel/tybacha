@@ -8,6 +8,7 @@ import {
   fetchApiMedicalNotes,
   fetchApiMedications,
   fetchApiPathologies,
+  updateApiMedicalNote,
   updateApiMedication,
   updateApiPathology,
 } from '@/src/api/medicalHistoryApi';
@@ -206,6 +207,14 @@ export async function createMedicalNote(
 
   const api = await createApiMedicalNote(olderAdultId, payload);
   return mapMedicalNoteFromApi(api);
+}
+
+export async function updateMedicalNote(
+  olderAdultId: number,
+  noteId: number,
+  formData: Partial<MedicalNoteFormData>,
+): Promise<void> {
+  await updateApiMedicalNote(olderAdultId, noteId, formData);
 }
 
 export async function deleteMedicalNote(olderAdultId: number, noteId: number): Promise<void> {

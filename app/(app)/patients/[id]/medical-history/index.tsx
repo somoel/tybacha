@@ -78,7 +78,10 @@ export default function MedicalHistoryScreen() {
             <PathologyCard
               key={p.id}
               pathology={p}
-              onLongPress={canEdit ? () => handleDeletePathology(Number(p.id)) : undefined}
+              canEdit={canEdit}
+              onPress={() => router.push(`/(app)/patients/${id}/medical-history/add-pathology?pathologyId=${p.id}` as never)}
+              onEdit={() => router.push(`/(app)/patients/${id}/medical-history/add-pathology?pathologyId=${p.id}` as never)}
+              onDelete={() => handleDeletePathology(Number(p.id))}
             />
           ))}
         </View>
@@ -105,7 +108,10 @@ export default function MedicalHistoryScreen() {
             <MedicationCard
               key={m.id}
               medication={m}
-              onLongPress={canEdit ? () => handleDeleteMedication(Number(m.id)) : undefined}
+              canEdit={canEdit}
+              onPress={() => router.push(`/(app)/patients/${id}/medical-history/add-medication?medicationId=${m.id}` as never)}
+              onEdit={() => router.push(`/(app)/patients/${id}/medical-history/add-medication?medicationId=${m.id}` as never)}
+              onDelete={() => handleDeleteMedication(Number(m.id))}
             />
           ))}
         </View>
@@ -134,7 +140,10 @@ export default function MedicalHistoryScreen() {
               tipoNota={n.tipoNota}
               contenido={n.contenido}
               creadoEn={n.creadoEn}
-              onLongPress={canEdit ? () => handleDeleteNote(Number(n.id)) : undefined}
+              canEdit={canEdit}
+              onPress={() => router.push(`/(app)/patients/${id}/medical-history/add-note?noteId=${n.id}` as never)}
+              onEdit={() => router.push(`/(app)/patients/${id}/medical-history/add-note?noteId=${n.id}` as never)}
+              onDelete={() => handleDeleteNote(Number(n.id))}
             />
           ))}
         </View>

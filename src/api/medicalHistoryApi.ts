@@ -6,6 +6,7 @@ import type {
   ApiMedicalNote,
   ApiMedication,
   ApiPathology,
+  ApiUpdateMedicalNoteInput,
   ApiUpdateMedicationInput,
   ApiUpdatePathologyInput,
 } from '@/src/types/apiMedicalHistory.types';
@@ -76,6 +77,17 @@ export function createApiMedicalNote(
 ): Promise<ApiMedicalNote> {
   return apiRequest<ApiMedicalNote>(`/older-adults/${olderAdultId}/medical-notes`, {
     method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateApiMedicalNote(
+  olderAdultId: number,
+  noteId: number,
+  data: ApiUpdateMedicalNoteInput,
+): Promise<{ ok: true }> {
+  return apiRequest<{ ok: true }>(`/older-adults/${olderAdultId}/medical-notes/${noteId}`, {
+    method: 'PATCH',
     body: JSON.stringify(data),
   });
 }

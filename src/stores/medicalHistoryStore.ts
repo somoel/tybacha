@@ -8,6 +8,9 @@ import {
   fetchMedicalNotes,
   fetchMedications,
   fetchPathologies,
+  updateMedicalNote,
+  updateMedication,
+  updatePathology,
 } from '@/src/services/medicalHistoryService';
 import type { MedicalNote, MedicalNoteFormData, Medication, MedicationFormData, Pathology, PathologyFormData } from '@/src/types/medicalHistory.types';
 import { create } from 'zustand';
@@ -21,10 +24,13 @@ interface MedicalHistoryState {
 
   loadAll: (olderAdultId: number) => Promise<void>;
   addPathology: (olderAdultId: number, formData: PathologyFormData) => Promise<Pathology | null>;
+  updatePathology: (olderAdultId: number, pathologyId: number, formData: Partial<PathologyFormData>) => Promise<boolean>;
   removePathology: (olderAdultId: number, pathologyId: number) => Promise<boolean>;
   addMedication: (olderAdultId: number, formData: MedicationFormData) => Promise<Medication | null>;
+  updateMedication: (olderAdultId: number, medicationId: number, formData: Partial<MedicationFormData>) => Promise<boolean>;
   removeMedication: (olderAdultId: number, medicationId: number) => Promise<boolean>;
   addMedicalNote: (olderAdultId: number, formData: MedicalNoteFormData) => Promise<MedicalNote | null>;
+  updateMedicalNote: (olderAdultId: number, noteId: number, formData: Partial<MedicalNoteFormData>) => Promise<boolean>;
   removeMedicalNote: (olderAdultId: number, noteId: number) => Promise<boolean>;
 }
 
@@ -61,6 +67,21 @@ export const useMedicalHistoryStore = create<MedicalHistoryState>()((set, get) =
     }
   },
 
+  updatePathology: async (olderAdultId: number, pathologyId: number, formData: Partial<PathologyFormData>) => {
+    try {
+      await updatePathology(olderAdultId, pathologyId, formData);
+      set((state) => ({
+        pathologies: state.pathologies.map((p) =>
+          p.id === String(pathologyId) ? { ...p, ...formData } : p,
+        ),
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error updating pathology:', error);
+      return false;
+    }
+  },
+
   removePathology: async (olderAdultId: number, pathologyId: number) => {
     try {
       await deletePathology(olderAdultId, pathologyId);
@@ -85,6 +106,21 @@ export const useMedicalHistoryStore = create<MedicalHistoryState>()((set, get) =
     }
   },
 
+  updateMedication: async (olderAdultId: number, medicationId: number, formData: Partial<MedicationFormData>) => {
+    try {
+      await updateMedication(olderAdultId, medicationId, formData);
+      set((state) => ({
+        medications: state.medications.map((m) =>
+          m.id === String(medicationId) ? { ...m, ...formData } : m,
+        ),
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error updating medication:', error);
+      return false;
+    }
+  },
+
   removeMedication: async (olderAdultId: number, medicationId: number) => {
     try {
       await deleteMedication(olderAdultId, medicationId);
@@ -106,6 +142,21 @@ export const useMedicalHistoryStore = create<MedicalHistoryState>()((set, get) =
     } catch (error) {
       console.error('Error creating medical note:', error);
       return null;
+    }
+  },
+
+  updateMedicalNote: async (olderAdultId: number, noteId: number, formData: Partial<MedicalNoteFormData>) => {
+    try {
+      await updateMedicalNote(olderAdultId, noteId, formData);
+      set((state) => ({
+        medicalNotes: state.medicalNotes.map((n) =>
+          n.id === String(noteId) ? { ...n, ...formData } : n,
+        ),
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error updating medical note:', error);
+      return false;
     }
   },
 

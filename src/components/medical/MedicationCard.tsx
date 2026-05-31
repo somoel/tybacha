@@ -2,18 +2,21 @@ import { StatusChip } from '@/src/components/medical/StatusChip';
 import { AppCard } from '@/src/components/ui/AppCard';
 import type { Medication } from '@/src/types/medicalHistory.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import React, { useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Menu, Text, useTheme } from 'react-native-paper';
 
 interface MedicationCardProps {
   medication: Medication;
+  canEdit?: boolean;
   onPress?: () => void;
-  onLongPress?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
-export function MedicationCard({ medication, onPress, onLongPress }: MedicationCardProps) {
+export function MedicationCard({ medication, canEdit, onPress, onEdit, onDelete }: MedicationCardProps) {
   const theme = useTheme();
+  const [menuVisible, setMenuVisible] = useState(false);
   const details = [medication.dosis, medication.frecuencia].filter(Boolean).join(' · ');
 
   return (
@@ -24,6 +27,28 @@ export function MedicationCard({ medication, onPress, onLongPress }: MedicationC
           <Text style={styles.name} numberOfLines={1}>{medication.nombre}</Text>
           <StatusChip status={medication.estado} />
         </View>
+        {canEdit && (
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <TouchableOpacity onPress={() => setMenuVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <MaterialCommunityIcons name="dots-vertical" size={20} color="#6b7280" />
+              </TouchableOpacity>
+            }
+          >
+            <Menu.Item
+              leadingIcon="pencil"
+              onPress={() => { setMenuVisible(false); onEdit?.(); }}
+              title="Editar"
+            />
+            <Menu.Item
+              leadingIcon="delete"
+              onPress={() => { setMenuVisible(false); onDelete?.(); }}
+              title="Eliminar"
+            />
+          </Menu>
+        )}
       </View>
       {details && <Text style={styles.detail}>{details}</Text>}
       {medication.viaAdministracion && (

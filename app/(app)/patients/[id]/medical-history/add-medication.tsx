@@ -5,8 +5,8 @@ import { DateField } from '@/src/components/ui/DateField';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { MedicationFormData } from '@/src/types/medicalHistory.types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text } from 'react-native-paper';
@@ -31,18 +31,40 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AddMedicationScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, medicationId } = useLocalSearchParams<{ id: string; medicationId?: string }>();
   const router = useRouter();
-  const { addMedication } = useMedicalHistoryStore();
+  const navigation = useNavigation();
+  const { addMedication, updateMedication, medications } = useMedicalHistoryStore();
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
-  const { control, handleSubmit } = useForm<FormValues>({
+  const isEditing = Boolean(medicationId);
+  const existingItem = isEditing ? medications.find((m) => m.id === medicationId) : null;
+
+  const { control, handleSubmit, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { nombre: '', dosis: '', frecuencia: '', viaAdministracion: '', estado: 'activo', observaciones: '' },
   });
+
+  useEffect(() => {
+    if (existingItem) {
+      reset({
+        nombre: existingItem.nombre,
+        dosis: existingItem.dosis ?? '',
+        frecuencia: existingItem.frecuencia ?? '',
+        viaAdministracion: existingItem.viaAdministracion ?? '',
+        estado: existingItem.estado,
+        observaciones: existingItem.observaciones ?? '',
+      });
+      if (existingItem.fechaInicio) setStartDate(new Date(existingItem.fechaInicio));
+      if (existingItem.fechaFin) setEndDate(new Date(existingItem.fechaFin));
+      navigation.setOptions({ title: 'Editar medicamento' });
+    } else {
+      navigation.setOptions({ title: 'Agregar medicamento' });
+    }
+  }, [existingItem, reset, navigation]);
 
   const onSubmit = async (data: FormValues) => {
     if (!id || isSaving) return;
@@ -53,15 +75,25 @@ export default function AddMedicationScreen() {
         fechaInicio: startDate ? startDate.toISOString().slice(0, 10) : undefined,
         fechaFin: endDate ? endDate.toISOString().slice(0, 10) : undefined,
       };
-      const result = await addMedication(Number(id), formData);
-      if (result) {
-        setSnackbar({ visible: true, message: 'Medicamento registrado ✓', type: 'success' });
-        setTimeout(() => router.back(), 1200);
+      if (isEditing && medicationId) {
+        const ok = await updateMedication(Number(id), Number(medicationId), formData);
+        if (ok) {
+          setSnackbar({ visible: true, message: 'Medicamento actualizado ✓', type: 'success' });
+          setTimeout(() => router.back(), 1200);
+        } else {
+          setSnackbar({ visible: true, message: 'Error al actualizar medicamento', type: 'error' });
+        }
       } else {
-        setSnackbar({ visible: true, message: 'Error al registrar medicamento', type: 'error' });
+        const result = await addMedication(Number(id), formData);
+        if (result) {
+          setSnackbar({ visible: true, message: 'Medicamento registrado ✓', type: 'success' });
+          setTimeout(() => router.back(), 1200);
+        } else {
+          setSnackbar({ visible: true, message: 'Error al registrar medicamento', type: 'error' });
+        }
       }
     } catch {
-      setSnackbar({ visible: true, message: 'Error al registrar medicamento', type: 'error' });
+      setSnackbar({ visible: true, message: `Error al ${isEditing ? 'actualizar' : 'registrar'} medicamento`, type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -87,7 +119,16 @@ export default function AddMedicationScreen() {
 
           <AppInput control={control} name="observaciones" label="Observaciones" multiline numberOfLines={3} placeholder="Notas adicionales..." />
 
-          <AppButton label={isSaving ? 'Guardando...' : 'Guardar medicamento'} onPress={handleSubmit(onSubmit)} variant="filled" loading={isSaving} disabled={isSaving} icon="content-save" style={styles.submit} accessibilityLabel="Guardar medicamento" />
+          <AppButton
+            label={isSaving ? 'Guardando...' : isEditing ? 'Actualizar medicamento' : 'Guardar medicamento'}
+            onPress={handleSubmit(onSubmit)}
+            variant="filled"
+            loading={isSaving}
+            disabled={isSaving}
+            icon="content-save"
+            style={styles.submit}
+            accessibilityLabel={isEditing ? 'Actualizar medicamento' : 'Guardar medicamento'}
+          />
         </View>
       </ScrollView>
 

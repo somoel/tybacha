@@ -5,8 +5,8 @@ import { DateField } from '@/src/components/ui/DateField';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { PathologyFormData } from '@/src/types/medicalHistory.types';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text } from 'react-native-paper';
@@ -28,17 +28,37 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AddPathologyScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, pathologyId } = useLocalSearchParams<{ id: string; pathologyId?: string }>();
   const router = useRouter();
-  const { addPathology } = useMedicalHistoryStore();
+  const navigation = useNavigation();
+  const { addPathology, updatePathology, pathologies } = useMedicalHistoryStore();
   const [diagnosisDate, setDiagnosisDate] = useState<Date | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
   const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
-  const { control, handleSubmit } = useForm<FormValues>({
+  const isEditing = Boolean(pathologyId);
+  const existingItem = isEditing ? pathologies.find((p) => p.id === pathologyId) : null;
+
+  const { control, handleSubmit, reset } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { nombre: '', descripcion: '', estado: 'activa' },
   });
+
+  useEffect(() => {
+    if (existingItem) {
+      reset({
+        nombre: existingItem.nombre,
+        descripcion: existingItem.descripcion ?? '',
+        estado: existingItem.estado,
+      });
+      if (existingItem.fechaDiagnostico) {
+        setDiagnosisDate(new Date(existingItem.fechaDiagnostico));
+      }
+      navigation.setOptions({ title: 'Editar patología' });
+    } else {
+      navigation.setOptions({ title: 'Agregar patología' });
+    }
+  }, [existingItem, reset, navigation]);
 
   const onSubmit = async (data: FormValues) => {
     if (!id || isSaving) return;
@@ -48,15 +68,25 @@ export default function AddPathologyScreen() {
         ...data,
         fechaDiagnostico: diagnosisDate ? diagnosisDate.toISOString().slice(0, 10) : undefined,
       };
-      const result = await addPathology(Number(id), formData);
-      if (result) {
-        setSnackbar({ visible: true, message: 'Patología registrada ✓', type: 'success' });
-        setTimeout(() => router.back(), 1200);
+      if (isEditing && pathologyId) {
+        const ok = await updatePathology(Number(id), Number(pathologyId), formData);
+        if (ok) {
+          setSnackbar({ visible: true, message: 'Patología actualizada ✓', type: 'success' });
+          setTimeout(() => router.back(), 1200);
+        } else {
+          setSnackbar({ visible: true, message: 'Error al actualizar patología', type: 'error' });
+        }
       } else {
-        setSnackbar({ visible: true, message: 'Error al registrar patología', type: 'error' });
+        const result = await addPathology(Number(id), formData);
+        if (result) {
+          setSnackbar({ visible: true, message: 'Patología registrada ✓', type: 'success' });
+          setTimeout(() => router.back(), 1200);
+        } else {
+          setSnackbar({ visible: true, message: 'Error al registrar patología', type: 'error' });
+        }
       }
     } catch {
-      setSnackbar({ visible: true, message: 'Error al registrar patología', type: 'error' });
+      setSnackbar({ visible: true, message: `Error al ${isEditing ? 'actualizar' : 'registrar'} patología`, type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -89,14 +119,14 @@ export default function AddPathologyScreen() {
           )} />
 
           <AppButton
-            label={isSaving ? 'Guardando...' : 'Guardar patología'}
+            label={isSaving ? 'Guardando...' : isEditing ? 'Actualizar patología' : 'Guardar patología'}
             onPress={handleSubmit(onSubmit)}
             variant="filled"
             loading={isSaving}
             disabled={isSaving}
             icon="content-save"
             style={styles.submit}
-            accessibilityLabel="Guardar patología"
+            accessibilityLabel={isEditing ? 'Actualizar patología' : 'Guardar patología'}
           />
         </View>
       </ScrollView>
