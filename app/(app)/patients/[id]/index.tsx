@@ -213,6 +213,22 @@ export default function PatientDetailScreen() {
                     </View>
                 </AppCard>
 
+                {/* Consents summary */}
+                <AppCard
+                    style={styles.medicalHistoryCard}
+                    onPress={() => router.push(`/(app)/patients/${id}/consents` as never)}
+                    accessibilityLabel="Ver consentimientos"
+                >
+                    <View style={styles.medicalHistoryRow}>
+                        <MaterialCommunityIcons name="shield-check" size={22} color={theme.colors.primary} />
+                        <View style={styles.medicalHistoryInfo}>
+                            <Text style={styles.medicalHistoryTitle}>Consentimientos</Text>
+                            <Text style={styles.medicalHistoryEmpty}>Ver consentimientos registrados</Text>
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
+                    </View>
+                </AppCard>
+
                 {/* No active plan */}
                 {!hasActivePlan && (
                     <AppCard style={styles.waitingCard}>
@@ -351,6 +367,22 @@ export default function PatientDetailScreen() {
                             ) : (
                                 <Text style={styles.medicalHistoryEmpty}>Agregar patologías, medicamentos y notas</Text>
                             )}
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
+                    </View>
+                </AppCard>
+
+                {/* Consents summary */}
+                <AppCard
+                    style={styles.medicalHistoryCard}
+                    onPress={() => router.push(`/(app)/patients/${id}/consents` as never)}
+                    accessibilityLabel="Ver consentimientos"
+                >
+                    <View style={styles.medicalHistoryRow}>
+                        <MaterialCommunityIcons name="shield-check" size={22} color={theme.colors.primary} />
+                        <View style={styles.medicalHistoryInfo}>
+                            <Text style={styles.medicalHistoryTitle}>Consentimientos</Text>
+                            <Text style={styles.medicalHistoryEmpty}>Ver consentimientos registrados</Text>
                         </View>
                         <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
                     </View>
