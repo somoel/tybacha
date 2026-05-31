@@ -17,11 +17,10 @@ export default function AppLayout() {
     const pathname = usePathname();
     const { isCaregiver } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
-    const isBatteryMode =
-        /\/patients\/[^/]+\/batteries\/new/.test(pathname) ||
-        /\/patients\/[^/]+\/batteries\/summary/.test(pathname) ||
+    const hideTabBar =
+        /\/patients\/[^/]+/.test(pathname) ||
         /\/tests\/[^/]+\/active/.test(pathname);
-    const tabBarStyle = isBatteryMode
+    const tabBarStyle = hideTabBar
         ? { display: 'none' as const }
         : {
             borderTopColor: theme.colors.outlineVariant,
