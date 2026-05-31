@@ -1,5 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
+import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
@@ -8,7 +9,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Divider, Text, TextInput, useTheme } from 'react-native-paper';
 
 interface Assignment {
@@ -26,6 +27,11 @@ export default function ProfileScreen() {
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+
+    const [confirmDialog, setConfirmDialog] = useState<{ visible: boolean; type: 'unlink' | 'logout'; assignment?: Assignment }>({
+        visible: false,
+        type: 'logout',
+    });
 
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -74,28 +80,22 @@ export default function ProfileScreen() {
     };
 
     const handleUnlink = (assignment: Assignment) => {
-        Alert.alert(
-            'Desasociarse del adulto mayor',
-            `¿Está seguro de desasociarse de ${assignment.patients?.first_name ?? 'este adulto mayor'}? No tendrá acceso a sus datos.`,
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Desasociarme',
-                    style: 'destructive',
-                    onPress: async () => {
-                        if (!user) return;
-                        try {
-                            await unassignCaregiver(user.id, assignment.patient_id);
-                            setAssignments((prev) => prev.filter((a) => a.id !== assignment.id));
-                            setSnackbar({ visible: true, message: 'Desasociado exitosamente', type: 'success' });
-                        } catch (error) {
-                            const msg = error instanceof Error ? error.message : 'Error al desasociar.';
-                            setSnackbar({ visible: true, message: msg, type: 'error' });
-                        }
-                    },
-                },
-            ]
-        );
+        setConfirmDialog({ visible: true, type: 'unlink', assignment });
+    };
+
+    const handleConfirmUnlink = async () => {
+        if (!user || !confirmDialog.assignment) return;
+        const assignment = confirmDialog.assignment;
+        try {
+            await unassignCaregiver(user.id, assignment.patient_id);
+            setAssignments((prev) => prev.filter((a) => a.id !== assignment.id));
+            setSnackbar({ visible: true, message: 'Desasociado exitosamente', type: 'success' });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Error al desasociar.';
+            setSnackbar({ visible: true, message: msg, type: 'error' });
+        } finally {
+            setConfirmDialog((prev) => ({ ...prev, visible: false }));
+        }
     };
 
     const performLogout = async () => {
@@ -104,20 +104,7 @@ export default function ProfileScreen() {
     };
 
     const handleLogout = () => {
-        if (Platform.OS === 'web') {
-            void performLogout();
-            return;
-        }
-
-        Alert.alert('Cerrar sesión', '¿Desea cerrar sesión?', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Cerrar sesión',
-                onPress: () => {
-                    void performLogout();
-                },
-            },
-        ]);
+        setConfirmDialog({ visible: true, type: 'logout' });
     };
 
     const handleManualSync = async () => {
@@ -266,6 +253,24 @@ export default function ProfileScreen() {
             />
 
             <View style={styles.bottomPad} />
+            <AppConfirmDialog
+                visible={confirmDialog.visible && confirmDialog.type === 'unlink'}
+                title="Desasociarse del adulto mayor"
+                message={`¿Está seguro de desasociarse de ${confirmDialog.assignment?.patients?.first_name ?? 'este adulto mayor'}? No tendrá acceso a sus datos.`}
+                confirmLabel="Desasociarme"
+                destructive
+                onConfirm={handleConfirmUnlink}
+                onCancel={() => setConfirmDialog((prev) => ({ ...prev, visible: false }))}
+            />
+            <AppConfirmDialog
+                visible={confirmDialog.visible && confirmDialog.type === 'logout'}
+                title="Cerrar sesión"
+                message="¿Desea cerrar sesión?"
+                confirmLabel="Cerrar sesión"
+                destructive={false}
+                onConfirm={() => { setConfirmDialog((prev) => ({ ...prev, visible: false })); void performLogout(); }}
+                onCancel={() => setConfirmDialog((prev) => ({ ...prev, visible: false }))}
+            />
             <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
         </ScrollView>
     );

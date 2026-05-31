@@ -6,10 +6,11 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
+import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
 
 type Tab = 'pathologies' | 'medications' | 'notes';
@@ -30,29 +31,40 @@ export default function MedicalHistoryScreen() {
   const [tab, setTab] = useState<Tab>('pathologies');
   const { pathologies, medications, medicalNotes, isLoading, loadAll, removePathology, removeMedication, removeMedicalNote } = useMedicalHistoryStore();
 
+  const [confirmDialog, setConfirmDialog] = useState<{ visible: boolean; type: 'pathology' | 'medication' | 'note'; itemId: number }>({
+    visible: false,
+    type: 'pathology',
+    itemId: 0,
+  });
+
   useFocusEffect(useCallback(() => {
     if (id) loadAll(Number(id));
   }, [id, loadAll]));
 
   const handleDeletePathology = (pathologyId: number) => {
-    Alert.alert('Eliminar patología', '¿Está seguro de eliminar esta patología?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => removePathology(Number(id), pathologyId) },
-    ]);
+    setConfirmDialog({ visible: true, type: 'pathology', itemId: pathologyId });
   };
 
   const handleDeleteMedication = (medicationId: number) => {
-    Alert.alert('Eliminar medicamento', '¿Está seguro de eliminar este medicamento?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => removeMedication(Number(id), medicationId) },
-    ]);
+    setConfirmDialog({ visible: true, type: 'medication', itemId: medicationId });
   };
 
   const handleDeleteNote = (noteId: number) => {
-    Alert.alert('Eliminar nota', '¿Está seguro de eliminar esta nota?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => removeMedicalNote(Number(id), noteId) },
-    ]);
+    setConfirmDialog({ visible: true, type: 'note', itemId: noteId });
+  };
+
+  const handleConfirmDelete = () => {
+    const { type, itemId } = confirmDialog;
+    if (type === 'pathology') removePathology(Number(id), itemId);
+    else if (type === 'medication') removeMedication(Number(id), itemId);
+    else if (type === 'note') removeMedicalNote(Number(id), itemId);
+    setConfirmDialog((prev) => ({ ...prev, visible: false }));
+  };
+
+  const dialogConfig: Record<string, { title: string; message: string }> = {
+    pathology: { title: 'Eliminar patología', message: '¿Está seguro de eliminar esta patología?' },
+    medication: { title: 'Eliminar medicamento', message: '¿Está seguro de eliminar este medicamento?' },
+    note: { title: 'Eliminar nota', message: '¿Está seguro de eliminar esta nota?' },
   };
 
   if (isLoading) return <AppLoader message="Cargando historial médico..." />;
@@ -168,6 +180,18 @@ export default function MedicalHistoryScreen() {
         {renderTabContent()}
         <View style={styles.bottomPadding} />
       </ScrollView>
+
+      {confirmDialog.visible && (
+        <AppConfirmDialog
+          visible={confirmDialog.visible}
+          title={dialogConfig[confirmDialog.type].title}
+          message={dialogConfig[confirmDialog.type].message}
+          confirmLabel="Eliminar"
+          destructive
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setConfirmDialog((prev) => ({ ...prev, visible: false }))}
+        />
+      )}
 
       {canEdit && (
         <View style={styles.fabContainer}>

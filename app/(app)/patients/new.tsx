@@ -1,5 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
+import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
 import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
@@ -17,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
 import { z } from 'zod';
@@ -62,6 +63,7 @@ export default function NewPatientScreen() {
     const [birthDate, setBirthDate] = useState(new Date(1950, 0, 1));
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const [showRemovePhotoDialog, setShowRemovePhotoDialog] = useState(false);
 
     const { control, handleSubmit, setValue, watch } = useForm<PatientFormValues>({
         resolver: zodResolver(patientSchema),
@@ -115,10 +117,7 @@ export default function NewPatientScreen() {
     };
 
     const handleRemovePhoto = () => {
-        Alert.alert('Eliminar foto', '¿Desea eliminar la foto seleccionada?', [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Eliminar', style: 'destructive', onPress: () => setPhotoUri(null) },
-        ]);
+        setShowRemovePhotoDialog(true);
     };
 
     const onSubmit = async (data: PatientFormValues) => {
@@ -293,6 +292,15 @@ export default function NewPatientScreen() {
                 </View>
             </ScrollView>
 
+            <AppConfirmDialog
+                visible={showRemovePhotoDialog}
+                title="Eliminar foto"
+                message="¿Desea eliminar la foto seleccionada?"
+                confirmLabel="Eliminar"
+                destructive
+                onConfirm={() => { setPhotoUri(null); setShowRemovePhotoDialog(false); }}
+                onCancel={() => setShowRemovePhotoDialog(false)}
+            />
             <AppSnackbar
                 visible={snackbar.visible}
                 message={snackbar.message}

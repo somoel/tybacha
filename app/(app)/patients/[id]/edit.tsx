@@ -1,4 +1,5 @@
 import { AppButton } from '@/src/components/ui/AppButton';
+import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
 import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppLoader } from '@/src/components/ui/AppLoader';
@@ -13,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text } from 'react-native-paper';
 import { z } from 'zod';
 
@@ -43,6 +44,7 @@ export default function EditPatientScreen() {
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [currentPhotoData, setCurrentPhotoData] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const [confirmType, setConfirmType] = useState<'delete' | 'deletePhoto' | null>(null);
 
     const { control, handleSubmit, reset } = useForm<EditFormValues>({
         resolver: zodResolver(editSchema),
@@ -86,28 +88,21 @@ export default function EditPatientScreen() {
     };
 
     const handleDelete = () => {
-        Alert.alert(
-            'Eliminar adulto mayor',
-            '¿Está seguro de que desea eliminar este adulto mayor? Esta acción no se puede deshacer.',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Eliminar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        if (!id) return;
-                        try {
-                            await deletePatient(id, isOnline);
-                            removePatient(id);
-                            router.replace('/(app)/patients' as never);
-                        } catch (error) {
-                            const msg = error instanceof Error ? error.message : 'Error al eliminar.';
-                            setSnackbar({ visible: true, message: msg, type: 'error' });
-                        }
-                    },
-                },
-            ]
-        );
+        setConfirmType('delete');
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!id) return;
+        try {
+            await deletePatient(id, isOnline);
+            removePatient(id);
+            router.replace('/(app)/patients' as never);
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Error al eliminar.';
+            setSnackbar({ visible: true, message: msg, type: 'error' });
+        } finally {
+            setConfirmType(null);
+        }
     };
 
     const handlePickPhoto = async () => {
@@ -141,25 +136,22 @@ export default function EditPatientScreen() {
     };
 
     const handleDeletePhoto = () => {
-        Alert.alert('Eliminar foto', '¿Está seguro de que desea eliminar la foto de perfil?', [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-                text: 'Eliminar',
-                style: 'destructive',
-                onPress: async () => {
-                    if (!id) return;
-                    try {
-                        await deletePatientPhoto(id);
-                        setCurrentPhotoData(null);
-                        setPhotoUri(null);
-                        setSnackbar({ visible: true, message: 'Foto eliminada ✓', type: 'success' });
-                    } catch (error) {
-                        const msg = error instanceof Error ? error.message : 'Error al eliminar foto.';
-                        setSnackbar({ visible: true, message: msg, type: 'error' });
-                    }
-                },
-            },
-        ]);
+        setConfirmType('deletePhoto');
+    };
+
+    const handleConfirmDeletePhoto = async () => {
+        if (!id) return;
+        try {
+            await deletePatientPhoto(id);
+            setCurrentPhotoData(null);
+            setPhotoUri(null);
+            setSnackbar({ visible: true, message: 'Foto eliminada ✓', type: 'success' });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Error al eliminar foto.';
+            setSnackbar({ visible: true, message: msg, type: 'error' });
+        } finally {
+            setConfirmType(null);
+        }
     };
 
     if (isLoading) return <AppLoader message="Cargando adulto mayor..." />;
@@ -236,6 +228,24 @@ export default function EditPatientScreen() {
                 </View>
             </ScrollView>
 
+            <AppConfirmDialog
+                visible={confirmType === 'delete'}
+                title="Eliminar adulto mayor"
+                message="¿Está seguro de que desea eliminar este adulto mayor? Esta acción no se puede deshacer."
+                confirmLabel="Eliminar"
+                destructive
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setConfirmType(null)}
+            />
+            <AppConfirmDialog
+                visible={confirmType === 'deletePhoto'}
+                title="Eliminar foto"
+                message="¿Está seguro de que desea eliminar la foto de perfil?"
+                confirmLabel="Eliminar"
+                destructive
+                onConfirm={handleConfirmDeletePhoto}
+                onCancel={() => setConfirmType(null)}
+            />
             <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
         </KeyboardAvoidingView>
     );
