@@ -166,12 +166,14 @@ export default function PatientDetailScreen() {
                             </Text>
                         </View>
                     </View>
-                    {patient.pathologies && (
-                        <View style={styles.pathologiesContainer}>
-                            <MaterialCommunityIcons name="medical-bag" size={16} color={theme.colors.secondary} />
-                            <Text style={styles.pathologies}>{patient.pathologies}</Text>
-                        </View>
-                    )}
+                    <AppButton
+                        label="Historial médico"
+                        variant="text"
+                        icon="medical-bag"
+                        onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
+                        accessibilityLabel="Ver historial médico"
+                        style={styles.medicalHistoryBtn}
+                    />
                 </AppCard>
 
                 {/* No active plan */}
@@ -289,15 +291,17 @@ export default function PatientDetailScreen() {
                         </Text>
                     </View>
                 </View>
-                {patient.pathologies && (
-                    <View style={styles.pathologiesContainer}>
-                        <MaterialCommunityIcons name="medical-bag" size={16} color={theme.colors.secondary} />
-                        <Text style={styles.pathologies}>{patient.pathologies}</Text>
-                    </View>
-                )}
-            </AppCard>
+                    <AppButton
+                        label="Historial médico"
+                        variant="text"
+                        icon="medical-bag"
+                        onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
+                        accessibilityLabel="Ver historial médico"
+                        style={styles.medicalHistoryBtn}
+                    />
+                </AppCard>
 
-            {/* Caregiver status indicator */}
+                {/* Caregiver status indicator */}
             {!patient.id_cuidador && hasStaffAccess && (
                 <AppCard style={styles.warningCard}>
                     <View style={styles.warningContent}>
@@ -430,8 +434,7 @@ const styles = StyleSheet.create({
     headerInfo: { flex: 1, gap: 2 },
     fullName: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
     detailText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
-    pathologiesContainer: { flexDirection: 'row', gap: 6, marginTop: 12, backgroundColor: '#f0f3f6', borderRadius: 8, padding: 10 },
-    pathologies: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#374151', flex: 1 },
+    medicalHistoryBtn: { marginTop: 4, alignSelf: 'flex-start' },
     actions: { gap: 8, marginBottom: 24 },
     divider: { marginVertical: 4 },
     sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginBottom: 10, marginTop: 8 },

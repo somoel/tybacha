@@ -11,6 +11,7 @@ import { registerAuthRoutes } from './modules/auth/routes.js';
 import { registerConsentRoutes } from './modules/consents/routes.js';
 import { registerExercisePlanRoutes } from './modules/exercisePlans/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
+import { registerMedicalHistoryRoutes } from './modules/medicalHistory/routes.js';
 import { registerNotificationRoutes } from './modules/notifications/routes.js';
 import { registerOlderAdultRoutes } from './modules/olderAdults/routes.js';
 import { registerReportRoutes } from './modules/reports/routes.js';
@@ -143,6 +144,7 @@ export async function buildApp() {
   await registerAuthRoutes(app);
   await registerUserRoutes(app);
   await registerOlderAdultRoutes(app);
+  await registerMedicalHistoryRoutes(app);
   await registerConsentRoutes(app);
   await registerSftRoutes(app);
   await registerExercisePlanRoutes(app);

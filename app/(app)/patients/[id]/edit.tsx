@@ -23,7 +23,6 @@ const editSchema = z.object({
     first_lastname: z.string().min(1, 'El primer apellido es requerido'),
     second_lastname: z.string().optional(),
     gender: z.enum(['male', 'female', 'other']),
-    pathologies: z.string().optional(),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -63,7 +62,6 @@ export default function EditPatientScreen() {
                     first_lastname: p.first_lastname,
                     second_lastname: p.second_lastname ?? '',
                     gender: p.gender,
-                    pathologies: p.pathologies ?? '',
                 });
             }
             setIsLoading(false);
@@ -192,8 +190,6 @@ export default function EditPatientScreen() {
                             { value: 'other', label: 'Otro' },
                         ]} style={styles.segmented} />
                     )} />
-
-                    <AppInput control={control} name="pathologies" label="Patologías" multiline numberOfLines={3} />
 
                     <View style={styles.photoSection}>
                         <Text style={styles.label}>Foto de perfil</Text>

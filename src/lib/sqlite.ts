@@ -23,9 +23,43 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
       second_lastname TEXT,
       birth_date TEXT NOT NULL,
       gender TEXT NOT NULL CHECK (gender IN ('male', 'female', 'other')),
-      pathologies TEXT,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS pathologies_local (
+      id TEXT PRIMARY KEY,
+      older_adult_id TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      descripcion TEXT,
+      fecha_diagnostico TEXT,
+      estado TEXT NOT NULL DEFAULT 'activa',
+      created_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS medications_local (
+      id TEXT PRIMARY KEY,
+      older_adult_id TEXT NOT NULL,
+      nombre TEXT NOT NULL,
+      dosis TEXT,
+      frecuencia TEXT,
+      via_administracion TEXT,
+      fecha_inicio TEXT,
+      fecha_fin TEXT,
+      estado TEXT NOT NULL DEFAULT 'activo',
+      observaciones TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      synced INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS medical_notes_local (
+      id TEXT PRIMARY KEY,
+      older_adult_id TEXT NOT NULL,
+      tipo_nota TEXT NOT NULL DEFAULT 'observacion',
+      contenido TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now')),
       synced INTEGER DEFAULT 0
     );
 
@@ -115,7 +149,7 @@ export async function addToSyncQueue(
 }
 
 export async function addOfflineOperation(
-    entidad: 'adulto_mayor' | 'registro_ejercicio_plan',
+    entidad: 'adulto_mayor' | 'registro_ejercicio_plan' | 'patologia_adulto_mayor' | 'medicamento_adulto_mayor' | 'nota_historial_medico',
     accion: 'crear' | 'actualizar',
     payload: Record<string, unknown>
 ): Promise<string> {

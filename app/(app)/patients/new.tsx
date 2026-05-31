@@ -29,7 +29,6 @@ const patientSchema = z.object({
     second_lastname: z.string().optional(),
     gender: z.enum(['male', 'female', 'other'], { message: 'Seleccione un género' }),
     id_cuidador: z.string().optional(),
-    pathologies: z.string().optional(),
 });
 
 type PatientFormValues = z.infer<typeof patientSchema>;
@@ -73,7 +72,6 @@ export default function NewPatientScreen() {
             second_lastname: '',
             gender: 'male',
             id_cuidador: undefined,
-            pathologies: '',
         },
     });
     const selectedCaregiverId = watch('id_cuidador');
@@ -244,16 +242,6 @@ export default function NewPatientScreen() {
                             )}
                         </View>
                     )}
-
-                    <AppInput
-                        control={control}
-                        name="pathologies"
-                        label="Patologías"
-                        placeholder="Hipertensión, diabetes, osteoporosis..."
-                        multiline
-                        numberOfLines={3}
-                        accessibilityLabel="Patologías del adulto mayor"
-                    />
 
                     <View style={styles.photoSection}>
                         <Text style={styles.fieldLabel}>Foto de perfil (opcional)</Text>

@@ -9,7 +9,6 @@ export interface Patient {
     second_lastname?: string;
     birth_date: string;
     gender: Gender;
-    pathologies?: string;
     caregiver_email?: string;
     id_cuidador?: number;
     has_photo?: boolean;
@@ -25,7 +24,6 @@ export interface PatientFormData {
     second_lastname?: string;
     birth_date: Date;
     gender: Gender;
-    pathologies?: string;
     caregiver_email?: string;  // Email del cuidador asignado
     id_cuidador?: number;
 }

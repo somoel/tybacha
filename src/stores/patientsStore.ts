@@ -137,7 +137,6 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
                 second_lastname: patientData.second_lastname ?? current.second_lastname,
                 birth_date: patientData.birth_date ?? new Date(current.birth_date),
                 gender: patientData.gender ?? current.gender,
-                pathologies: patientData.pathologies ?? current.pathologies,
                 id_cuidador: patientData.id_cuidador ?? current.id_cuidador,
             });
             get().updatePatient(updatedPatient);
