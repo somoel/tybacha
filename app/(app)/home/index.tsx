@@ -4,6 +4,7 @@ import { HomeSkeleton } from '@/src/components/ui/HomeSkeleton';
 import { ActivityFeed } from '@/src/components/ui/ActivityFeed';
 import type { ActivityItem } from '@/src/components/ui/ActivityFeed';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
 import { fetchActivePlanStatus, fetchBatteryCountsForPatients, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
 import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
@@ -28,6 +29,7 @@ export default function HomeScreen() {
     const router = useRouter();
     const { user, profile } = useAuthStore();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
+    const unreadCount = useNotificationStore((s) => s.unreadCount);
     const { patients, setPatients, setLoading, isLoading, setPhotoThumbnails, exerciseData, setExerciseData } = usePatientsStore();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
@@ -117,13 +119,31 @@ export default function HomeScreen() {
                     end={{ x: 1, y: 1 }}
                 >
                     <SafeAreaView edges={['top']} style={styles.headerContent}>
-                        <Text style={styles.greeting}>{greeting},</Text>
-                        <Text style={styles.userName}>{userName}</Text>
-                        {isAdmin && <Text style={styles.roleLabel}>Administrador</Text>}
-                        {isProfessional && <Text style={styles.roleLabel}>Profesional</Text>}
-                        {isCaregiver && (
-                            <Text style={styles.roleLabel}>Cuidador</Text>
-                        )}
+                        <View style={styles.headerRow}>
+                            <View style={styles.headerInfo}>
+                                <Text style={styles.greeting}>{greeting},</Text>
+                                <Text style={styles.userName}>{userName}</Text>
+                                {isAdmin && <Text style={styles.roleLabel}>Administrador</Text>}
+                                {isProfessional && <Text style={styles.roleLabel}>Profesional</Text>}
+                                {isCaregiver && (
+                                    <Text style={styles.roleLabel}>Cuidador</Text>
+                                )}
+                            </View>
+                            <Pressable
+                                style={styles.bellButton}
+                                onPress={() => router.push('/(app)/notifications' as never)}
+                                accessibilityLabel="Notificaciones"
+                            >
+                                <MaterialCommunityIcons name="bell" size={24} color="#FFFFFF" />
+                                {unreadCount > 0 && (
+                                    <View style={styles.bellBadge}>
+                                        <Text style={styles.bellBadgeText}>
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </Text>
+                                    </View>
+                                )}
+                            </Pressable>
+                        </View>
                     </SafeAreaView>
                 </LinearGradient>
 
@@ -273,6 +293,14 @@ const styles = StyleSheet.create({
         paddingBottom: 32,
         paddingHorizontal: 24,
     },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+    },
+    headerInfo: {
+        flex: 1,
+    },
     greeting: {
         fontFamily: 'Montserrat_500Medium',
         fontSize: 16,
@@ -295,6 +323,32 @@ const styles = StyleSheet.create({
         marginTop: 8,
         alignSelf: 'flex-start',
         overflow: 'hidden',
+    },
+    bellButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 2,
+    },
+    bellBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#c62828',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+    },
+    bellBadgeText: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 10,
+        color: '#FFFFFF',
     },
     content: {
         paddingHorizontal: 16,
