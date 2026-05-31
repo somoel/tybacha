@@ -79,7 +79,7 @@ export default function AddMedicalNoteScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#f8fafc' },
   scroll: { flexGrow: 1 },
-  form: { padding: 24 },
+  form: { padding: 24, paddingTop: 60 },
   fieldLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#374151', marginBottom: 8, marginTop: 4 },
   segmented: { marginBottom: 16 },
   submit: { marginTop: 16 },

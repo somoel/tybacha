@@ -10,6 +10,7 @@ import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/tracki
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
+import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { SFTBattery } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
@@ -48,6 +49,8 @@ export default function PatientDetailScreen() {
     const router = useRouter();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
 
+    const { pathologies, medications, medicalNotes, loadAll: loadMedicalHistory } = useMedicalHistoryStore();
+
     const [patient, setPatient] = useState<Patient | null>(null);
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
@@ -56,6 +59,10 @@ export default function PatientDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
 
     const hasStaffAccess = isAdmin || isProfessional;
+    const totalPathologies = pathologies.length;
+    const totalMedications = medications.length;
+    const totalNotes = medicalNotes.length;
+    const hasMedicalHistory = totalPathologies > 0 || totalMedications > 0 || totalNotes > 0;
 
     useFocusEffect(useCallback(() => {
         let isActive = true;
@@ -75,6 +82,12 @@ export default function PatientDetailScreen() {
                     setPlans(pl);
 
                     try {
+                        await loadMedicalHistory(Number(id));
+                    } catch {
+                        // silent
+                    }
+
+                    try {
                         const stats = await fetchApiProgressStats(Number(id));
                         if (isActive) setProgressStats(stats);
                     } catch {
@@ -88,6 +101,12 @@ export default function PatientDetailScreen() {
                     if (!isActive) return;
                     setPatient(p);
                     setPlans(pl);
+
+                    try {
+                        await loadMedicalHistory(Number(id));
+                    } catch {
+                        // silent
+                    }
 
                     if (pl.length > 0) {
                         const weekRange = getWeekRange();
@@ -109,7 +128,7 @@ export default function PatientDetailScreen() {
         return () => {
             isActive = false;
         };
-    }, [id, hasStaffAccess]));
+    }, [id, hasStaffAccess, loadMedicalHistory]));
 
     if (isLoading) return <AppLoader message="Cargando adulto mayor..." />;
     if (!patient) return <AppLoader message="Adulto mayor no encontrado" />;
@@ -166,14 +185,32 @@ export default function PatientDetailScreen() {
                             </Text>
                         </View>
                     </View>
-                    <AppButton
-                        label="Historial médico"
-                        variant="text"
-                        icon="medical-bag"
-                        onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
-                        accessibilityLabel="Ver historial médico"
-                        style={styles.medicalHistoryBtn}
-                    />
+                </AppCard>
+
+                {/* Medical history summary */}
+                <AppCard
+                    style={styles.medicalHistoryCard}
+                    onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
+                    accessibilityLabel="Ver historial médico"
+                >
+                    <View style={styles.medicalHistoryRow}>
+                        <MaterialCommunityIcons name="medical-bag" size={22} color={theme.colors.primary} />
+                        <View style={styles.medicalHistoryInfo}>
+                            <Text style={styles.medicalHistoryTitle}>Historial médico</Text>
+                            {hasMedicalHistory ? (
+                                <Text style={styles.medicalHistorySummary}>
+                                    {[
+                                        totalPathologies > 0 && `${totalPathologies} patologías`,
+                                        totalMedications > 0 && `${totalMedications} medicamentos`,
+                                        totalNotes > 0 && `${totalNotes} notas`,
+                                    ].filter(Boolean).join(' · ')}
+                                </Text>
+                            ) : (
+                                <Text style={styles.medicalHistoryEmpty}>Agregar patologías, medicamentos y notas</Text>
+                            )}
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
+                    </View>
                 </AppCard>
 
                 {/* No active plan */}
@@ -291,14 +328,32 @@ export default function PatientDetailScreen() {
                         </Text>
                     </View>
                 </View>
-                    <AppButton
-                        label="Historial médico"
-                        variant="text"
-                        icon="medical-bag"
-                        onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
-                        accessibilityLabel="Ver historial médico"
-                        style={styles.medicalHistoryBtn}
-                    />
+                </AppCard>
+
+                {/* Medical history summary */}
+                <AppCard
+                    style={styles.medicalHistoryCard}
+                    onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
+                    accessibilityLabel="Ver historial médico"
+                >
+                    <View style={styles.medicalHistoryRow}>
+                        <MaterialCommunityIcons name="medical-bag" size={22} color={theme.colors.primary} />
+                        <View style={styles.medicalHistoryInfo}>
+                            <Text style={styles.medicalHistoryTitle}>Historial médico</Text>
+                            {hasMedicalHistory ? (
+                                <Text style={styles.medicalHistorySummary}>
+                                    {[
+                                        totalPathologies > 0 && `${totalPathologies} patologías`,
+                                        totalMedications > 0 && `${totalMedications} medicamentos`,
+                                        totalNotes > 0 && `${totalNotes} notas`,
+                                    ].filter(Boolean).join(' · ')}
+                                </Text>
+                            ) : (
+                                <Text style={styles.medicalHistoryEmpty}>Agregar patologías, medicamentos y notas</Text>
+                            )}
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
+                    </View>
                 </AppCard>
 
                 {/* Caregiver status indicator */}
@@ -434,7 +489,12 @@ const styles = StyleSheet.create({
     headerInfo: { flex: 1, gap: 2 },
     fullName: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
     detailText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
-    medicalHistoryBtn: { marginTop: 4, alignSelf: 'flex-start' },
+    medicalHistoryCard: { marginBottom: 16 },
+    medicalHistoryRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    medicalHistoryInfo: { flex: 1 },
+    medicalHistoryTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 15, color: '#1f2937' },
+    medicalHistorySummary: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#374151', marginTop: 2 },
+    medicalHistoryEmpty: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#9ca3af', marginTop: 2, fontStyle: 'italic' },
     actions: { gap: 8, marginBottom: 24 },
     divider: { marginVertical: 4 },
     sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginBottom: 10, marginTop: 8 },

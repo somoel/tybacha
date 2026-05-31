@@ -33,9 +33,39 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/exercise/[exerciseId]/active" options={{ headerShown: false, title: 'Ejercicio' }} />
             <Stack.Screen name="[id]/progress/index" options={{ headerShown: false, title: 'Progreso' }} />
             <Stack.Screen name="[id]/medical-history/index" options={{ title: 'Historial médico' }} />
-            <Stack.Screen name="[id]/medical-history/add-pathology" options={{ title: 'Agregar patología' }} />
-            <Stack.Screen name="[id]/medical-history/add-medication" options={{ title: 'Agregar medicamento' }} />
-            <Stack.Screen name="[id]/medical-history/add-note" options={{ title: 'Agregar nota médica' }} />
+            <Stack.Screen
+                name="[id]/medical-history/add-pathology"
+                options={{
+                    title: 'Agregar patología',
+                    presentation: 'formSheet',
+                    sheetGrabberVisible: true,
+                    sheetAllowedDetents: [0.5, 1.0],
+                    contentStyle: { backgroundColor: 'transparent' },
+                    headerTransparent: true,
+                }}
+            />
+            <Stack.Screen
+                name="[id]/medical-history/add-medication"
+                options={{
+                    title: 'Agregar medicamento',
+                    presentation: 'formSheet',
+                    sheetGrabberVisible: true,
+                    sheetAllowedDetents: [0.5, 1.0],
+                    contentStyle: { backgroundColor: 'transparent' },
+                    headerTransparent: true,
+                }}
+            />
+            <Stack.Screen
+                name="[id]/medical-history/add-note"
+                options={{
+                    title: 'Agregar nota médica',
+                    presentation: 'formSheet',
+                    sheetGrabberVisible: true,
+                    sheetAllowedDetents: [0.3, 1.0],
+                    contentStyle: { backgroundColor: 'transparent' },
+                    headerTransparent: true,
+                }}
+            />
         </Stack>
     );
 }
