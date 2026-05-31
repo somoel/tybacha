@@ -3,7 +3,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } from 'react-native-paper';
@@ -79,26 +79,22 @@ export default function NewBatteryScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.topBar}>
-                <View style={styles.topBarText}>
-                    <Text style={styles.modeLabel}>Realizar bateria SFT</Text>
-                    <Text style={styles.progressText}>
-                        {completedTests.length} de {SFT_TESTS.length} pruebas completadas
-                    </Text>
-                </View>
-                <IconButton
-                    icon="close"
-                    mode="contained-tonal"
-                    size={20}
-                    onPress={handleRequestExit}
-                    accessibilityLabel="Salir de la bateria"
-                />
-            </View>
-            <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
-            </View>
+            <Stack.Screen
+                options={{
+                    title: 'Realizar bateria SFT',
+                    headerRight: () => (
+                        <IconButton icon="close" size={24} onPress={handleRequestExit} />
+                    ),
+                }}
+            />
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+            <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+                <Text style={styles.progressHeader}>
+                    {completedTests.length} de {SFT_TESTS.length} pruebas completadas
+                </Text>
+                <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
+                </View>
                 {SFT_TESTS.map((test) => {
                     const isCompleted = completedTests.includes(test.type);
                     const resultValue = results[test.type];
@@ -149,21 +145,8 @@ export default function NewBatteryScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    topBar: {
-        backgroundColor: '#ffffff',
-        borderBottomColor: '#e5e7eb',
-        borderBottomWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 10,
-    },
-    topBarText: { flex: 1, paddingRight: 12 },
-    modeLabel: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 2 },
-    progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
-    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden' },
+    progressHeader: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151', marginBottom: 6 },
+    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 16 },
     progressFill: { height: 6 },
     content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 32 },

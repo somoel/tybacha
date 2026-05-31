@@ -10,8 +10,8 @@ export default function TestsLayout() {
             headerTintColor: theme.colors.primary,
             headerShadowVisible: false,
         }}>
-            <Stack.Screen name="index" options={{ headerShown: false, title: 'Pruebas SFT' }} />
-            <Stack.Screen name="[testType]/active" options={{ headerShown: false, title: 'Prueba activa' }} />
+            <Stack.Screen name="index" options={{ title: 'Pruebas SFT' }} />
+            <Stack.Screen name="[testType]/active" options={{ title: 'Realizar bateria SFT' }} />
         </Stack>
     );
 }

@@ -114,9 +114,7 @@ export default function WeeklySummaryScreen() {
     };
 
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            <Text style={styles.screenTitle}>Plan semanal</Text>
-
+        <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
             <WeeklyProgressCard
                 exercises={activePlan.exercises}
                 completedIndices={completedIndices}
@@ -145,8 +143,7 @@ export default function WeeklySummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 16 },
-    screenTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 20, color: '#1f2937', marginBottom: 16 },
+    container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
     emptyTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 8 },
     emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', textAlign: 'center' },

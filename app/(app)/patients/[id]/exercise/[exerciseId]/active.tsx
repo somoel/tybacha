@@ -7,7 +7,7 @@ import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import type { Exercise } from '@/src/types/exercise.types';
 import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
@@ -217,33 +217,22 @@ export default function ActiveExerciseScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.topBar}>
-                <IconButton
-                    icon="arrow-left"
-                    mode="contained-tonal"
-                    size={20}
-                    onPress={handleRequestExit}
-                    accessibilityLabel="Volver"
-                />
-                <View style={styles.topBarText}>
-                    <Text style={styles.modeLabel}>Ejercicio de hoy</Text>
-                    <Text style={styles.progressText}>
-                        Ejercicio {currentTodayIndex + 1} de {todayExercises.length}
-                    </Text>
-                </View>
-                <IconButton
-                    icon="close"
-                    mode="contained-tonal"
-                    size={20}
-                    onPress={handleRequestExit}
-                    accessibilityLabel="Salir"
-                />
-            </View>
-            <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
-            </View>
+            <Stack.Screen
+                options={{
+                    title: 'Ejercicio de hoy',
+                    headerRight: () => (
+                        <IconButton icon="close" size={24} onPress={handleRequestExit} />
+                    ),
+                }}
+            />
 
-            <ScrollView style={styles.content} contentContainerStyle={styles.scroll}>
+            <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scroll}>
+                <Text style={styles.progressHeader}>
+                    Ejercicio {currentTodayIndex + 1} de {todayExercises.length}
+                </Text>
+                <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
+                </View>
                 <View style={[styles.instructionCard, { backgroundColor: theme.colors.primaryContainer }]}>
                     <MaterialCommunityIcons
                         name="dumbbell"
@@ -432,21 +421,8 @@ const styles = StyleSheet.create({
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#6b7280' },
     errorText: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#c62828' },
-    topBar: {
-        backgroundColor: '#ffffff',
-        borderBottomColor: '#e5e7eb',
-        borderBottomWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 10,
-    },
-    topBarText: { flex: 1, paddingHorizontal: 12 },
-    modeLabel: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 2 },
-    progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#6b7280' },
-    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden' },
+    progressHeader: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151', marginBottom: 6 },
+    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 16 },
     progressFill: { height: 6 },
     content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 40 },

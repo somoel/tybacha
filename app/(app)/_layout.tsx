@@ -89,7 +89,7 @@ export default function AppLayout() {
                     name="notifications/index"
                     options={{
                         title: 'Notificaciones',
-                        headerShown: false,
+                        headerTitle: 'Notificaciones',
                         href: null,
                     }}
                 />

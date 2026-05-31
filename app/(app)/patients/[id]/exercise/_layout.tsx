@@ -10,8 +10,8 @@ export default function ExerciseLayout() {
             headerTintColor: theme.colors.primary,
             headerShadowVisible: false,
         }}>
-            <Stack.Screen name="index" options={{ headerShown: false, title: 'Plan semanal' }} />
-            <Stack.Screen name="[exerciseId]/active" options={{ headerShown: false, title: 'Ejercicio' }} />
+            <Stack.Screen name="index" options={{ title: 'Plan semanal' }} />
+            <Stack.Screen name="[exerciseId]/active" options={{ title: 'Ejercicio de hoy' }} />
         </Stack>
     );
 }

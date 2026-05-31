@@ -45,6 +45,7 @@ export default function NotificationsScreen() {
             <FlatList
                 data={filteredNotifications}
                 keyExtractor={(item) => String(item.idNotificacion)}
+                contentInsetAdjustmentBehavior="automatic"
                 renderItem={({ item }) => (
                     <NotificationItem notification={item} onPress={handlePress} />
                 )}

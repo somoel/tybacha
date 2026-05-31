@@ -8,7 +8,7 @@ import { useAuthStore } from '@/src/stores/authStore';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { IconButton, Text, TextInput, useTheme } from 'react-native-paper';
@@ -63,32 +63,32 @@ export default function BatterySummaryScreen() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.topBar}>
-                <IconButton
-                    icon="arrow-left"
-                    mode="contained-tonal"
-                    size={20}
-                    onPress={handleBackToCorrect}
-                    accessibilityLabel="Volver para corregir"
-                />
-                <View style={styles.topBarText}>
-                    <Text style={styles.modeLabel}>Resumen bateria SFT</Text>
-                    <Text style={styles.progressText}>{completedTests.length} de {SFT_TESTS.length} pruebas completadas</Text>
-                </View>
-                <IconButton
-                    icon="close"
-                    mode="contained-tonal"
-                    size={20}
-                    onPress={() => finalizeAndNavigate('patient')}
-                    accessibilityLabel="Finalizar y volver al adulto mayor"
-                    disabled={savingAction !== null}
-                />
-            </View>
-            <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { backgroundColor: theme.colors.primary }]} />
-            </View>
+            <Stack.Screen
+                options={{
+                    title: 'Resumen bateria SFT',
+                    headerRight: () => (
+                        <IconButton
+                            icon="close"
+                            size={24}
+                            onPress={() => finalizeAndNavigate('patient')}
+                            disabled={savingAction !== null}
+                        />
+                    ),
+                }}
+            />
 
-            <ScrollView style={styles.content} contentContainerStyle={styles.scroll}>
+            <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scroll}>
+                <Text style={styles.progressHeader}>{completedTests.length} de {SFT_TESTS.length} pruebas completadas</Text>
+                <View style={styles.progressTrack}>
+                    <View style={[styles.progressFill, { backgroundColor: theme.colors.primary }]} />
+                </View>
+                <AppButton
+                    label="Corregir ultima prueba"
+                    variant="text"
+                    icon="pencil"
+                    onPress={handleBackToCorrect}
+                    style={styles.correctBtn}
+                />
                 {SFT_TESTS.map((test) => {
                     const value = results[test.type];
                     const missing = value === undefined;
@@ -154,22 +154,10 @@ export default function BatterySummaryScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    topBar: {
-        backgroundColor: '#ffffff',
-        borderBottomColor: '#e5e7eb',
-        borderBottomWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 10,
-    },
-    topBarText: { flex: 1, paddingHorizontal: 12 },
-    modeLabel: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937', marginBottom: 2 },
-    progressText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#6b7280' },
-    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden' },
+    progressHeader: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151', marginBottom: 6 },
+    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 8 },
     progressFill: { height: 6, width: '100%' },
+    correctBtn: { marginBottom: 16, alignSelf: 'flex-start' },
     content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 32 },
     resultCard: { marginBottom: 8 },

@@ -106,9 +106,7 @@ export default function AdminScreen() {
     }
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            <Text style={styles.title}>Administracion</Text>
-
+        <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
             <View style={styles.metrics}>
                 <AppCard style={styles.metric}>
                     <Text style={styles.metricNumber}>{users.length}</Text>
@@ -192,7 +190,6 @@ const styles = StyleSheet.create({
     content: { padding: 16, paddingBottom: 40 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#f8fafc' },
     empty: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#6b7280', textAlign: 'center', marginTop: 8 },
-    title: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 24, color: '#1f2937', marginBottom: 16 },
     metrics: { flexDirection: 'row', gap: 8, marginBottom: 16 },
     metric: { flex: 1 },
     metricNumber: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 24, color: '#006d77', textAlign: 'center' },
