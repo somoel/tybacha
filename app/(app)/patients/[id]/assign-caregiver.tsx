@@ -2,18 +2,14 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { assignCaregiver, fetchAssignedCaregivers, searchCaregivers, unassignCaregiver } from '@/src/services/patientService';
+import { assignCaregiver, fetchAssignedCaregivers, fetchProfessionalCaregivers, unassignCaregiver } from '@/src/services/patientService';
+import type { CaregiverResult } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { Searchbar, Text, useTheme } from 'react-native-paper';
-
-interface CaregiverResult {
-    id: string;
-    full_name: string;
-}
 
 interface AssignedCaregiver {
     id: string;
@@ -30,59 +26,40 @@ export default function AssignCaregiverScreen() {
     const { user } = useAuthStore();
 
     const [searchQuery, setSearchQuery] = useState('');
-    const [results, setResults] = useState<CaregiverResult[]>([]);
+    const [professionalCaregivers, setProfessionalCaregivers] = useState<CaregiverResult[]>([]);
     const [assigned, setAssigned] = useState<AssignedCaregiver[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
+    const assignedIds = useMemo(() => new Set(assigned.map((a) => a.caregiver_id)), [assigned]);
+
+    const availableCaregivers = useMemo(() => {
+        const normalized = searchQuery.toLowerCase().trim();
+        return professionalCaregivers.filter((c) => {
+            if (assignedIds.has(c.id)) return false;
+            if (!normalized || normalized.length < 2) return true;
+            return c.full_name.toLowerCase().includes(normalized) || c.email.toLowerCase().includes(normalized);
+        });
+    }, [professionalCaregivers, assignedIds, searchQuery]);
+
     useEffect(() => {
-        const loadAssigned = async () => {
+        const load = async () => {
             if (!id) return;
             try {
-                const data = await fetchAssignedCaregivers(id);
-                setAssigned(data as unknown as AssignedCaregiver[]);
+                const [assignedData, caregiversData] = await Promise.all([
+                    fetchAssignedCaregivers(id),
+                    fetchProfessionalCaregivers(),
+                ]);
+                setAssigned(assignedData as unknown as AssignedCaregiver[]);
+                setProfessionalCaregivers(caregiversData);
             } catch (error) {
                 console.error('Error cargando cuidadores:', error);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadAssigned();
+        load();
     }, [id]);
-
-    const handleSearch = async () => {
-        if (searchQuery.length < 2) {
-            setSnackbar({ 
-                visible: true, 
-                message: 'Escribe al menos 2 caracteres para buscar', 
-                type: 'error' 
-            });
-            return;
-        }
-        
-        setIsSearching(true);
-        try {
-            console.log('Searching caregivers with query:', searchQuery);
-            const data = await searchCaregivers(searchQuery);
-            console.log('Search results:', data);
-            setResults(data);
-            
-            if (data.length === 0) {
-                setSnackbar({ 
-                    visible: true, 
-                    message: 'No se encontraron cuidadores con ese nombre o email', 
-                    type: 'error' 
-                });
-            }
-        } catch (error) {
-            console.error('Search error:', error);
-            const msg = error instanceof Error ? error.message : 'Error buscando cuidadores.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
-        } finally {
-            setIsSearching(false);
-        }
-    };
 
     const handleAssign = async (caregiverId: string) => {
         if (!id || !user) {
@@ -95,16 +72,11 @@ export default function AssignCaregiverScreen() {
         }
         
         try {
-            console.log('Assigning caregiver:', caregiverId, 'to patient:', id, 'by:', user.id);
             await assignCaregiver(caregiverId, id, user.id);
             setSnackbar({ visible: true, message: 'Cuidador asignado correctamente ✓', type: 'success' });
             
-            // Refresh assigned caregivers
             const data = await fetchAssignedCaregivers(id);
             setAssigned(data as unknown as AssignedCaregiver[]);
-            
-            // Clear search results
-            setResults([]);
             setSearchQuery('');
         } catch (error) {
             console.error('Assignment error:', error);
@@ -142,30 +114,39 @@ export default function AssignCaregiverScreen() {
             {/* Search */}
             <View style={styles.searchSection}>
                 <Searchbar
-                    placeholder="Buscar cuidador por nombre o email..."
+                    placeholder="Filtrar cuidadores por nombre o email..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    onSubmitEditing={handleSearch}
                     style={styles.searchbar}
                     inputStyle={styles.searchInput}
                 />
-                <AppButton label="Buscar" variant="filled" onPress={handleSearch} loading={isSearching} style={styles.searchBtn} />
             </View>
 
-            {/* Search results */}
-            {results.length > 0 && (
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Resultados</Text>
-                    {results.map((c) => (
-                        <AppCard key={c.id}>
+            {/* Available caregivers */}
+            <Text style={styles.sectionTitle}>
+                Cuidadores disponibles{searchQuery.length >= 2 ? ` (${availableCaregivers.length})` : ''}
+            </Text>
+            {availableCaregivers.length === 0 ? (
+                <Text style={styles.emptyText}>
+                    {searchQuery.length >= 2
+                        ? 'No se encontraron cuidadores con ese nombre o email.'
+                        : 'No hay cuidadores disponibles.'}
+                </Text>
+            ) : (
+                <FlatList
+                    data={availableCaregivers}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                        <AppCard>
                             <View style={styles.row}>
                                 <MaterialCommunityIcons name="account" size={24} color={theme.colors.primary} />
-                                <Text style={styles.name}>{c.full_name}</Text>
-                                <AppButton label="Asignar" variant="filled" onPress={() => handleAssign(c.id)} />
+                                <Text style={styles.name}>{item.full_name}</Text>
+                                <AppButton label="Asignar" variant="filled" onPress={() => handleAssign(item.id)} />
                             </View>
                         </AppCard>
-                    ))}
-                </View>
+                    )}
+                    style={styles.list}
+                />
             )}
 
             {/* Assigned caregivers */}
@@ -185,6 +166,7 @@ export default function AssignCaregiverScreen() {
                             </View>
                         </AppCard>
                     )}
+                    style={styles.list}
                 />
             )}
 
@@ -195,11 +177,10 @@ export default function AssignCaregiverScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', padding: 16 },
-    searchSection: { flexDirection: 'row', gap: 8, marginBottom: 16, alignItems: 'center' },
-    searchbar: { flex: 1, borderRadius: 12, elevation: 1 },
+    searchSection: { marginBottom: 16 },
+    searchbar: { borderRadius: 12, elevation: 1 },
     searchInput: { fontFamily: 'Montserrat_400Regular', fontSize: 14 },
-    searchBtn: { height: 48 },
-    section: { marginBottom: 16 },
+    list: { marginBottom: 16 },
     sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginBottom: 10 },
     row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     name: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#1f2937', flex: 1 },

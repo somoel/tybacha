@@ -148,6 +148,23 @@ export async function fetchPatientById(patientId: string): Promise<Patient | nul
     }
 }
 
+export interface CaregiverResult {
+    id: string;
+    full_name: string;
+    email: string;
+}
+
+export async function fetchProfessionalCaregivers(): Promise<CaregiverResult[]> {
+    const users = await fetchApiUsers();
+    return users
+        .filter((user) => user.rol === 'cuidador')
+        .map((user) => ({
+            id: String(user.idUsuario),
+            full_name: `${user.nombres ?? ''} ${user.apellidos ?? ''}`.trim() || user.correo,
+            email: user.correo,
+        }));
+}
+
 export async function searchCaregivers(query: string) {
     const users = await fetchApiUsers();
     const normalized = query.toLowerCase();
