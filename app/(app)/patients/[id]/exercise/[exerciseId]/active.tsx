@@ -184,7 +184,13 @@ export default function ActiveExerciseScreen() {
 
             allowExitRef.current = true;
             setTimeout(() => {
-                router.replace(`/(app)/patients/${id}` as never);
+                const nextIdx = currentTodayIndex + 1;
+                const nextExercise = nextIdx < todayExercises.length ? todayExercises[nextIdx] : null;
+                if (nextExercise) {
+                    router.replace(`/(app)/patients/${id}/exercise/${nextExercise.id_ejercicio_plan}/active` as never);
+                } else {
+                    router.replace(`/(app)/patients/${id}` as never);
+                }
             }, 1000);
         } catch (error) {
             setSnackbar({
@@ -274,7 +280,7 @@ export default function ActiveExerciseScreen() {
                 {hasTimer && (
                     <TimerDisplay
                         mode="countdown"
-                        initialSeconds={exercise.duration_seconds}
+                        initialSeconds={exercise.duration_seconds ?? 0}
                         onComplete={handleTimerComplete}
                     />
                 )}

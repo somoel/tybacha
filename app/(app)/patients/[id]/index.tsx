@@ -1,4 +1,5 @@
 import { WeeklyProgressCard } from '@/src/components/exercises/WeeklyProgressCard';
+import { DailyProgressCard } from '@/src/components/exercises/DailyProgressCard';
 import { TodayExerciseCard } from '@/src/components/exercises/TodayExerciseCard';
 import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryItem';
 import { AppButton } from '@/src/components/ui/AppButton';
@@ -56,6 +57,7 @@ export default function PatientDetailScreen() {
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [exerciseRecords, setExerciseRecords] = useState<ApiExerciseRecord[]>([]);
     const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
+    const [startedExercises, setStartedExercises] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
 
     const hasStaffAccess = isAdmin || isProfessional;
@@ -146,6 +148,7 @@ export default function PatientDetailScreen() {
         const todayExercises = activePlan?.exercises.filter((ex) => ex.frequency === todayKey) ?? [];
 
         const completedIndices = new Set<number>();
+        const skippedIndices = new Set<number>();
         const exerciseResultsMap: Record<number, { reps?: number; duration?: number }> = {};
         exerciseRecords.forEach((record) => {
             if (record.estado === 'completado') {
@@ -159,12 +162,29 @@ export default function PatientDetailScreen() {
                         duration: record.duracionRealSegundos ?? undefined,
                     };
                 }
+            } else if (record.estado === 'omitido') {
+                const exercise = activePlan?.exercises.find(
+                    (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
+                );
+                if (exercise) {
+                    skippedIndices.add(exercise.index);
+                }
             }
         });
+
+        const cleanedStarted = new Set(startedExercises);
+        cleanedStarted.forEach((idx) => {
+            if (completedIndices.has(idx)) cleanedStarted.delete(idx);
+        });
+        const inProgressIndices = cleanedStarted;
 
         const recentHistory = exerciseRecords
             .filter((r) => r.estado === 'completado' || r.estado === 'omitido')
             .slice(0, 5);
+
+        const todayCompleted = todayExercises.filter((ex) => completedIndices.has(ex.index)).length;
+        const todaySkipped = todayExercises.filter((ex) => skippedIndices.has(ex.index)).length;
+        const todayTotal = todayExercises.length;
 
         return (
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -264,24 +284,41 @@ export default function PatientDetailScreen() {
                                 </View>
                             </AppCard>
                         ) : (
-                            todayExercises.map((exercise) => (
-                                <TodayExerciseCard
-                                    key={exercise.index}
-                                    exercise={exercise}
-                                    status={
-                                        completedIndices.has(exercise.index)
-                                            ? 'completed'
-                                            : 'pending'
-                                    }
-                                    resultValue={exerciseResultsMap[exercise.index]?.reps ?? exerciseResultsMap[exercise.index]?.duration}
-                                    resultUnit={exerciseResultsMap[exercise.index]?.reps !== undefined ? 'reps' : exerciseResultsMap[exercise.index]?.duration !== undefined ? 's' : undefined}
-                                    onPress={() => {
-                                        if (activePlan) {
-                                            router.push(`/(app)/patients/${id}/exercise/${exercise.id_ejercicio_plan}/active` as never);
-                                        }
-                                    }}
+                            <>
+                                <DailyProgressCard
+                                    completed={todayCompleted}
+                                    skipped={todaySkipped}
+                                    total={todayTotal}
                                 />
-                            ))
+                                {todayExercises.map((exercise) => {
+                                    const status = completedIndices.has(exercise.index)
+                                        ? 'completed' as const
+                                        : skippedIndices.has(exercise.index)
+                                            ? 'skipped' as const
+                                            : inProgressIndices.has(exercise.index)
+                                                ? 'in_progress' as const
+                                                : 'pending' as const;
+
+                                    return (
+                                        <TodayExerciseCard
+                                            key={exercise.index}
+                                            exercise={exercise}
+                                            status={status}
+                                            resultValue={exerciseResultsMap[exercise.index]?.reps ?? exerciseResultsMap[exercise.index]?.duration}
+                                            resultUnit={exerciseResultsMap[exercise.index]?.reps !== undefined ? 'reps' : exerciseResultsMap[exercise.index]?.duration !== undefined ? 's' : undefined}
+                                            onPress={() => {
+                                                if (!activePlan) return;
+                                                if (status === 'completed' || status === 'skipped') {
+                                                    router.push(`/(app)/patients/${id}/exercise/${exercise.id_ejercicio_plan}/detail` as never);
+                                                } else {
+                                                    setStartedExercises((prev) => new Set(prev).add(exercise.index));
+                                                    router.push(`/(app)/patients/${id}/exercise/${exercise.id_ejercicio_plan}/active` as never);
+                                                }
+                                            }}
+                                        />
+                                    );
+                                })}
+                            </>
                         )}
 
                         {/* Recent history */}

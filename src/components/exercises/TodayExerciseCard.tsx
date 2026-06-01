@@ -5,7 +5,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
-type ExerciseStatus = 'pending' | 'completed' | 'skipped';
+type ExerciseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 
 interface TodayExerciseCardProps {
     exercise: Exercise;
@@ -20,16 +20,17 @@ export function TodayExerciseCard({ exercise, status, resultValue, resultUnit, o
 
     const isCompleted = status === 'completed';
     const isSkipped = status === 'skipped';
+    const isInProgress = status === 'in_progress';
     const isPending = status === 'pending';
 
-    const statusColor = isCompleted ? '#2e7d32' : isSkipped ? '#c62828' : '#94a3b8';
-    const statusBg = isCompleted ? '#e8f5e9' : isSkipped ? '#ffebee' : '#f1f5f9';
-    const statusIcon = isCompleted ? 'check-circle' : isSkipped ? 'close-circle' : 'circle-outline';
+    const statusColor = isCompleted ? '#2e7d32' : isSkipped ? '#c62828' : isInProgress ? '#f57c0b' : '#94a3b8';
+    const statusBg = isCompleted ? '#e8f5e9' : isSkipped ? '#ffebee' : isInProgress ? '#fff3e0' : '#f1f5f9';
+    const statusIcon = isCompleted ? 'check-circle' : isSkipped ? 'close-circle' : isInProgress ? 'play-circle' : 'circle-outline';
 
     return (
         <AppCard
-            style={[styles.card, { borderLeftWidth: 3, borderLeftColor: statusColor }]}
-            onPress={isPending ? onPress : undefined}
+            style={{ ...styles.card, borderLeftWidth: 3, borderLeftColor: statusColor }}
+            onPress={onPress}
         >
             <View style={styles.header}>
                 <View style={[styles.indexBadge, { backgroundColor: statusBg }]}>
@@ -66,12 +67,12 @@ export function TodayExerciseCard({ exercise, status, resultValue, resultUnit, o
                 </View>
             )}
 
-            {isPending && onPress && (
+            {(isPending || isInProgress) && onPress && (
                 <View style={styles.actionRow}>
-                    <Text style={[styles.actionText, { color: theme.colors.primary }]}>
-                        Iniciar ejercicio
+                    <Text style={[styles.actionText, { color: isInProgress ? '#f57c0b' : theme.colors.primary }]}>
+                        {isInProgress ? 'Continuar ejercicio' : 'Iniciar ejercicio'}
                     </Text>
-                    <MaterialCommunityIcons name="chevron-right" size={18} color={theme.colors.primary} />
+                    <MaterialCommunityIcons name="chevron-right" size={18} color={isInProgress ? '#f57c0b' : theme.colors.primary} />
                 </View>
             )}
         </AppCard>

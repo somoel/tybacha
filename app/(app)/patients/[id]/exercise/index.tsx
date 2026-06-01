@@ -1,3 +1,4 @@
+import { DailyProgressCard } from '@/src/components/exercises/DailyProgressCard';
 import { ExerciseDayGroup } from '@/src/components/exercises/ExerciseDayGroup';
 import { WeeklyProgressCard } from '@/src/components/exercises/WeeklyProgressCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
@@ -93,6 +94,7 @@ export default function WeeklySummaryScreen() {
     const todayKey = getTodayKey();
 
     const completedIndices = new Set<number>();
+    const skippedIndices = new Set<number>();
     const exerciseResultsMap: Record<number, { reps?: number; duration?: number }> = {};
     exerciseRecords.forEach((record) => {
         if (record.estado === 'completado') {
@@ -106,12 +108,28 @@ export default function WeeklySummaryScreen() {
                     duration: record.duracionRealSegundos ?? undefined,
                 };
             }
+        } else if (record.estado === 'omitido') {
+            const exercise = activePlan.exercises.find(
+                (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
+            );
+            if (exercise) {
+                skippedIndices.add(exercise.index);
+            }
         }
     });
 
     const handleExercisePress = (exercise: Exercise) => {
-        router.push(`/(app)/patients/${id}/exercise/${exercise.id_ejercicio_plan}/active` as never);
+        if (exercise.frequency === todayKey) {
+            router.push(`/(app)/patients/${id}/exercise/${exercise.id_ejercicio_plan}/active` as never);
+        } else {
+            router.push(`/(app)/patients/${id}/exercise/${exercise.id_ejercicio_plan}/detail` as never);
+        }
     };
+
+    const todayExercises = activePlan.exercises.filter((ex) => ex.frequency === todayKey);
+    const todayCompleted = todayExercises.filter((ex) => completedIndices.has(ex.index)).length;
+    const todaySkipped = todayExercises.filter((ex) => skippedIndices.has(ex.index)).length;
+    const todayTotal = todayExercises.length;
 
     return (
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
@@ -119,6 +137,11 @@ export default function WeeklySummaryScreen() {
                 exercises={activePlan.exercises}
                 completedIndices={completedIndices}
                 todayKey={todayKey}
+            />
+            <DailyProgressCard
+                completed={todayCompleted}
+                skipped={todaySkipped}
+                total={todayTotal}
             />
 
             {DAY_KEYS.map((dayKey) => {
@@ -130,6 +153,7 @@ export default function WeeklySummaryScreen() {
                         dayKey={dayKey}
                         exercises={dayExercises}
                         completedIndices={completedIndices}
+                        skippedIndices={skippedIndices}
                         exerciseResults={exerciseResultsMap}
                         isToday={dayKey === todayKey}
                         onExercisePress={handleExercisePress}

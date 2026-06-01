@@ -12,6 +12,7 @@ export default function ExerciseLayout() {
         }}>
             <Stack.Screen name="index" options={{ title: 'Plan semanal' }} />
             <Stack.Screen name="[exerciseId]/active" options={{ title: 'Ejercicio de hoy' }} />
+            <Stack.Screen name="[exerciseId]/detail" options={{ title: 'Detalle del ejercicio' }} />
         </Stack>
     );
 }

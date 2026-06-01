@@ -17,28 +17,41 @@ interface ExerciseDayGroupProps {
     dayKey: string;
     exercises: Exercise[];
     completedIndices: Set<number>;
+    skippedIndices?: Set<number>;
+    inProgressIndices?: Set<number>;
     exerciseResults: Record<number, { reps?: number; duration?: number }>;
     isToday: boolean;
     onExercisePress?: (exercise: Exercise) => void;
 }
 
-export function ExerciseDayGroup({ dayKey, exercises, completedIndices, exerciseResults, isToday, onExercisePress }: ExerciseDayGroupProps) {
+export function ExerciseDayGroup({ dayKey, exercises, completedIndices, skippedIndices = new Set(), inProgressIndices = new Set(), exerciseResults, isToday, onExercisePress }: ExerciseDayGroupProps) {
     const theme = useTheme();
 
-    const allCompleted = exercises.every((ex) => completedIndices.has(ex.index));
+    const allCompleted = exercises.length > 0 && exercises.every((ex) => completedIndices.has(ex.index));
+    const allSkipped = exercises.length > 0 && exercises.every((ex) => skippedIndices.has(ex.index));
     const dayCompletedCount = exercises.filter((ex) => completedIndices.has(ex.index)).length;
+
+    let headerIcon: string;
+    let headerIconColor: string;
+    if (allCompleted) {
+        headerIcon = 'check-circle';
+        headerIconColor = '#2e7d32';
+    } else if (allSkipped) {
+        headerIcon = 'close-circle';
+        headerIconColor = '#c62828';
+    } else if (isToday) {
+        headerIcon = 'circle-slice-8';
+        headerIconColor = theme.colors.primary;
+    } else {
+        headerIcon = 'circle-outline';
+        headerIconColor = '#94a3b8';
+    }
 
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                    {allCompleted ? (
-                        <MaterialCommunityIcons name="check-circle" size={18} color="#2e7d32" />
-                    ) : isToday ? (
-                        <MaterialCommunityIcons name="circle-slice-8" size={18} color={theme.colors.primary} />
-                    ) : (
-                        <MaterialCommunityIcons name="circle-outline" size={18} color="#94a3b8" />
-                    )}
+                    <MaterialCommunityIcons name={headerIcon as any} size={18} color={headerIconColor} />
                     <Text style={[styles.dayTitle, isToday && { color: theme.colors.primary }]}>
                         {DAY_NAMES[dayKey] ?? dayKey}
                     </Text>
@@ -53,20 +66,26 @@ export function ExerciseDayGroup({ dayKey, exercises, completedIndices, exercise
                 </Text>
             </View>
 
-            {exercises.map((exercise) => (
-                <TodayExerciseCard
-                    key={exercise.index}
-                    exercise={exercise}
-                    status={
-                        completedIndices.has(exercise.index)
-                            ? 'completed'
-                            : 'pending'
-                    }
-                    resultValue={exerciseResults[exercise.index]?.reps ?? exerciseResults[exercise.index]?.duration}
-                    resultUnit={exerciseResults[exercise.index]?.reps !== undefined ? 'reps' : exerciseResults[exercise.index]?.duration !== undefined ? 's' : undefined}
-                    onPress={isToday && onExercisePress ? () => onExercisePress(exercise) : undefined}
-                />
-            ))}
+            {exercises.map((exercise) => {
+                const status = completedIndices.has(exercise.index)
+                    ? 'completed' as const
+                    : skippedIndices.has(exercise.index)
+                        ? 'skipped' as const
+                        : inProgressIndices.has(exercise.index)
+                            ? 'in_progress' as const
+                            : 'pending' as const;
+
+                return (
+                    <TodayExerciseCard
+                        key={exercise.index}
+                        exercise={exercise}
+                        status={status}
+                        resultValue={exerciseResults[exercise.index]?.reps ?? exerciseResults[exercise.index]?.duration}
+                        resultUnit={exerciseResults[exercise.index]?.reps !== undefined ? 'reps' : exerciseResults[exercise.index]?.duration !== undefined ? 's' : undefined}
+                        onPress={onExercisePress ? () => onExercisePress(exercise) : undefined}
+                    />
+                );
+            })}
         </View>
     );
 }
