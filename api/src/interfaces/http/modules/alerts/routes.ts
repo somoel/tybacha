@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { createAndSendPushNotification, sendPushToCaregivers } from '../../../../infrastructure/push/notifications.js';
 import { badRequest, notFound } from '../../httpErrors.js';
 import { requireAuth, requireRoles } from '../../requireAuth.js';
 import { createAlertSchema, updateAlertSchema, alertStatusSchema } from './schemas.js';
@@ -77,8 +78,31 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
       },
     );
 
+    const idAlertaProgramada = (result as { insertId: number }).insertId;
+
+    if (body.canal === 'push' && !body.fechaProgramada) {
+      if (body.idUsuarioDestinatario) {
+        await createAndSendPushNotification({
+          idUsuario: body.idUsuarioDestinatario,
+          idAdultoMayor: body.idAdultoMayor,
+          tipoNotificacion: body.tipoAlerta,
+          titulo: body.titulo,
+          mensaje: body.mensaje,
+          idAlertaProgramada,
+        }).catch(() => {});
+      } else if (body.idAdultoMayor) {
+        await sendPushToCaregivers({
+          idAdultoMayor: body.idAdultoMayor,
+          titulo: body.titulo,
+          mensaje: body.mensaje,
+          tipoNotificacion: body.tipoAlerta,
+          idAlertaProgramada,
+        }).catch(() => {});
+      }
+    }
+
     reply.status(201);
-    return { idAlertaProgramada: (result as { insertId: number }).insertId };
+    return { idAlertaProgramada };
   });
 
   app.get('/alerts', { preHandler: requireAuth(app) }, async (request) => {

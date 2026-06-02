@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { createAndSendPushNotification } from '../../../../infrastructure/push/notifications.js';
 import { requireAuth } from '../../requireAuth.js';
 
 const registerTokenSchema = z.object({
@@ -118,6 +119,29 @@ export async function registerNotificationRoutes(app: FastifyInstance): Promise<
     );
 
     return { ok: true };
+  });
+
+  app.post('/push/test', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const body = z.object({
+      idUsuario: z.number().int().positive().optional(),
+    }).parse(request.body);
+
+    const targetUserId = body.idUsuario ?? actor.idUsuario;
+
+    const result = await createAndSendPushNotification({
+      idUsuario: targetUserId,
+      tipoNotificacion: 'sistema',
+      titulo: 'Prueba de notificacion',
+      mensaje: 'Esta es una notificacion de prueba para validar el sistema de push.',
+    });
+
+    return {
+      ok: result.estado === 'enviada',
+      idNotificacion: result.idNotificacion,
+      estado: result.estado,
+      error: result.error,
+    };
   });
 }
 

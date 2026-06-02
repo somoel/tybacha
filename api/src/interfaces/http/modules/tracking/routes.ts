@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
 import { sendPushToUser } from '../../../../infrastructure/push/expoPush.js';
+import { createAndSendPushNotification } from '../../../../infrastructure/push/notifications.js';
 import { forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -518,6 +519,23 @@ export async function registerTrackingRoutes(app: FastifyInstance): Promise<void
         mensaje: text.body,
         estado: body.estado,
       }).catch(() => {});
+
+      const [patientRows] = await pool.query<RowDataPacket[]>(
+        `select id_profesional_responsable from adulto_mayor
+         where id_adulto_mayor = :idAdultoMayor limit 1`,
+        { idAdultoMayor: body.idAdultoMayor },
+      );
+      const idProfesional = patientRows[0]?.id_profesional_responsable;
+      if (idProfesional && idProfesional !== actor.idUsuario) {
+        await createAndSendPushNotification({
+          idUsuario: idProfesional,
+          idAdultoMayor: body.idAdultoMayor,
+          tipoNotificacion: 'cumplimiento',
+          titulo: text.title,
+          mensaje: `${text.body} Registrado por el cuidador.`,
+          extraData: { idRegistroEjercicioPlan: record.id_registro_ejercicio_plan },
+        }).catch(() => {});
+      }
 
       return mapExerciseRecord(record);
     } catch (error) {
