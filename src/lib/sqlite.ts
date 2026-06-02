@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -6,8 +7,9 @@ let db: SQLite.SQLiteDatabase | null = null;
  * Opens and initializes the local SQLite database.
  * Creates all offline tables if they don't exist.
  */
-export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
+export async function initDatabase(): Promise<SQLite.SQLiteDatabase | null> {
     if (db) return db;
+    if (Platform.OS === 'web') return null;
 
     db = await SQLite.openDatabaseAsync('tybacha.db');
 
@@ -122,7 +124,8 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase> {
 }
 
 /** Returns the current database instance, initializing if needed. */
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+export async function getDatabase(): Promise<SQLite.SQLiteDatabase | null> {
+    if (Platform.OS === 'web') return null;
     if (!db) {
         return initDatabase();
     }
@@ -141,6 +144,7 @@ export async function addToSyncQueue(
     payload: Record<string, unknown>
 ): Promise<void> {
     const database = await getDatabase();
+    if (!database) return;
     const id = generateUUID();
     await database.runAsync(
         'INSERT INTO sync_queue (id, table_name, operation, payload) VALUES (?, ?, ?, ?)',
@@ -154,6 +158,7 @@ export async function addOfflineOperation(
     payload: Record<string, unknown>
 ): Promise<string> {
     const database = await getDatabase();
+    if (!database) return '';
     const idLocal = generateUUID();
     await database.runAsync(
         `INSERT INTO offline_operation_queue
@@ -166,6 +171,7 @@ export async function addOfflineOperation(
 
 export async function getPendingOfflineOperations(): Promise<OfflineOperationItem[]> {
     const database = await getDatabase();
+    if (!database) return [];
     return database.getAllAsync<OfflineOperationItem>(
         `SELECT id_local, entidad, accion, payload, creado_en_local, estado, id_remoto, detalle
          FROM offline_operation_queue
@@ -181,6 +187,7 @@ export async function markOfflineOperationResult(
     detalle: unknown
 ): Promise<void> {
     const database = await getDatabase();
+    if (!database) return;
     await database.runAsync(
         `UPDATE offline_operation_queue
          SET estado = ?, id_remoto = ?, detalle = ?
@@ -194,6 +201,7 @@ export async function markOfflineOperationResult(
  */
 export async function getPendingSyncItems(): Promise<SyncQueueItem[]> {
     const database = await getDatabase();
+    if (!database) return [];
     const rows = await database.getAllAsync<SyncQueueItem>(
         'SELECT * FROM sync_queue ORDER BY created_at ASC'
     );
@@ -205,6 +213,7 @@ export async function getPendingSyncItems(): Promise<SyncQueueItem[]> {
  */
 export async function removeSyncQueueItem(id: string): Promise<void> {
     const database = await getDatabase();
+    if (!database) return;
     await database.runAsync('DELETE FROM sync_queue WHERE id = ?', [id]);
 }
 
