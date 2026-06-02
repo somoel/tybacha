@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tybacha",
     "slug": "tybacha",
-    "version": "0.1.0",
+    "version": "0.2.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tybacha",
@@ -29,8 +29,8 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/icon.png",
+          "imageWidth": 300,
           "resizeMode": "contain",
           "backgroundColor": "#006d77",
           "dark": {
@@ -52,6 +52,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "53a30006-7889-4ad8-890a-916ca685da2b"
+      }
     }
   }
 }
