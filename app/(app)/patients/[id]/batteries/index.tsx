@@ -1,5 +1,5 @@
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { BatteryListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchBatteries } from '@/src/services/batteryService';
 import type { SFTBattery } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -40,7 +40,7 @@ export default function BatteriesListScreen() {
         };
     }, [id]));
 
-    if (isLoading) return <AppLoader />;
+    if (isLoading) return <BatteryListSkeleton />;
 
     return (
         <View style={styles.container}>

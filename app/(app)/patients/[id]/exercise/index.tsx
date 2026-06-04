@@ -1,7 +1,7 @@
 import { DailyProgressCard } from '@/src/components/exercises/DailyProgressCard';
 import { ExerciseDayGroup } from '@/src/components/exercises/ExerciseDayGroup';
 import { WeeklyProgressCard } from '@/src/components/exercises/WeeklyProgressCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { ExerciseSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchApiExerciseRecords } from '@/src/api/trackingApi';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
@@ -79,8 +79,8 @@ export default function WeeklySummaryScreen() {
         return () => { isActive = false; };
     }, [id]));
 
-    if (isLoading) return <AppLoader message="Cargando plan semanal..." />;
-    if (!patient) return <AppLoader message="Adulto mayor no encontrado" />;
+    if (isLoading) return <ExerciseSkeleton />;
+    if (!patient) return <ExerciseSkeleton />;
 
     if (!activePlan) {
         return (

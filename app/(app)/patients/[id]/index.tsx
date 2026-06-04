@@ -4,7 +4,7 @@ import { TodayExerciseCard } from '@/src/components/exercises/TodayExerciseCard'
 import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryItem';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { PatientDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
@@ -132,8 +132,8 @@ export default function PatientDetailScreen() {
         };
     }, [id, hasStaffAccess, loadMedicalHistory]));
 
-    if (isLoading) return <AppLoader message="Cargando adulto mayor..." />;
-    if (!patient) return <AppLoader message="Adulto mayor no encontrado" />;
+    if (isLoading) return <PatientDetailSkeleton />;
+    if (!patient) return <PatientDetailSkeleton />;
 
     const age = differenceInYears(new Date(), new Date(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]

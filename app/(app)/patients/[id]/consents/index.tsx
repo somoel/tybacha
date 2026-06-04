@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale';
 import { fetchApiConsents, fetchApiConsentStatus, revokeApiConsent } from '@/src/api/consentsApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { ConsentsListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { usePermissions } from '@/src/hooks/usePermissions';
@@ -91,7 +91,7 @@ export default function ConsentsScreen() {
         }
     }, [revokeTarget, load]);
 
-    if (isLoading) return <AppLoader message="Cargando consentimientos..." />;
+    if (isLoading) return <ConsentsListSkeleton />;
 
     return (
         <View style={styles.container}>

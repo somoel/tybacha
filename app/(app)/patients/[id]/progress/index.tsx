@@ -2,7 +2,7 @@ import { ComplianceTrendChart } from '@/src/components/exercises/ComplianceTrend
 import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryItem';
 import { MetricDetailCard } from '@/src/components/exercises/MetricDetailCard';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
@@ -82,8 +82,8 @@ export default function ProgressScreen() {
         return () => { isActive = false; };
     }, [id]));
 
-    if (isLoading) return <AppLoader message="Cargando progreso..." />;
-    if (!patient) return <AppLoader message="Adulto mayor no encontrado" />;
+    if (isLoading) return <ProgressSkeleton />;
+    if (!patient) return <ProgressSkeleton />;
 
     const weekRange = getWeekRange();
     const currentWeekStats = progressStats.find(

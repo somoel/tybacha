@@ -5,7 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { fetchApiAlerts, deleteApiAlert } from '@/src/api/alertsApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { AlertsListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import type { ApiAlert } from '@/src/types/apiAlert.types';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -56,7 +56,7 @@ export default function AlertsScreen() {
         setAlerts((prev) => prev.filter((a) => a.idAlertaProgramada !== alertId));
     }, []);
 
-    if (isLoading) return <AppLoader />;
+    if (isLoading) return <AlertsListSkeleton />;
 
     return (
         <View style={styles.container}>

@@ -1,7 +1,7 @@
 import { ExercisePlanSection } from '@/src/components/results/ExercisePlanSection';
 import { ResultChart } from '@/src/components/results/ResultChart';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { BatteryDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
 import type { BatteryWithResults } from '@/src/types/battery.types';
@@ -36,8 +36,8 @@ export default function BatteryDetailScreen() {
         load();
     }, [batteryId]);
 
-    if (isLoading) return <AppLoader />;
-    if (!battery) return <AppLoader message="Batería no encontrada" />;
+    if (isLoading) return <BatteryDetailSkeleton />;
+    if (!battery) return <BatteryDetailSkeleton />;
 
     return (
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>

@@ -3,7 +3,7 @@ import { MedicationCard } from '@/src/components/medical/MedicationCard';
 import { PathologyCard } from '@/src/components/medical/PathologyCard';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { MedicalHistorySkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
@@ -67,7 +67,7 @@ export default function MedicalHistoryScreen() {
     note: { title: 'Eliminar nota', message: '¿Está seguro de eliminar esta nota?' },
   };
 
-  if (isLoading) return <AppLoader message="Cargando historial médico..." />;
+  if (isLoading) return <MedicalHistorySkeleton />;
 
   const renderTabContent = () => {
     if (tab === 'pathologies') {

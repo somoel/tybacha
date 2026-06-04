@@ -1,6 +1,6 @@
 import { PatientCard } from '@/src/components/patients/PatientCard';
 import { PatientSectionList } from '@/src/components/patients/PatientSectionList';
-import { AppLoader } from '@/src/components/ui/AppLoader';
+import { PatientsListSkeleton } from '@/src/components/ui/PatientsListSkeleton';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchActivePlanStatus, fetchBatteryCountsForPatients, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
 import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
@@ -90,7 +90,7 @@ export default function PatientsListScreen() {
     };
 
     if (isLoading) {
-        return <AppLoader message="Cargando adultos mayores..." />;
+        return <PatientsListSkeleton />;
     }
 
     return (
