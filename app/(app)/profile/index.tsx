@@ -21,7 +21,7 @@ interface Assignment {
 export default function ProfileScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { user, profile, role, logout, updateProfile } = useAuthStore();
+    const { user, profile, role, logout, updateProfile, changeEmail, changePassword } = useAuthStore();
     const { isCaregiver } = usePermissions();
     const { isOnline, isSyncing, pendingCount, syncNow } = useSyncQueue();
 
@@ -39,6 +39,19 @@ export default function ProfileScreen() {
     const [editApellidos, setEditApellidos] = useState('');
     const [editTelefono, setEditTelefono] = useState('');
     const [editCiudad, setEditCiudad] = useState('');
+
+    const [isEditingEmail, setIsEditingEmail] = useState(false);
+    const [isSavingEmail, setIsSavingEmail] = useState(false);
+    const [editNuevoCorreo, setEditNuevoCorreo] = useState('');
+    const [editEmailContrasena, setEditEmailContrasena] = useState('');
+
+    const [isEditingPassword, setIsEditingPassword] = useState(false);
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
+    const [editContrasenaActual, setEditContrasenaActual] = useState('');
+    const [editNuevaContrasena, setEditNuevaContrasena] = useState('');
+    const [editConfirmarContrasena, setEditConfirmarContrasena] = useState('');
+
+    const [emailConfirmVisible, setEmailConfirmVisible] = useState(false);
 
     useEffect(() => {
         if (isCaregiver && user) {
@@ -76,6 +89,100 @@ export default function ProfileScreen() {
             setSnackbar({ visible: true, message: msg, type: 'error' });
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const startEditingEmail = () => {
+        setEditNuevoCorreo(user?.email ?? '');
+        setEditEmailContrasena('');
+        setIsEditingEmail(true);
+    };
+
+    const cancelEditingEmail = () => {
+        setIsEditingEmail(false);
+        setEditNuevoCorreo('');
+        setEditEmailContrasena('');
+    };
+
+    const saveEmail = async () => {
+        if (!editNuevoCorreo.trim() || !editEmailContrasena.trim()) {
+            setSnackbar({ visible: true, message: 'Todos los campos son requeridos', type: 'error' });
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editNuevoCorreo.trim())) {
+            setSnackbar({ visible: true, message: 'Correo inválido', type: 'error' });
+            return;
+        }
+        if (editEmailContrasena.length < 8) {
+            setSnackbar({ visible: true, message: 'La contraseña debe tener al menos 8 caracteres', type: 'error' });
+            return;
+        }
+        setEmailConfirmVisible(true);
+    };
+
+    const performEmailChange = async () => {
+        setEmailConfirmVisible(false);
+        setIsSavingEmail(true);
+        try {
+            await changeEmail({
+                nuevoCorreo: editNuevoCorreo.trim().toLowerCase(),
+                contrasena: editEmailContrasena,
+            });
+            setIsEditingEmail(false);
+            setEditNuevoCorreo('');
+            setEditEmailContrasena('');
+            setSnackbar({ visible: true, message: 'Correo actualizado exitosamente', type: 'success' });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Error al cambiar el correo.';
+            setSnackbar({ visible: true, message: msg, type: 'error' });
+        } finally {
+            setIsSavingEmail(false);
+        }
+    };
+
+    const startEditingPassword = () => {
+        setEditContrasenaActual('');
+        setEditNuevaContrasena('');
+        setEditConfirmarContrasena('');
+        setIsEditingPassword(true);
+    };
+
+    const cancelEditingPassword = () => {
+        setIsEditingPassword(false);
+        setEditContrasenaActual('');
+        setEditNuevaContrasena('');
+        setEditConfirmarContrasena('');
+    };
+
+    const savePassword = async () => {
+        if (!editContrasenaActual.trim() || !editNuevaContrasena.trim() || !editConfirmarContrasena.trim()) {
+            setSnackbar({ visible: true, message: 'Todos los campos son requeridos', type: 'error' });
+            return;
+        }
+        if (editNuevaContrasena.length < 8) {
+            setSnackbar({ visible: true, message: 'La nueva contraseña debe tener al menos 8 caracteres', type: 'error' });
+            return;
+        }
+        if (editNuevaContrasena !== editConfirmarContrasena) {
+            setSnackbar({ visible: true, message: 'Las contraseñas no coinciden', type: 'error' });
+            return;
+        }
+        setIsSavingPassword(true);
+        try {
+            await changePassword({
+                contrasenaActual: editContrasenaActual,
+                nuevaContrasena: editNuevaContrasena,
+            });
+            setIsEditingPassword(false);
+            setEditContrasenaActual('');
+            setEditNuevaContrasena('');
+            setEditConfirmarContrasena('');
+            setSnackbar({ visible: true, message: 'Contraseña actualizada exitosamente', type: 'success' });
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Error al cambiar la contraseña.';
+            setSnackbar({ visible: true, message: msg, type: 'error' });
+        } finally {
+            setIsSavingPassword(false);
         }
     };
 
@@ -241,6 +348,79 @@ export default function ProfileScreen() {
                 </View>
             </AppCard>
 
+            {/* Change email */}
+            <AppCard style={styles.changeCard}>
+                <Text style={styles.sectionTitle}>Correo electrónico</Text>
+                <Text style={styles.currentEmail}>{user?.email ?? ''}</Text>
+                {isEditingEmail ? (
+                    <View style={styles.changeForm}>
+                        <TextInput
+                            label="Nuevo correo"
+                            value={editNuevoCorreo}
+                            onChangeText={setEditNuevoCorreo}
+                            mode="outlined"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            style={styles.input}
+                        />
+                        <TextInput
+                            label="Contraseña actual"
+                            value={editEmailContrasena}
+                            onChangeText={setEditEmailContrasena}
+                            mode="outlined"
+                            secureTextEntry
+                            style={styles.input}
+                        />
+                        <View style={styles.editActions}>
+                            <AppButton label="Cancelar" variant="outlined" onPress={cancelEditingEmail} style={styles.editBtn} />
+                            <AppButton label="Guardar" onPress={saveEmail} loading={isSavingEmail} style={styles.editBtn} />
+                        </View>
+                    </View>
+                ) : (
+                    <AppButton label="Cambiar correo" variant="outlined" icon="email-edit-outline" onPress={startEditingEmail} style={styles.changeBtn} />
+                )}
+            </AppCard>
+
+            {/* Change password */}
+            <AppCard style={styles.changeCard}>
+                <Text style={styles.sectionTitle}>Contraseña</Text>
+                <Text style={styles.currentEmail}>••••••••</Text>
+                {isEditingPassword ? (
+                    <View style={styles.changeForm}>
+                        <TextInput
+                            label="Contraseña actual"
+                            value={editContrasenaActual}
+                            onChangeText={setEditContrasenaActual}
+                            mode="outlined"
+                            secureTextEntry
+                            style={styles.input}
+                        />
+                        <TextInput
+                            label="Nueva contraseña"
+                            value={editNuevaContrasena}
+                            onChangeText={setEditNuevaContrasena}
+                            mode="outlined"
+                            secureTextEntry
+                            style={styles.input}
+                        />
+                        <TextInput
+                            label="Confirmar contraseña"
+                            value={editConfirmarContrasena}
+                            onChangeText={setEditConfirmarContrasena}
+                            mode="outlined"
+                            secureTextEntry
+                            style={styles.input}
+                        />
+                        <View style={styles.editActions}>
+                            <AppButton label="Cancelar" variant="outlined" onPress={cancelEditingPassword} style={styles.editBtn} />
+                            <AppButton label="Guardar" onPress={savePassword} loading={isSavingPassword} style={styles.editBtn} />
+                        </View>
+                    </View>
+                ) : (
+                    <AppButton label="Cambiar contraseña" variant="outlined" icon="lock-reset" onPress={startEditingPassword} style={styles.changeBtn} />
+                )}
+            </AppCard>
+
             <Divider style={styles.divider} />
 
             <AppButton
@@ -253,6 +433,15 @@ export default function ProfileScreen() {
             />
 
             <View style={styles.bottomPad} />
+            <AppConfirmDialog
+                visible={emailConfirmVisible}
+                title="Cambiar correo"
+                message={`¿Está seguro de cambiar su correo a ${editNuevoCorreo.trim()}? Se cerrarán todas sus sesiones activas y deberá iniciar sesión nuevamente.`}
+                confirmLabel="Cambiar"
+                destructive={false}
+                onConfirm={performEmailChange}
+                onCancel={() => setEmailConfirmVisible(false)}
+            />
             <AppConfirmDialog
                 visible={confirmDialog.visible && confirmDialog.type === 'unlink'}
                 title="Desasociarse del adulto mayor"
@@ -306,4 +495,8 @@ const styles = StyleSheet.create({
     divider: { marginVertical: 20 },
     logoutBtn: { marginTop: 8 },
     bottomPad: { height: 32 },
+    changeCard: { marginBottom: 12 },
+    currentEmail: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', marginBottom: 8 },
+    changeForm: { gap: 12, marginTop: 4 },
+    changeBtn: { alignSelf: 'flex-start' },
 });

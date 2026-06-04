@@ -1,4 +1,5 @@
-import { logoutFromApi, updateMeApi, type UpdateMeInput } from '@/src/api/authApi';
+import { changeEmailApi, changePasswordApi, logoutFromApi, updateMeApi, type ChangeEmailInput, type ChangePasswordInput, type UpdateMeInput } from '@/src/api/authApi';
+import { setAuthTokens } from '@/src/api/httpClient';
 import type { AuthSession, AuthUser, Profile, UserRole } from '@/src/types/auth.types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
@@ -16,6 +17,8 @@ interface AuthState {
     setRole: (role: UserRole) => void;
     setLoading: (loading: boolean) => void;
     updateProfile: (input: UpdateMeInput) => Promise<void>;
+    changeEmail: (input: ChangeEmailInput) => Promise<void>;
+    changePassword: (input: ChangePasswordInput) => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -37,6 +40,20 @@ export const useAuthStore = create<AuthState>()(
             updateProfile: async (input) => {
                 const profile = await updateMeApi(input);
                 set({ profile });
+            },
+
+            changeEmail: async (input) => {
+                const response = await changeEmailApi(input);
+                await setAuthTokens(response.accessToken, response.refreshToken);
+                set((state) => ({
+                    user: state.user
+                        ? { ...state.user, email: response.user.correo, correo: response.user.correo }
+                        : null,
+                }));
+            },
+
+            changePassword: async (input) => {
+                await changePasswordApi(input);
             },
 
             logout: async () => {

@@ -19,3 +19,9 @@ export interface ApiLoginResponse {
     user: ApiAuthenticatedUser;
 }
 
+export interface ApiChangeEmailResponse {
+    accessToken: string;
+    refreshToken: string;
+    user: ApiAuthenticatedUser;
+}
+

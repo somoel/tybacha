@@ -1,5 +1,5 @@
 import { apiRequest, clearAuthTokens, setAuthTokens } from '@/src/api/httpClient';
-import type { ApiLoginInput, ApiLoginResponse } from '@/src/types/apiAuth.types';
+import type { ApiChangeEmailResponse, ApiLoginInput, ApiLoginResponse } from '@/src/types/apiAuth.types';
 import type { AuthUser, Profile } from '@/src/types/auth.types';
 
 export async function loginWithApi(input: ApiLoginInput): Promise<ApiLoginResponse> {
@@ -59,6 +59,30 @@ export interface UpdateMeInput {
     apellidos?: string;
     telefono?: string;
     ciudad?: string;
+}
+
+export interface ChangeEmailInput {
+    nuevoCorreo: string;
+    contrasena: string;
+}
+
+export interface ChangePasswordInput {
+    contrasenaActual: string;
+    nuevaContrasena: string;
+}
+
+export async function changeEmailApi(input: ChangeEmailInput): Promise<ApiChangeEmailResponse> {
+    return apiRequest<ApiChangeEmailResponse>('/me/email', {
+        method: 'PUT',
+        body: JSON.stringify(input),
+    });
+}
+
+export async function changePasswordApi(input: ChangePasswordInput): Promise<void> {
+    await apiRequest<void>('/me/password', {
+        method: 'PUT',
+        body: JSON.stringify(input),
+    });
 }
 
 export async function updateMeApi(input: UpdateMeInput): Promise<Profile> {

@@ -2,9 +2,10 @@ import type { FastifyInstance } from 'fastify';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { canCreateRole, type UserRole } from '../../../../domain/roles.js';
-import { hashPassword } from '../../../../infrastructure/auth/passwords.js';
+import { hashPassword, verifyPassword } from '../../../../infrastructure/auth/passwords.js';
+import { createAccessToken, createRefreshToken, hashToken } from '../../../../infrastructure/auth/tokens.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
-import { badRequest, forbidden, notFound } from '../../httpErrors.js';
+import { badRequest, forbidden, notFound, unauthorized } from '../../httpErrors.js';
 import { requireAuth, requireRoles } from '../../requireAuth.js';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 
@@ -271,6 +272,142 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'ER_DUP_ENTRY') {
         throw badRequest('Ya existe un usuario con esos datos');
       }
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+
+  const changeEmailSchema = z.object({
+    nuevoCorreo: z.string().email(),
+    contrasena: z.string().min(8),
+  });
+
+  app.put('/me/email', { preHandler: requireAuth(app) }, async (request) => {
+    const userId = request.authUser!.idUsuario;
+    const body = changeEmailSchema.parse(request.body);
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `select id_usuario, contrasena_hash
+       from usuario
+       where id_usuario = :userId
+       limit 1`,
+      { userId },
+    );
+
+    const userRow = rows[0] as { contrasena_hash: string } | undefined;
+    if (!userRow) throw notFound('Usuario no encontrado');
+
+    const valid = await verifyPassword(body.contrasena, userRow.contrasena_hash);
+    if (!valid) throw unauthorized('Contraseña incorrecta');
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.query(
+        `update usuario set correo = :nuevoCorreo where id_usuario = :userId`,
+        { nuevoCorreo: body.nuevoCorreo.toLowerCase(), userId },
+      );
+
+      await insertChangeAudit(connection, {
+        tabla: 'usuario',
+        registroId: userId,
+        accion: 'actualizar',
+        anteriores: { correo: rows[0] },
+        nuevos: { correo: body.nuevoCorreo.toLowerCase() },
+        context: {
+          userId,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.query(
+        `update sesion_usuario set revocada_en = current_timestamp(3)
+         where id_usuario = :userId and revocada_en is null`,
+        { userId },
+      );
+
+      await connection.commit();
+
+      const tokenUser = { idUsuario: userId, correo: body.nuevoCorreo.toLowerCase(), rol: request.authUser!.rol };
+      const accessToken = await createAccessToken(tokenUser);
+      const refreshToken = await createRefreshToken(tokenUser);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: { idUsuario: userId, correo: body.nuevoCorreo.toLowerCase(), rol: request.authUser!.rol },
+      };
+    } catch (error) {
+      await connection.rollback();
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ER_DUP_ENTRY') {
+        throw badRequest('El correo ya está en uso por otro usuario');
+      }
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+
+  const changePasswordSchema = z.object({
+    contrasenaActual: z.string().min(8),
+    nuevaContrasena: z.string().min(8),
+  });
+
+  app.put('/me/password', { preHandler: requireAuth(app) }, async (request) => {
+    const userId = request.authUser!.idUsuario;
+    const body = changePasswordSchema.parse(request.body);
+
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `select id_usuario, contrasena_hash
+       from usuario
+       where id_usuario = :userId
+       limit 1`,
+      { userId },
+    );
+
+    const userRow = rows[0] as { contrasena_hash: string } | undefined;
+    if (!userRow) throw notFound('Usuario no encontrado');
+
+    const valid = await verifyPassword(body.contrasenaActual, userRow.contrasena_hash);
+    if (!valid) throw unauthorized('Contraseña actual incorrecta');
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const newHash = await hashPassword(body.nuevaContrasena);
+      await connection.query(
+        `update usuario set contrasena_hash = :newHash where id_usuario = :userId`,
+        { newHash, userId },
+      );
+
+      await insertChangeAudit(connection, {
+        tabla: 'usuario',
+        registroId: userId,
+        accion: 'actualizar',
+        anteriores: {},
+        nuevos: { contrasena: '***' },
+        context: {
+          userId,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.query(
+        `update sesion_usuario set revocada_en = current_timestamp(3)
+         where id_usuario = :userId and revocada_en is null`,
+        { userId },
+      );
+
+      await connection.commit();
+
+      return { message: 'Contraseña actualizada exitosamente' };
+    } catch (error) {
+      await connection.rollback();
       throw error;
     } finally {
       connection.release();
