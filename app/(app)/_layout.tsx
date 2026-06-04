@@ -17,6 +17,7 @@ export default function AppLayout() {
     const pathname = usePathname();
     const { isCaregiver } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
+    const isHome = pathname === '/home' || pathname === '/';
     const hideTabBar =
         /\/patients\/[^/]+/.test(pathname) ||
         /\/tests\/[^/]+\/active/.test(pathname);
@@ -32,7 +33,7 @@ export default function AppLayout() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="dark" />
+            <StatusBar style={isHome ? 'light' : 'dark'} />
             <OfflineBanner visible={!isOnline} />
             <Tabs
                 screenOptions={{

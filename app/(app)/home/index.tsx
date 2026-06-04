@@ -13,10 +13,9 @@ import { usePatientsStore } from '@/src/stores/patientsStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text, useTheme } from 'react-native-paper';
 
 /**
@@ -31,6 +30,7 @@ export default function HomeScreen() {
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
     const unreadCount = useNotificationStore((s) => s.unreadCount);
     const { patients, setPatients, setLoading, isLoading, setPhotoThumbnails, exerciseData, setExerciseData } = usePatientsStore();
+    const insets = useSafeAreaInsets();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
     const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
@@ -109,7 +109,6 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
-            <StatusBar style="light" />
             <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
                 {/* Gradient header */}
                 <LinearGradient
@@ -118,7 +117,7 @@ export default function HomeScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                 >
-                    <SafeAreaView edges={['top']} style={styles.headerContent}>
+                    <View style={[styles.headerContent, { paddingTop: insets.top + 24 }]}>
                         <View style={styles.headerRow}>
                             <View style={styles.headerInfo}>
                                 <Text style={styles.greeting}>{greeting},</Text>
@@ -144,7 +143,7 @@ export default function HomeScreen() {
                                 )}
                             </Pressable>
                         </View>
-                    </SafeAreaView>
+                    </View>
                 </LinearGradient>
 
                 <View style={styles.content}>

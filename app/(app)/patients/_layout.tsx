@@ -44,6 +44,7 @@ export default function PatientsLayout() {
                     sheetAllowedDetents: [0.5, 1.0],
                     contentStyle: { backgroundColor: 'transparent' },
                     headerTransparent: true,
+                    headerTintColor: theme.colors.onSurface,
                 }}
             />
             <Stack.Screen
@@ -55,6 +56,7 @@ export default function PatientsLayout() {
                     sheetAllowedDetents: [0.5, 1.0],
                     contentStyle: { backgroundColor: 'transparent' },
                     headerTransparent: true,
+                    headerTintColor: theme.colors.onSurface,
                 }}
             />
             <Stack.Screen
@@ -66,6 +68,7 @@ export default function PatientsLayout() {
                     sheetAllowedDetents: [0.3, 1.0],
                     contentStyle: { backgroundColor: 'transparent' },
                     headerTransparent: true,
+                    headerTintColor: theme.colors.onSurface,
                 }}
             />
         </Stack>
