@@ -36,7 +36,7 @@ export default function LoginScreen() {
 
     const { control, handleSubmit } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
-        defaultValues: { email: 'chamber@yopmail.com', password: 'AAA12345*' },
+        defaultValues: { email: '', password: '' },
     });
 
     const onSubmit = async (data: LoginFormData) => {
