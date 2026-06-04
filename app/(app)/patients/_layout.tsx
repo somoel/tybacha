@@ -34,6 +34,9 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/progress/index" options={{ title: 'Progreso de ejercicios' }} />
             <Stack.Screen name="[id]/consents/index" options={{ title: 'Consentimientos' }} />
             <Stack.Screen name="[id]/consents/new" options={{ title: 'Registrar consentimiento' }} />
+            <Stack.Screen name="[id]/alerts/index" options={{ title: 'Alertas' }} />
+            <Stack.Screen name="[id]/alerts/new" options={{ title: 'Nueva alerta' }} />
+            <Stack.Screen name="[id]/assign-caregiver-simple" options={{ title: 'Asignar Cuidador' }} />
             <Stack.Screen name="[id]/medical-history/index" options={{ title: 'Historial médico' }} />
             <Stack.Screen
                 name="[id]/medical-history/add-pathology"
