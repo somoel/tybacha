@@ -129,7 +129,7 @@ export default function AppLayout() {
                     name="profile/index"
                     options={{
                         title: 'Perfil',
-                        headerTitle: 'Mi Perfil',
+                        headerShown: false,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
                                 name={focused ? 'account-circle' : 'account-circle-outline'}
