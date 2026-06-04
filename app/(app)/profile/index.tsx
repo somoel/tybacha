@@ -53,6 +53,8 @@ export default function ProfileScreen() {
 
     const [emailConfirmVisible, setEmailConfirmVisible] = useState(false);
 
+    const [showPassword, setShowPassword] = useState(false);
+
     useEffect(() => {
         if (isCaregiver && user) {
             fetchCaregiverAssignments(user.id).then((data) => {
@@ -368,8 +370,14 @@ export default function ProfileScreen() {
                             value={editEmailContrasena}
                             onChangeText={setEditEmailContrasena}
                             mode="outlined"
-                            secureTextEntry
+                            secureTextEntry={!showPassword}
                             style={styles.input}
+                            right={
+                                <TextInput.Icon
+                                    icon={showPassword ? 'eye-off' : 'eye'}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                />
+                            }
                         />
                         <View style={styles.editActions}>
                             <AppButton label="Cancelar" variant="outlined" onPress={cancelEditingEmail} style={styles.editBtn} />
@@ -392,15 +400,21 @@ export default function ProfileScreen() {
                             value={editContrasenaActual}
                             onChangeText={setEditContrasenaActual}
                             mode="outlined"
-                            secureTextEntry
+                            secureTextEntry={!showPassword}
                             style={styles.input}
+                            right={
+                                <TextInput.Icon
+                                    icon={showPassword ? 'eye-off' : 'eye'}
+                                    onPress={() => setShowPassword(!showPassword)}
+                                />
+                            }
                         />
                         <TextInput
                             label="Nueva contraseña"
                             value={editNuevaContrasena}
                             onChangeText={setEditNuevaContrasena}
                             mode="outlined"
-                            secureTextEntry
+                            secureTextEntry={!showPassword}
                             style={styles.input}
                         />
                         <TextInput
@@ -408,7 +422,7 @@ export default function ProfileScreen() {
                             value={editConfirmarContrasena}
                             onChangeText={setEditConfirmarContrasena}
                             mode="outlined"
-                            secureTextEntry
+                            secureTextEntry={!showPassword}
                             style={styles.input}
                         />
                         <View style={styles.editActions}>

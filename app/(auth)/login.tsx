@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Checkbox, Text, useTheme } from 'react-native-paper';
+import { Checkbox, Text, TextInput, useTheme } from 'react-native-paper';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -30,6 +30,7 @@ export default function LoginScreen() {
     const router = useRouter();
     const { setSession, setUser, setProfile, setRole } = useAuthStore();
 
+    const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'error' as const });
@@ -110,8 +111,14 @@ export default function LoginScreen() {
                         name="password"
                         label="Contraseña"
                         placeholder="Mínimo 8 caracteres"
-                        secureTextEntry
+                        secureTextEntry={!showPassword}
                         accessibilityLabel="Contraseña"
+                        right={
+                            <TextInput.Icon
+                                icon={showPassword ? 'eye-off' : 'eye'}
+                                onPress={() => setShowPassword(!showPassword)}
+                            />
+                        }
                     />
 
                     <View style={styles.rememberRow}>
