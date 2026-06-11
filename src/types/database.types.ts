@@ -269,14 +269,13 @@ export interface DatabaseStatus {
 }
 
 // Legacy compatibility types (for existing code)
-export type GenderLegacy = 'male' | 'female' | 'other';
+export type GenderLegacy = 'male' | 'female';
 
 // Helper functions for type conversion
 export function convertGenderToMySQL(gender: GenderLegacy): Gender {
   switch (gender) {
     case 'male': return 'M';
     case 'female': return 'F';
-    default: return 'M';
   }
 }
 
@@ -284,7 +283,6 @@ export function convertGenderFromMySQL(gender: Gender): GenderLegacy {
   switch (gender) {
     case 'M': return 'male';
     case 'F': return 'female';
-    default: return 'male';
   }
 }
 

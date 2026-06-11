@@ -18,14 +18,12 @@ import * as ImageManipulator from 'expo-image-manipulator';
 
 function mapGenderFromApi(gender: ApiOlderAdult['genero']) {
     if (gender === 'masculino') return 'male';
-    if (gender === 'femenino') return 'female';
-    return 'other';
+    return 'female';
 }
 
 function mapGenderToApi(gender: PatientFormData['gender']): ApiGender {
     if (gender === 'male') return 'masculino';
-    if (gender === 'female') return 'femenino';
-    return 'otro';
+    return 'femenino';
 }
 
 function mapOlderAdultToPatient(adult: ApiOlderAdult): Patient {

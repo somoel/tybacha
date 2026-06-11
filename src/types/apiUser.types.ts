@@ -21,7 +21,7 @@ export interface ApiCreateUserInput {
     numeroDocumento?: string;
     telefono?: string;
     fechaNacimiento?: string;
-    genero?: 'femenino' | 'masculino' | 'otro' | 'no_informa';
+    genero?: 'femenino' | 'masculino';
     direccion?: string;
     ciudad?: string;
 }

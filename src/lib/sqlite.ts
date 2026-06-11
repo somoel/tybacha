@@ -24,7 +24,7 @@ export async function initDatabase(): Promise<SQLite.SQLiteDatabase | null> {
       first_lastname TEXT NOT NULL,
       second_lastname TEXT,
       birth_date TEXT NOT NULL,
-      gender TEXT NOT NULL CHECK (gender IN ('male', 'female', 'other')),
+      gender TEXT NOT NULL CHECK (gender IN ('male', 'female')),
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now')),
       synced INTEGER DEFAULT 0

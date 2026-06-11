@@ -110,7 +110,7 @@ async function applyOlderAdultCreate(
       nombres: requiredString(payload, 'nombres'),
       apellidos: requiredString(payload, 'apellidos'),
       fechaNacimiento: requiredString(payload, 'fechaNacimiento'),
-      genero: optionalString(payload, 'genero') ?? 'no_informa',
+      genero: optionalString(payload, 'genero') ?? 'masculino',
       tipoDocumento: optionalString(payload, 'tipoDocumento'),
       numeroDocumento: optionalString(payload, 'numeroDocumento'),
       telefono: optionalString(payload, 'telefono'),

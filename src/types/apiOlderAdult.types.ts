@@ -1,4 +1,4 @@
-export type ApiGender = 'femenino' | 'masculino' | 'otro' | 'no_informa';
+export type ApiGender = 'femenino' | 'masculino';
 export type ApiOlderAdultStatus = 'activo' | 'inactivo';
 
 export interface ApiOlderAdult {

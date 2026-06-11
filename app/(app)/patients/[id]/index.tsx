@@ -138,7 +138,7 @@ export default function PatientDetailScreen() {
     const age = differenceInYears(new Date(), new Date(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
         .filter(Boolean).join(' ');
-    const genderLabel = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Femenino' : 'Otro';
+    const genderLabel = patient.gender === 'male' ? 'Masculino' : 'Femenino';
     const hasActivePlan = plans.some((p) => p.status === 'active');
     const activePlan = plans.find((p) => p.status === 'active');
 

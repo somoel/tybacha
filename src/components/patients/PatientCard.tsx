@@ -59,7 +59,7 @@ export function PatientCard({
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
         .filter(Boolean)
         .join(' ');
-    const genderLabel = patient.gender === 'male' ? 'Masculino' : patient.gender === 'female' ? 'Femenino' : 'Otro';
+    const genderLabel = patient.gender === 'male' ? 'Masculino' : 'Femenino';
     const photoData = photoThumbnails[patient.id] ?? patient.photo_data ?? null;
 
     const todayCompleted = weeklyExerciseData?.todayCompleted ?? 0;
@@ -87,7 +87,7 @@ export function PatientCard({
                     </View>
                     <View style={styles.detailRow}>
                         <MaterialCommunityIcons
-                            name={patient.gender === 'male' ? 'gender-male' : patient.gender === 'female' ? 'gender-female' : 'gender-non-binary'}
+                            name={patient.gender === 'male' ? 'gender-male' : 'gender-female'}
                             size={14}
                             color={theme.colors.onSurfaceVariant}
                         />

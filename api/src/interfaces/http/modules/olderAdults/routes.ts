@@ -9,13 +9,13 @@ import { requireAuth } from '../../requireAuth.js';
 const ALLOWED_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_PHOTO_BYTES = 1 * 1024 * 1024;
 
-const genderSchema = z.enum(['femenino', 'masculino', 'otro', 'no_informa']);
+const genderSchema = z.enum(['femenino', 'masculino']);
 
 const createOlderAdultSchema = z.object({
   nombres: z.string().min(1).max(120),
   apellidos: z.string().min(1).max(120),
   fechaNacimiento: z.string().date(),
-  genero: genderSchema.default('no_informa'),
+  genero: genderSchema.default('masculino'),
   tipoDocumento: z.string().max(30).optional(),
   numeroDocumento: z.string().max(60).optional(),
   telefono: z.string().max(40).optional(),

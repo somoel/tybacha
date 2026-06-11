@@ -19,7 +19,7 @@ const createUserSchema = z.object({
   numeroDocumento: z.string().max(60).optional(),
   telefono: z.string().max(40).optional(),
   fechaNacimiento: z.string().date().optional(),
-  genero: z.enum(['femenino', 'masculino', 'otro', 'no_informa']).optional(),
+  genero: z.enum(['femenino', 'masculino']).optional(),
   direccion: z.string().max(255).optional(),
   ciudad: z.string().max(120).optional(),
 });
