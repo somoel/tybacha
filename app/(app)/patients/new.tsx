@@ -21,6 +21,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, SegmentedButtons, Text, useTheme } from 'react-native-paper';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
+import { differenceInYears } from 'date-fns';
 import { z } from 'zod';
 
 const patientSchema = z.object({
@@ -28,7 +29,7 @@ const patientSchema = z.object({
     second_name: z.string().optional(),
     first_lastname: z.string().min(1, 'El primer apellido es requerido'),
     second_lastname: z.string().optional(),
-    gender: z.enum(['male', 'female', 'other'], { message: 'Seleccione un género' }),
+    gender: z.enum(['male', 'female'], { message: 'Seleccione un género' }),
     id_cuidador: z.string().optional(),
 });
 
@@ -64,6 +65,8 @@ export default function NewPatientScreen() {
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [showRemovePhotoDialog, setShowRemovePhotoDialog] = useState(false);
+    const [showAgeWarning, setShowAgeWarning] = useState(false);
+    const [pendingFormData, setPendingFormData] = useState<PatientFormValues | null>(null);
 
     const { control, handleSubmit, setValue, watch } = useForm<PatientFormValues>({
         resolver: zodResolver(patientSchema),
@@ -120,7 +123,7 @@ export default function NewPatientScreen() {
         setShowRemovePhotoDialog(true);
     };
 
-    const onSubmit = async (data: PatientFormValues) => {
+    const doSubmit = async (data: PatientFormValues) => {
         if (isLoading) return;
         if (!user) return;
         const startedAt = Date.now();
@@ -155,6 +158,29 @@ export default function NewPatientScreen() {
         }
     };
 
+    const onSubmit = async (data: PatientFormValues) => {
+        const age = differenceInYears(new Date(), birthDate);
+        if (age < 60) {
+            setPendingFormData(data);
+            setShowAgeWarning(true);
+            return;
+        }
+        await doSubmit(data);
+    };
+
+    const handleAgeWarningConfirm = async () => {
+        setShowAgeWarning(false);
+        if (pendingFormData) {
+            await doSubmit(pendingFormData);
+            setPendingFormData(null);
+        }
+    };
+
+    const handleAgeWarningCancel = () => {
+        setShowAgeWarning(false);
+        setPendingFormData(null);
+    };
+
     return (
         <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <OfflineBanner visible={!isOnline} />
@@ -187,7 +213,6 @@ export default function NewPatientScreen() {
                                 buttons={[
                                     { value: 'male', label: 'Masculino', accessibilityLabel: 'Masculino' },
                                     { value: 'female', label: 'Femenino', accessibilityLabel: 'Femenino' },
-                                    { value: 'other', label: 'Otro', accessibilityLabel: 'Otro' },
                                 ]}
                                 style={styles.segmented}
                             />
@@ -300,6 +325,16 @@ export default function NewPatientScreen() {
                 destructive
                 onConfirm={() => { setPhotoUri(null); setShowRemovePhotoDialog(false); }}
                 onCancel={() => setShowRemovePhotoDialog(false)}
+            />
+            <AppConfirmDialog
+                visible={showAgeWarning}
+                title="Aviso de edad"
+                message="El adulto mayor tiene menos de 60 años. ¿Desea continuar con el registro?"
+                confirmLabel="Continuar"
+                cancelLabel="Cancelar"
+                destructive={false}
+                onConfirm={handleAgeWarningConfirm}
+                onCancel={handleAgeWarningCancel}
             />
             <AppSnackbar
                 visible={snackbar.visible}

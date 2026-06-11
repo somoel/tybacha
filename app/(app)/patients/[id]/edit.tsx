@@ -16,6 +16,7 @@ import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text } from 'react-native-paper';
+import { differenceInYears } from 'date-fns';
 import { z } from 'zod';
 
 const editSchema = z.object({
@@ -23,7 +24,7 @@ const editSchema = z.object({
     second_name: z.string().optional(),
     first_lastname: z.string().min(1, 'El primer apellido es requerido'),
     second_lastname: z.string().optional(),
-    gender: z.enum(['male', 'female', 'other']),
+    gender: z.enum(['male', 'female']),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -45,6 +46,8 @@ export default function EditPatientScreen() {
     const [currentPhotoData, setCurrentPhotoData] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [confirmType, setConfirmType] = useState<'delete' | 'deletePhoto' | null>(null);
+    const [showAgeWarning, setShowAgeWarning] = useState(false);
+    const [pendingFormData, setPendingFormData] = useState<EditFormValues | null>(null);
 
     const { control, handleSubmit, reset } = useForm<EditFormValues>({
         resolver: zodResolver(editSchema),
@@ -71,7 +74,7 @@ export default function EditPatientScreen() {
         load();
     }, [id, reset]);
 
-    const onSubmit = async (data: EditFormValues) => {
+    const doSubmit = async (data: EditFormValues) => {
         if (!id) return;
         setIsSaving(true);
         try {
@@ -85,6 +88,29 @@ export default function EditPatientScreen() {
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const onSubmit = async (data: EditFormValues) => {
+        const age = differenceInYears(new Date(), birthDate);
+        if (age < 60) {
+            setPendingFormData(data);
+            setShowAgeWarning(true);
+            return;
+        }
+        await doSubmit(data);
+    };
+
+    const handleAgeWarningConfirm = async () => {
+        setShowAgeWarning(false);
+        if (pendingFormData) {
+            await doSubmit(pendingFormData);
+            setPendingFormData(null);
+        }
+    };
+
+    const handleAgeWarningCancel = () => {
+        setShowAgeWarning(false);
+        setPendingFormData(null);
     };
 
     const handleDelete = () => {
@@ -179,7 +205,6 @@ export default function EditPatientScreen() {
                         <SegmentedButtons value={value} onValueChange={onChange} buttons={[
                             { value: 'male', label: 'Masculino' },
                             { value: 'female', label: 'Femenino' },
-                            { value: 'other', label: 'Otro' },
                         ]} style={styles.segmented} />
                     )} />
 
@@ -245,6 +270,16 @@ export default function EditPatientScreen() {
                 destructive
                 onConfirm={handleConfirmDeletePhoto}
                 onCancel={() => setConfirmType(null)}
+            />
+            <AppConfirmDialog
+                visible={showAgeWarning}
+                title="Aviso de edad"
+                message="El adulto mayor tiene menos de 60 años. ¿Desea continuar con la actualización?"
+                confirmLabel="Continuar"
+                cancelLabel="Cancelar"
+                destructive={false}
+                onConfirm={handleAgeWarningConfirm}
+                onCancel={handleAgeWarningCancel}
             />
             <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
         </KeyboardAvoidingView>
