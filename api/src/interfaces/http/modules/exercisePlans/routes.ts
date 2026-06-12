@@ -82,6 +82,17 @@ interface SftResultRow extends RowDataPacket {
   unidad_resultado: string | null;
 }
 
+interface SftBodyMetrics {
+  pesoKg: number | null;
+  estaturaCm: number | null;
+  imc: number | null;
+}
+
+interface SftData {
+  results: SftResultRow[];
+  metrics: SftBodyMetrics;
+}
+
 interface PlanRow extends RowDataPacket {
   id_plan_ejercicio: number;
   id_adulto_mayor: number;
@@ -156,7 +167,7 @@ async function getOlderAdultContext(idAdultoMayor: number, actorId: number, role
   return adult;
 }
 
-async function getLatestSftResults(idAdultoMayor: number, idAplicacionSft?: number): Promise<SftResultRow[]> {
+async function getLatestSftResults(idAdultoMayor: number, idAplicacionSft?: number): Promise<SftData> {
   const params = { idAdultoMayor, idAplicacionSft: idAplicacionSft ?? null };
   const [applicationRows] = await pool.query<RowDataPacket[]>(
     `select id_aplicacion_sft
@@ -182,13 +193,39 @@ async function getLatestSftResults(idAdultoMayor: number, idAplicacionSft?: numb
     { idAplicacionSft: application.id_aplicacion_sft },
   );
 
-  return rows;
+  const [metricRows] = await pool.query<RowDataPacket[]>(
+    `select peso_kg, estatura_cm, imc
+     from aplicacion_sft
+     where id_aplicacion_sft = :idAplicacionSft`,
+    { idAplicacionSft: application.id_aplicacion_sft },
+  );
+
+  const metrics: SftBodyMetrics = {
+    pesoKg: metricRows[0]?.peso_kg ?? null,
+    estaturaCm: metricRows[0]?.estatura_cm ?? null,
+    imc: metricRows[0]?.imc ?? null,
+  };
+
+  return { results: rows, metrics };
 }
 
-function buildPrompt(adult: OlderAdultContextRow, sftResults: SftResultRow[]) {
+function getImcCategory(imc: number): string {
+  if (imc < 18.5) return 'bajo peso';
+  if (imc < 25) return 'peso normal';
+  if (imc < 30) return 'sobrepeso';
+  return 'obesidad';
+}
+
+function buildPrompt(adult: OlderAdultContextRow, sftResults: SftResultRow[], metrics: SftBodyMetrics) {
   const results = sftResults
     .map((result) => `- ${result.prueba}: ${result.valor_numerico ?? result.valor_texto ?? 'Sin valor'} ${result.unidad_resultado ?? ''}`)
     .join('\n');
+
+  const bodyMetricsBlock = [
+    metrics.pesoKg != null ? `- Peso: ${metrics.pesoKg} kg` : null,
+    metrics.estaturaCm != null ? `- Estatura: ${metrics.estaturaCm} cm` : null,
+    metrics.imc != null ? `- IMC: ${metrics.imc} (${getImcCategory(metrics.imc)})` : null,
+  ].filter(Boolean).join('\n');
 
   return `Eres un especialista en ejercicio fisico para adultos mayores.
 
@@ -201,6 +238,7 @@ REGLAS OBLIGATORIAS:
 - Usa dificultad bajo, medio o alto.
 - Evita ejercicios contraindicados para las patologias registradas.
 - No incluyas sabado ni domingo.
+${metrics.imc != null ? `- Considera el IMC (${metrics.imc}) para ajustar la intensidad. Si es >= 30, prioriza ejercicios de bajo impacto.` : ''}
 
 ADULTO MAYOR:
 - Nombre: ${adult.nombres} ${adult.apellidos}
@@ -208,7 +246,7 @@ ADULTO MAYOR:
 - Genero: ${adult.genero}
 - Patologias: ${adult.patologias ?? 'No registradas'}
 - Medicamentos activos: ${adult.medicamentos ?? 'No registrados'}
-
+${bodyMetricsBlock ? `\nDATOS CORPORALES:\n${bodyMetricsBlock}\n` : ''}
 RESULTADOS SFT:
 ${results}
 
@@ -329,8 +367,8 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
     const body = generatePlanSchema.parse(request.body);
     const adult = await getOlderAdultContext(body.idAdultoMayor, actor.idUsuario, actor.rol);
-    const sftResults = await getLatestSftResults(body.idAdultoMayor, body.idAplicacionSft);
-    const prompt = buildPrompt(adult, sftResults);
+    const { results: sftResults, metrics } = await getLatestSftResults(body.idAdultoMayor, body.idAplicacionSft);
+    const prompt = buildPrompt(adult, sftResults, metrics);
 
     const connection = await pool.getConnection();
     try {
