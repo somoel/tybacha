@@ -132,26 +132,28 @@ export default function AdminScreen() {
                 <AppInput control={control} name="apellidos" label="Apellidos" />
                 <AppInput control={control} name="correo" label="Correo" keyboardType="email-address" autoCapitalize="none" />
                 <AppInput control={control} name="contrasena" label="Contrasena" secureTextEntry />
-                <Text style={styles.fieldLabel}>Rol</Text>
-                <Controller
-                    control={control}
-                    name="rol"
-                    render={({ field: { value, onChange } }) => (
-                        <SegmentedButtons
-                            value={value}
-                            onValueChange={(next) => onChange(next as ApiUserRole)}
-                            buttons={isAdmin ? [
-                                { value: 'administrador', label: 'Admin' },
-                                { value: 'profesional', label: 'Profesional' },
-                                { value: 'cuidador', label: 'Cuidador' },
-                            ] : [
-                                { value: 'cuidador', label: 'Cuidador' },
-                            ]}
+                {isAdmin && (
+                    <>
+                        <Text style={styles.fieldLabel}>Rol</Text>
+                        <Controller
+                            control={control}
+                            name="rol"
+                            render={({ field: { value, onChange } }) => (
+                                <SegmentedButtons
+                                    value={value}
+                                    onValueChange={(next) => onChange(next as ApiUserRole)}
+                                    buttons={[
+                                        { value: 'administrador', label: 'Admin' },
+                                        { value: 'profesional', label: 'Profesional' },
+                                        { value: 'cuidador', label: 'Cuidador' },
+                                    ]}
+                                />
+                            )}
                         />
-                    )}
-                />
+                    </>
+                )}
                 <AppButton
-                    label="Crear usuario"
+                    label={isAdmin ? 'Crear usuario' : 'Crear cuidador'}
                     icon="account-plus"
                     variant="filled"
                     loading={isLoading}
