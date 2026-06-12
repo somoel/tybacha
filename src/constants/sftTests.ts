@@ -144,6 +144,11 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'manual_input',
         allowNegative: false,
         inputLabel: 'Metros recorridos',
+        encouragementCues: [
+            { atSecond: 180, message: 'Quedan 3 minutos. Acelera el paso si puedes.' },
+            { atSecond: 60, message: 'Queda 1 minuto. ¡Casi terminamos!' },
+        ],
+        soundCues: true,
         normativeRanges: {
             belowBelowAvg: 350,
             belowAvg: 450,

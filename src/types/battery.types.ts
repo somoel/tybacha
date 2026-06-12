@@ -22,6 +22,11 @@ export interface NormativeRanges {
     higherIsBetter: boolean;
 }
 
+export interface EncouragementCue {
+    atSecond: number;
+    message: string;
+}
+
 export interface SFTTestDefinition {
     type: SFTTestType;
     name: string;
@@ -35,6 +40,8 @@ export interface SFTTestDefinition {
     allowNegative: boolean;
     inputLabel: string;
     normativeRanges?: NormativeRanges;
+    encouragementCues?: EncouragementCue[];
+    soundCues?: boolean;
 }
 
 export interface SFTBattery {

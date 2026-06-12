@@ -1,6 +1,7 @@
-import type { TimerMode } from '@/src/types/battery.types';
+import type { EncouragementCue, TimerMode } from '@/src/types/battery.types';
+import { playCue, preloadCue, setMuted } from '@/src/services/soundService';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { IconButton, Text, useTheme } from 'react-native-paper';
 
 interface TimerDisplayProps {
@@ -8,23 +9,33 @@ interface TimerDisplayProps {
     initialSeconds?: number;
     onComplete?: (elapsedSeconds: number) => void;
     onTick?: (seconds: number) => void;
+    encouragementCues?: EncouragementCue[];
+    soundCues?: boolean;
 }
 
 /**
  * Large timer display for SFT tests.
  * Supports countdown and stopwatch modes with start/stop/reset controls.
+ * Optionally surfaces standardized encouragement messages at given seconds,
+ * paired with a short chime and selection haptic.
  */
 export function TimerDisplay({
     mode,
     initialSeconds = 0,
     onComplete,
     onTick,
+    encouragementCues,
+    soundCues = false,
 }: TimerDisplayProps) {
     const theme = useTheme();
     const [seconds, setSeconds] = useState(mode === 'countdown' ? initialSeconds : 0);
     const [isRunning, setIsRunning] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
+    const [activeCue, setActiveCue] = useState<EncouragementCue | null>(null);
+    const [muted, setMutedState] = useState(false);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const firedCuesRef = useRef<Set<number>>(new Set());
+    const cueFadeAnim = useRef(new Animated.Value(0)).current;
 
     const clearTimer = useCallback(() => {
         if (intervalRef.current) {
@@ -36,6 +47,20 @@ export function TimerDisplay({
     useEffect(() => {
         return clearTimer;
     }, [clearTimer]);
+
+    useEffect(() => {
+        if (soundCues) {
+            preloadCue().catch(() => {});
+        }
+    }, [soundCues]);
+
+    useEffect(() => {
+        Animated.timing(cueFadeAnim, {
+            toValue: activeCue ? 1 : 0,
+            duration: activeCue ? 300 : 200,
+            useNativeDriver: true,
+        }).start();
+    }, [activeCue, cueFadeAnim]);
 
     useEffect(() => {
         if (!isRunning) return;
@@ -55,13 +80,29 @@ export function TimerDisplay({
                     return 0;
                 }
 
+                if (mode === 'countdown' && encouragementCues) {
+                    const crossed = encouragementCues.find(
+                        (cue) =>
+                            prev > cue.atSecond &&
+                            next <= cue.atSecond &&
+                            !firedCuesRef.current.has(cue.atSecond),
+                    );
+                    if (crossed) {
+                        firedCuesRef.current.add(crossed.atSecond);
+                        setActiveCue(crossed);
+                        if (soundCues) {
+                            playCue().catch(() => {});
+                        }
+                    }
+                }
+
                 onTick?.(next);
                 return next;
             });
         }, 1000);
 
         return clearTimer;
-    }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer]);
+    }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer, encouragementCues, soundCues]);
 
     const toggleTimer = () => {
         if (!hasStarted) setHasStarted(true);
@@ -73,6 +114,8 @@ export function TimerDisplay({
         setIsRunning(false);
         setHasStarted(false);
         setSeconds(mode === 'countdown' ? initialSeconds : 0);
+        setActiveCue(null);
+        firedCuesRef.current = new Set();
     };
 
     const stopAndReport = () => {
@@ -80,6 +123,14 @@ export function TimerDisplay({
         setIsRunning(false);
         const elapsed = mode === 'countdown' ? initialSeconds - seconds : seconds;
         onComplete?.(mode === 'stopwatch' ? seconds : elapsed);
+    };
+
+    const toggleMute = () => {
+        setMutedState((prev) => {
+            const next = !prev;
+            setMuted(next);
+            return next;
+        });
     };
 
     const formatTime = (totalSeconds: number): string => {
@@ -92,11 +143,37 @@ export function TimerDisplay({
 
     return (
         <View style={styles.container} accessibilityRole="timer">
+            {activeCue && (
+                <Animated.View
+                    style={[
+                        styles.cueCard,
+                        {
+                            backgroundColor: theme.colors.tertiaryContainer,
+                            opacity: cueFadeAnim,
+                        },
+                    ]}
+                    accessibilityLiveRegion="polite"
+                >
+                    <Text style={[styles.cueText, { color: theme.colors.onTertiaryContainer }]}>
+                        {activeCue.message}
+                    </Text>
+                </Animated.View>
+            )}
+
             <Text style={[styles.timer, { color: theme.colors.primary }]}>
                 {formatTime(seconds)}
             </Text>
 
             <View style={styles.controls}>
+                {soundCues && (
+                    <IconButton
+                        icon={muted ? 'volume-off' : 'volume-high'}
+                        mode="outlined"
+                        size={28}
+                        onPress={toggleMute}
+                        accessibilityLabel={muted ? 'Activar sonido de avisos' : 'Silenciar avisos'}
+                    />
+                )}
                 <IconButton
                     icon="restart"
                     mode="outlined"
@@ -132,6 +209,18 @@ const styles = StyleSheet.create({
     container: {
         alignItems: 'center',
         paddingVertical: 16,
+    },
+    cueCard: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        marginBottom: 16,
+        maxWidth: '90%',
+    },
+    cueText: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 16,
+        textAlign: 'center',
     },
     timer: {
         fontFamily: 'Montserrat_800ExtraBold',

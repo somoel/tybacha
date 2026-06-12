@@ -167,6 +167,8 @@ export default function ActiveTestScreen() {
                         mode={test.timerMode}
                         initialSeconds={test.timerSeconds}
                         onComplete={handleTimerComplete}
+                        encouragementCues={test.encouragementCues}
+                        soundCues={test.soundCues}
                     />
                 )}
 
