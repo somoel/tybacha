@@ -457,6 +457,7 @@ export default function ProfileScreen() {
                                     onChangeText={setEditEmailContrasena}
                                     mode="outlined"
                                     secureTextEntry={!showPassword}
+                                    textContentType="password"
                                     style={styles.input}
                                     right={
                                         <TextInput.Icon
@@ -497,6 +498,7 @@ export default function ProfileScreen() {
                                     onChangeText={setEditContrasenaActual}
                                     mode="outlined"
                                     secureTextEntry={!showPassword}
+                                    textContentType="password"
                                     style={styles.input}
                                     right={
                                         <TextInput.Icon
@@ -511,6 +513,7 @@ export default function ProfileScreen() {
                                     onChangeText={setEditNuevaContrasena}
                                     mode="outlined"
                                     secureTextEntry={!showPassword}
+                                    textContentType="newPassword"
                                     style={styles.input}
                                 />
                                 <TextInput
@@ -519,6 +522,7 @@ export default function ProfileScreen() {
                                     onChangeText={setEditConfirmarContrasena}
                                     mode="outlined"
                                     secureTextEntry={!showPassword}
+                                    textContentType="newPassword"
                                     style={styles.input}
                                 />
                                 <View style={styles.editActions}>
