@@ -11,7 +11,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
+import { OptionSelector } from '@/src/components/ui/OptionSelector';
+import { Text, useTheme } from 'react-native-paper';
 
 type Tab = 'pathologies' | 'medications' | 'notes';
 
@@ -165,14 +166,10 @@ export default function MedicalHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      <SegmentedButtons
+      <OptionSelector
+        options={TABS.map((t) => ({ value: t.value, label: t.label, icon: t.icon }))}
         value={tab}
-        onValueChange={(v) => setTab(v as Tab)}
-        buttons={TABS.map((t) => ({
-          value: t.value,
-          label: t.label,
-          showSelectedCheck: true,
-        }))}
+        onChange={(v) => setTab(v as Tab)}
         style={styles.tabs}
       />
 

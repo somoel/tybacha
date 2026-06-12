@@ -9,7 +9,8 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text } from 'react-native-paper';
+import { OptionSelector } from '@/src/components/ui/OptionSelector';
+import { Text } from 'react-native-paper';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -110,10 +111,10 @@ export default function AddPathologyScreen() {
 
           <Text style={styles.fieldLabel}>Estado *</Text>
           <Controller control={control} name="estado" render={({ field: { onChange, value } }) => (
-            <SegmentedButtons
+            <OptionSelector
+              options={STATUS_OPTIONS}
               value={value}
-              onValueChange={onChange}
-              buttons={STATUS_OPTIONS}
+              onChange={onChange}
               style={styles.segmented}
             />
           )} />

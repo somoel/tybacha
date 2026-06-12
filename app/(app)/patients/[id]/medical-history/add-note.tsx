@@ -8,7 +8,8 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
+import { OptionSelector } from '@/src/components/ui/OptionSelector';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -88,7 +89,7 @@ export default function AddMedicalNoteScreen() {
         <View style={styles.form}>
           <Text style={styles.fieldLabel}>Tipo de nota *</Text>
           <Controller control={control} name="tipoNota" render={({ field: { onChange, value } }) => (
-            <SegmentedButtons value={value} onValueChange={onChange} buttons={NOTE_TYPES} style={styles.segmented} />
+            <OptionSelector options={NOTE_TYPES} value={value} onChange={onChange} style={styles.segmented} />
           )} />
 
           <AppInput control={control} name="contenido" label="Contenido *" placeholder="Describa el antecedente, alergia, limitación u observación..." multiline numberOfLines={6} />
