@@ -1,6 +1,7 @@
 import { TestCard } from '@/src/components/tests/TestCard';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
@@ -110,16 +111,21 @@ export default function NewBatteryScreen() {
                 })}
 
                 {allComplete && (
+                    <View style={{ height: 16 }} />
+                )}
+            </ScrollView>
+
+            {allComplete && (
+                <StickyBottomBar>
                     <AppButton
                         label="Revisar resultados"
                         variant="filled"
                         icon="clipboard-check"
                         onPress={handleReviewSummary}
-                        style={styles.saveBtn}
                         accessibilityLabel="Revisar resultados de la bateria"
                     />
-                )}
-            </ScrollView>
+                </StickyBottomBar>
+            )}
 
             <AppSnackbar
                 visible={snackbar.visible}
@@ -150,5 +156,4 @@ const styles = StyleSheet.create({
     progressFill: { height: 6 },
     content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 32 },
-    saveBtn: { marginTop: 20 },
 });

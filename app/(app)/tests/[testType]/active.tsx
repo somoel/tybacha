@@ -2,6 +2,7 @@ import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { getSFTTest, SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import type { SFTTestType } from '@/src/types/battery.types';
@@ -208,23 +209,25 @@ export default function ActiveTestScreen() {
                     accessibilityLabel="Observaciones de la prueba"
                 />
 
+            </ScrollView>
+
+            <StickyBottomBar>
                 <AppButton
                     label="Guardar resultado"
                     variant="filled"
                     icon="content-save"
                     onPress={handleSave}
                     disabled={!canSave}
-                    style={styles.saveBtn}
                     accessibilityLabel="Guardar resultado de la prueba"
                 />
+            </StickyBottomBar>
 
-                <AppSnackbar
-                    visible={snackbar.visible}
-                    message={snackbar.message}
-                    type="success"
-                    onDismiss={() => setSnackbar({ visible: false, message: '' })}
-                />
-            </ScrollView>
+            <AppSnackbar
+                visible={snackbar.visible}
+                message={snackbar.message}
+                type="success"
+                onDismiss={() => setSnackbar({ visible: false, message: '' })}
+            />
             <Portal>
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
                     <Dialog.Title>Salir de la bateria</Dialog.Title>
@@ -256,5 +259,4 @@ const styles = StyleSheet.create({
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
     notesInput: { marginTop: 20 },
     notesOutline: { borderRadius: 12 },
-    saveBtn: { marginTop: 24 },
 });

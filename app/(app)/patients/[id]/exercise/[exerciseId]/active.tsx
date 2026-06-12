@@ -2,6 +2,7 @@ import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { createApiExerciseRecord, fetchApiExerciseRecords } from '@/src/api/trackingApi';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import type { Exercise } from '@/src/types/exercise.types';
@@ -375,7 +376,9 @@ export default function ActiveExerciseScreen() {
                         <Text style={styles.completedText}>Ejercicio completado hoy</Text>
                     </View>
                 ) : null}
+            </ScrollView>
 
+            <StickyBottomBar>
                 <View style={styles.actionButtons}>
                     <AppButton
                         label={isAlreadyCompleted ? "Actualizar registro" : "Marcar como completado"}
@@ -397,14 +400,14 @@ export default function ActiveExerciseScreen() {
                         accessibilityLabel="Marcar ejercicio como omitido"
                     />
                 </View>
+            </StickyBottomBar>
 
-                <AppSnackbar
-                    visible={snackbar.visible}
-                    message={snackbar.message}
-                    type={snackbar.type}
-                    onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
-                />
-            </ScrollView>
+            <AppSnackbar
+                visible={snackbar.visible}
+                message={snackbar.message}
+                type={snackbar.type}
+                onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
+            />
 
             <Portal>
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
@@ -500,7 +503,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
     },
     sliderLabelText: { fontFamily: 'Montserrat_400Regular', fontSize: 10, color: '#94a3b8' },
-    actionButtons: { gap: 10, marginTop: 24 },
+    actionButtons: { gap: 10 },
     completeButton: { marginBottom: 4 },
     completedBanner: {
         flexDirection: 'row',

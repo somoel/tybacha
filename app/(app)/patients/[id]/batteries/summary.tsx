@@ -1,6 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { createBattery, saveBatteryWithResults } from '@/src/services/batteryService';
@@ -129,7 +130,9 @@ export default function BatterySummaryScreen() {
                     outlineStyle={styles.notesOutline}
                     accessibilityLabel="Observaciones generales de la bateria"
                 />
+            </ScrollView>
 
+            <StickyBottomBar>
                 <AppButton
                     label={canCreatePlan ? 'Crear plan de ejercicios' : 'Volver al adulto mayor'}
                     icon={canCreatePlan ? 'robot' : 'account-arrow-left'}
@@ -137,10 +140,9 @@ export default function BatterySummaryScreen() {
                     onPress={() => finalizeAndNavigate(canCreatePlan ? 'plan' : 'patient')}
                     loading={savingAction !== null}
                     disabled={!isComplete}
-                    style={styles.finalButton}
                     accessibilityLabel={canCreatePlan ? 'Crear plan de ejercicios' : 'Volver al adulto mayor'}
                 />
-            </ScrollView>
+            </StickyBottomBar>
 
             <AppSnackbar
                 visible={snackbar.visible}
@@ -171,5 +173,4 @@ const styles = StyleSheet.create({
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
     notesInput: { marginTop: 16 },
     notesOutline: { borderRadius: 12 },
-    finalButton: { marginTop: 16 },
 });
