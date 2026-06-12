@@ -434,6 +434,15 @@ export default function PatientDetailScreen() {
                             Este adulto mayor no tiene cuidador asignado. Asigne uno para poder registrar ejercicios y seguimiento.
                         </Text>
                     </View>
+                    {isProfessional && (
+                        <AppButton
+                            label="Crear cuidador"
+                            icon="account-plus"
+                            variant="outlined"
+                            onPress={() => router.push('/(app)/admin')}
+                            style={styles.warningButton}
+                        />
+                    )}
                 </AppCard>
             )}
 
@@ -554,6 +563,7 @@ const styles = StyleSheet.create({
     warningCard: { marginBottom: 16, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fcd34d' },
     warningContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     warningText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#92400e', flex: 1 },
+    warningButton: { marginTop: 12 },
     header: { flexDirection: 'row', gap: 14, alignItems: 'center' },
     headerInfo: { flex: 1, gap: 2 },
     fullName: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
