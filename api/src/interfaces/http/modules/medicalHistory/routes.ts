@@ -3,8 +3,8 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertAccessAudit, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
-import { badRequest, forbidden, notFound } from '../../httpErrors.js';
-import { requireAuth, requireRoles } from '../../requireAuth.js';
+import { forbidden, notFound } from '../../httpErrors.js';
+import { requireAuth } from '../../requireAuth.js';
 
 // ── Zod schemas ────────────────────────────────────────────────────────────
 
