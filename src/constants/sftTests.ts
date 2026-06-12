@@ -136,7 +136,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         name: 'Caminata de 6 minutos',
         shortName: 'Resistencia aeróbica',
         description:
-            'Recorrer la mayor distancia posible en 6 minutos caminando alrededor de un rectángulo de 45.7 m.',
+            'Caminar lo más rápido posible durante 6 minutos por un circuito rectangular de 18,8 m × 4,57 m (perímetro 45,72 m). Cada vuelta equivale a 45,72 m. Se avisará a los 3 y a los 2 minutos para ajustar el ritmo. Al terminar, caminar en el sitio elevando las piernas.',
         icon: 'walk',
         unit: 'meters',
         timerMode: 'countdown',
@@ -144,6 +144,8 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         counterMode: 'manual_input',
         allowNegative: false,
         inputLabel: 'Metros recorridos',
+        lapTracking: true,
+        lapLengthMeters: 45.72,
         encouragementCues: [
             { atSecond: 180, message: 'Quedan 3 minutos. Acelera el paso si puedes.', sound: 'bell' },
             { atSecond: 60,  message: 'Queda 1 minuto. ¡Casi terminamos!',             sound: 'bell' },

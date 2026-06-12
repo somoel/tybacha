@@ -42,6 +42,8 @@ export interface SFTTestDefinition {
     counterMode: CounterMode;
     allowNegative: boolean;
     inputLabel: string;
+    lapTracking?: boolean;
+    lapLengthMeters?: number;
     normativeRanges?: NormativeRanges;
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;

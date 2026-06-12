@@ -1,3 +1,4 @@
+import { LapDistanceCalculator } from '@/src/components/tests/LapDistanceCalculator';
 import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
@@ -94,7 +95,8 @@ export default function ActiveTestScreen() {
     const handleSave = () => {
         if (!test || !patientId) return;
         saveResult(test.type as SFTTestType, value, testNotes || undefined);
-        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${test.unit} guardado` });
+        const unitLabel = test.unit === 'meters' ? 'm' : test.unit;
+        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${unitLabel} guardado` });
         allowExitRef.current = true;
         const completedAfterSave = new Set([...completedTests, test.type]);
         const nextTest =
@@ -125,7 +127,7 @@ export default function ActiveTestScreen() {
         );
     }
 
-    const canSave = test.timerMode === 'none' || timerCompleted || test.counterMode === 'manual_input';
+    const canSave = test.timerMode === 'none' || timerCompleted || (test.counterMode === 'manual_input' && !test.lapTracking);
 
     return (
         <View style={styles.container}>
@@ -182,7 +184,14 @@ export default function ActiveTestScreen() {
                     />
                 )}
 
-                {test.counterMode === 'manual_input' && (
+                {test.counterMode === 'manual_input' && test.lapTracking && (
+                    <LapDistanceCalculator
+                        lapLengthMeters={test.lapLengthMeters ?? 45.72}
+                        onValueChange={handleValueChange}
+                    />
+                )}
+
+                {test.counterMode === 'manual_input' && !test.lapTracking && (
                     <RepCounter
                         mode="manual_input"
                         allowNegative={test.allowNegative}
