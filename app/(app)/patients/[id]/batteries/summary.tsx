@@ -49,7 +49,7 @@ export default function BatterySummaryScreen() {
             clearSession();
 
             if (action === 'plan') {
-                router.replace(`/(app)/patients/${id}/batteries/${savedBattery.batteryId}?createPlan=1` as never);
+                router.replace(`/(app)/patients/${id}/batteries/${savedBattery.batteryId}` as never);
                 return;
             }
 

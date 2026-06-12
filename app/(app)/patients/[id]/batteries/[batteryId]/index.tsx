@@ -1,20 +1,21 @@
-import { ExercisePlanSection } from '@/src/components/results/ExercisePlanSection';
+import { ActivePlanCard } from '@/src/components/results/ActivePlanCard';
 import { ResultChart } from '@/src/components/results/ResultChart';
+import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { BatteryDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
+import { fetchExercisePlans } from '@/src/services/exercisePlanService';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import type { BatteryWithResults } from '@/src/types/battery.types';
+import type { ExercisePlan } from '@/src/types/exercise.types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Divider, Text, useTheme } from 'react-native-paper';
+import { Text, useTheme } from 'react-native-paper';
 
-/**
- * Battery detail — shows all results with chart and exercise plan section.
- */
 function getImcColor(imc: number): string {
     if (imc < 18.5) return '#3b82f6';
     if (imc < 25) return '#22c55e';
@@ -23,17 +24,24 @@ function getImcColor(imc: number): string {
 }
 
 export default function BatteryDetailScreen() {
-    const { id: patientId, batteryId, createPlan } = useLocalSearchParams<{ id: string; batteryId: string; createPlan?: string }>();
+    const { id: patientId, batteryId } = useLocalSearchParams<{ id: string; batteryId: string }>();
     const theme = useTheme();
     const [battery, setBattery] = useState<BatteryWithResults | null>(null);
+    const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const { isAdmin, isProfessional } = usePermissions();
+    const hasStaffAccess = isAdmin || isProfessional;
 
     useEffect(() => {
         const load = async () => {
             if (!batteryId) return;
             try {
-                const data = await fetchBatteryWithResults(batteryId);
-                setBattery(data);
+                const [batteryData, plans] = await Promise.all([
+                    fetchBatteryWithResults(batteryId),
+                    fetchExercisePlans(patientId!),
+                ]);
+                setBattery(batteryData);
+                setActivePlan(plans.find((p) => p.status === 'active') ?? null);
             } catch (error) {
                 console.error('Error:', error);
             } finally {
@@ -41,7 +49,7 @@ export default function BatteryDetailScreen() {
             }
         };
         load();
-    }, [batteryId]);
+    }, [batteryId, patientId]);
 
     if (isLoading) return <BatteryDetailSkeleton />;
     if (!battery) return <BatteryDetailSkeleton />;
@@ -110,14 +118,23 @@ export default function BatteryDetailScreen() {
             })}
 
             {/* Exercise plan section */}
-            {patientId && (
+            {hasStaffAccess && battery.results.length > 0 && (
                 <>
-                    <Divider style={styles.divider} />
-                    <ExercisePlanSection
-                        patientId={patientId}
-                        battery={battery}
-                        forceCreatePlan={createPlan === '1'}
-                    />
+                    {activePlan ? (
+                        <ActivePlanCard
+                            plan={activePlan}
+                            onPress={() => router.push(`/(app)/patients/${patientId}/batteries/${batteryId}/plan`)}
+                        />
+                    ) : (
+                        <AppButton
+                            label="Crear plan de ejercicios"
+                            variant="filled"
+                            icon="dumbbell"
+                            onPress={() => router.push(`/(app)/patients/${patientId}/batteries/${batteryId}/plan`)}
+                            style={styles.createPlanButton}
+                            accessibilityLabel="Crear plan de ejercicios con inteligencia artificial"
+                        />
+                    )}
                 </>
             )}
 
@@ -146,6 +163,6 @@ const styles = StyleSheet.create({
     value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
     resultNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#374151', marginTop: 6, fontStyle: 'italic' },
-    divider: { marginTop: 24, marginBottom: 8 },
+    createPlanButton: { marginTop: 24 },
     bottomPadding: { height: 32 },
 });

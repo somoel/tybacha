@@ -28,7 +28,8 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/batteries/index" options={{ title: 'Historial Baterías' }} />
             <Stack.Screen name="[id]/batteries/new" options={{ title: 'Realizar bateria SFT' }} />
             <Stack.Screen name="[id]/batteries/summary" options={{ title: 'Resumen bateria SFT' }} />
-            <Stack.Screen name="[id]/batteries/[batteryId]" options={{ title: 'Resultados' }} />
+            <Stack.Screen name="[id]/batteries/[batteryId]/index" options={{ title: 'Resultados' }} />
+            <Stack.Screen name="[id]/batteries/[batteryId]/plan" options={{ title: 'Plan de ejercicios' }} />
             <Stack.Screen name="[id]/exercise" options={{ headerShown: false, title: 'Plan semanal' }} />
             <Stack.Screen name="[id]/exercise/[exerciseId]/active" options={{ headerShown: false, title: 'Ejercicio' }} />
             <Stack.Screen name="[id]/progress/index" options={{ title: 'Progreso de ejercicios' }} />
