@@ -44,6 +44,9 @@ export interface SFTBattery {
     performed_at: string;
     notes?: string;
     is_synced: boolean;
+    peso_kg?: number;
+    estatura_cm?: number;
+    imc?: number;
 }
 
 export interface SFTResult {
@@ -66,9 +69,13 @@ export interface BatteryState {
     resultNotes: Partial<Record<SFTTestType, string>>;
     completedTests: SFTTestType[];
     notes: string;
+    pesoKg: number | null;
+    estaturaCm: number | null;
+    imc: number | null;
     startBattery: (patientId: string) => void;
     saveResult: (testType: SFTTestType, value: number, notes?: string) => void;
     setNotes: (notes: string) => void;
+    setBodyMetrics: (pesoKg: number, estaturaCm: number) => void;
     finalizeBattery: () => Promise<void>;
     clearSession: () => void;
     resetBattery: () => void;

@@ -22,6 +22,9 @@ export interface ApiSftApplication {
     fechaAplicacion: string;
     estado: 'en_proceso' | 'finalizada' | 'anulada';
     observaciones: string | null;
+    pesoKg: number | null;
+    estaturaCm: number | null;
+    imc: number | null;
 }
 
 export interface ApiSftApplicationDetail extends ApiSftApplication {
@@ -42,6 +45,9 @@ export interface ApiCreateSftApplicationInput {
     idBateriaSft?: number;
     fechaAplicacion?: string;
     observaciones?: string;
+    pesoKg?: number;
+    estaturaCm?: number;
+    imc?: number;
     resultados: {
         idPruebaSft: number;
         valorNumerico?: number;

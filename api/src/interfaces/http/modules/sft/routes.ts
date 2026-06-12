@@ -19,6 +19,9 @@ const createApplicationSchema = z.object({
   idBateriaSft: z.number().int().positive().optional(),
   fechaAplicacion: z.string().datetime().optional(),
   observaciones: z.string().optional(),
+  pesoKg: z.number().positive().optional(),
+  estaturaCm: z.number().positive().optional(),
+  imc: z.number().positive().optional(),
   resultados: z.array(resultSchema).min(1),
 });
 
@@ -46,6 +49,9 @@ interface ApplicationRow extends RowDataPacket {
   fecha_aplicacion: string;
   estado: string;
   observaciones: string | null;
+  peso_kg: number | null;
+  estatura_cm: number | null;
+  imc: number | null;
 }
 
 interface ApplicationDetailRow extends RowDataPacket {
@@ -56,6 +62,9 @@ interface ApplicationDetailRow extends RowDataPacket {
   fecha_aplicacion: string;
   estado: string;
   observaciones: string | null;
+  peso_kg: number | null;
+  estatura_cm: number | null;
+  imc: number | null;
   id_resultado_sft: number | null;
   id_prueba_sft: number | null;
   prueba_nombre: string | null;
@@ -145,7 +154,8 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
     await assertCanAccessOlderAdult(params.id, actor);
 
     const [rows] = await pool.query<ApplicationRow[]>(
-      `select id_aplicacion_sft, id_adulto_mayor, id_bateria_sft, responsable, fecha_aplicacion, estado, observaciones
+      `select id_aplicacion_sft, id_adulto_mayor, id_bateria_sft, responsable, fecha_aplicacion, estado, observaciones,
+              peso_kg, estatura_cm, imc
        from aplicacion_sft
        where id_adulto_mayor = :id
          and estado = 'finalizada'
@@ -161,6 +171,9 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       fechaAplicacion: row.fecha_aplicacion,
       estado: row.estado,
       observaciones: row.observaciones,
+      pesoKg: row.peso_kg,
+      estaturaCm: row.estatura_cm,
+      imc: row.imc,
     }));
   });
 
@@ -171,6 +184,7 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
     const [rows] = await pool.query<ApplicationDetailRow[]>(
       `select aps.id_aplicacion_sft, aps.id_adulto_mayor, aps.id_bateria_sft, aps.responsable,
               aps.fecha_aplicacion, aps.estado, aps.observaciones,
+              aps.peso_kg, aps.estatura_cm, aps.imc,
               rs.id_resultado_sft, ps.id_prueba_sft, ps.nombre as prueba_nombre, ps.unidad_resultado,
               ps.orden, rs.valor_numerico, rs.valor_texto, rs.clasificacion,
               rs.observaciones as resultado_observaciones
@@ -194,6 +208,9 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       fechaAplicacion: first.fecha_aplicacion,
       estado: first.estado,
       observaciones: first.observaciones,
+      pesoKg: first.peso_kg,
+      estaturaCm: first.estatura_cm,
+      imc: first.imc,
       resultados: rows
         .filter((row) => row.id_resultado_sft !== null)
         .map((row) => ({
@@ -228,15 +245,18 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
 
       const [insertResult] = await connection.query<ResultSetHeader>(
         `insert into aplicacion_sft
-          (id_adulto_mayor, id_bateria_sft, responsable, fecha_aplicacion, estado, observaciones)
+          (id_adulto_mayor, id_bateria_sft, responsable, fecha_aplicacion, estado, observaciones, peso_kg, estatura_cm, imc)
          values
-          (:idAdultoMayor, :idBateriaSft, :responsable, coalesce(:fechaAplicacion, current_timestamp(3)), 'finalizada', :observaciones)`,
+          (:idAdultoMayor, :idBateriaSft, :responsable, coalesce(:fechaAplicacion, current_timestamp(3)), 'finalizada', :observaciones, :pesoKg, :estaturaCm, :imc)`,
         {
           idAdultoMayor: params.id,
           idBateriaSft,
           responsable: actor.idUsuario,
           fechaAplicacion: body.fechaAplicacion ?? null,
           observaciones: body.observaciones ?? null,
+          pesoKg: body.pesoKg ?? null,
+          estaturaCm: body.estaturaCm ?? null,
+          imc: body.imc ?? null,
         },
       );
 

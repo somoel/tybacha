@@ -1,3 +1,4 @@
+import { BodyMetricsInput } from '@/src/components/battery/BodyMetricsInput';
 import { TestCard } from '@/src/components/tests/TestCard';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
@@ -18,11 +19,12 @@ export default function NewBatteryScreen() {
     const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
-    const { startBattery, results, completedTests, activeBatteryId, resetBattery } = useBatteryStore();
+    const { startBattery, results, completedTests, activeBatteryId, resetBattery, setBodyMetrics, pesoKg } = useBatteryStore();
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const allowExitRef = useRef(false);
     const pendingNavigationActionRef = useRef<unknown>(null);
+    const metricsConfirmed = pesoKg !== null;
 
     useEffect(() => {
         if (!activeBatteryId && id) {
@@ -78,6 +80,10 @@ export default function NewBatteryScreen() {
         router.replace(`/(app)/patients/${id}/batteries/summary` as never);
     };
 
+    const handleBodyMetricsConfirm = (peso: number, estatura: number) => {
+        setBodyMetrics(peso, estatura);
+    };
+
     return (
         <View style={styles.container}>
             <Stack.Screen
@@ -90,28 +96,34 @@ export default function NewBatteryScreen() {
             />
 
             <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-                <Text style={styles.progressHeader}>
-                    {completedTests.length} de {SFT_TESTS.length} pruebas completadas
-                </Text>
-                <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
-                </View>
-                {SFT_TESTS.map((test) => {
-                    const isCompleted = completedTests.includes(test.type);
-                    const resultValue = results[test.type];
-                    return (
-                        <TestCard
-                            key={test.type}
-                            test={test}
-                            isCompleted={isCompleted}
-                            resultValue={resultValue}
-                            onPress={() => router.push(`/(app)/tests/${test.type}/active` as never)}
-                        />
-                    );
-                })}
+                {!metricsConfirmed ? (
+                    <BodyMetricsInput onConfirm={handleBodyMetricsConfirm} />
+                ) : (
+                    <>
+                        <Text style={styles.progressHeader}>
+                            {completedTests.length} de {SFT_TESTS.length} pruebas completadas
+                        </Text>
+                        <View style={styles.progressTrack}>
+                            <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
+                        </View>
+                        {SFT_TESTS.map((test) => {
+                            const isCompleted = completedTests.includes(test.type);
+                            const resultValue = results[test.type];
+                            return (
+                                <TestCard
+                                    key={test.type}
+                                    test={test}
+                                    isCompleted={isCompleted}
+                                    resultValue={resultValue}
+                                    onPress={() => router.push(`/(app)/tests/${test.type}/active` as never)}
+                                />
+                            );
+                        })}
 
-                {allComplete && (
-                    <View style={{ height: 16 }} />
+                        {allComplete && (
+                            <View style={{ height: 16 }} />
+                        )}
+                    </>
                 )}
             </ScrollView>
 

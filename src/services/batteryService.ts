@@ -12,7 +12,7 @@ import { generateUUID } from '@/src/lib/sqlite';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import type { BatteryWithResults, SFTBattery, SFTResult, SFTTestType } from '@/src/types/battery.types';
 
-const pendingBatteryContext = new Map<string, { patientId: string; notes?: string }>();
+const pendingBatteryContext = new Map<string, { patientId: string; notes?: string; pesoKg?: number; estaturaCm?: number; imc?: number }>();
 
 const TEST_TYPE_BY_ORDER: Record<number, SFTTestType> = {
     1: 'chair_stand',
@@ -55,9 +55,12 @@ export async function createBattery(
     performedBy: string,
     notes: string | undefined,
     _isOnline: boolean,
+    pesoKg?: number,
+    estaturaCm?: number,
+    imc?: number,
 ): Promise<SFTBattery> {
     const tempId = generateUUID();
-    pendingBatteryContext.set(tempId, { patientId, notes });
+    pendingBatteryContext.set(tempId, { patientId, notes, pesoKg, estaturaCm, imc });
 
     return {
         id: tempId,
@@ -66,6 +69,9 @@ export async function createBattery(
         performed_at: new Date().toISOString(),
         notes,
         is_synced: false,
+        peso_kg: pesoKg,
+        estatura_cm: estaturaCm,
+        imc,
     };
 }
 
@@ -111,6 +117,9 @@ export async function saveBatteryResults(
     const created = await createOlderAdultSftApplication(Number(context.patientId), {
         idBateriaSft: activeBattery.idBateriaSft,
         observaciones: context.notes,
+        pesoKg: context.pesoKg,
+        estaturaCm: context.estaturaCm,
+        imc: context.imc,
         resultados: payloadResults,
     });
 
@@ -164,6 +173,9 @@ export async function fetchBatteries(patientId: string): Promise<SFTBattery[]> {
             performed_at: application.fechaAplicacion,
             notes: application.observaciones ?? undefined,
             is_synced: true,
+            peso_kg: application.pesoKg ?? undefined,
+            estatura_cm: application.estaturaCm ?? undefined,
+            imc: application.imc ?? undefined,
         }));
 }
 
@@ -177,6 +189,9 @@ export async function fetchBatteryWithResults(batteryId: string): Promise<Batter
         performed_at: application.fechaAplicacion,
         notes: application.observaciones ?? undefined,
         is_synced: true,
+        peso_kg: application.pesoKg ?? undefined,
+        estatura_cm: application.estaturaCm ?? undefined,
+        imc: application.imc ?? undefined,
         results: application.resultados.map((result) => {
             const testType = result.orden ? TEST_TYPE_BY_ORDER[result.orden] : TEST_TYPE_BY_NORMALIZED_NAME[normalizeTestName(result.pruebaNombre)];
             const definition = SFT_TESTS.find((item) => item.type === testType);

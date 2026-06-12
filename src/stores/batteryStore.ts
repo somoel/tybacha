@@ -10,6 +10,9 @@ interface BatteryState {
     resultNotes: Partial<Record<SFTTestType, string>>;
     completedTests: SFTTestType[];
     notes: string;
+    pesoKg: number | null;
+    estaturaCm: number | null;
+    imc: number | null;
     isLoading: boolean;
 
     /** Start a new battery session for a patient */
@@ -18,6 +21,8 @@ interface BatteryState {
     saveResult: (testType: SFTTestType, value: number, notes?: string) => void;
     /** Set general observation notes for the battery */
     setNotes: (notes: string) => void;
+    /** Set body metrics (weight, height) and auto-calculate BMI */
+    setBodyMetrics: (pesoKg: number, estaturaCm: number) => void;
     /** Clear a finalized session without treating it as an abandoned battery */
     clearSession: () => void;
     /** Mark battery as complete (triggers persistence via service) */
@@ -42,6 +47,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
     resultNotes: {},
     completedTests: [],
     notes: '',
+    pesoKg: null,
+    estaturaCm: null,
+    imc: null,
     isLoading: false,
 
     startBattery: (patientId) =>
@@ -52,6 +60,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             resultNotes: {},
             completedTests: [],
             notes: '',
+            pesoKg: null,
+            estaturaCm: null,
+            imc: null,
             isLoading: false,
         }),
 
@@ -68,6 +79,12 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
 
     setNotes: (notes) => set({ notes }),
 
+    setBodyMetrics: (pesoKg, estaturaCm) => {
+        const estaturaM = estaturaCm / 100;
+        const imc = Number((pesoKg / (estaturaM * estaturaM)).toFixed(2));
+        set({ pesoKg, estaturaCm, imc });
+    },
+
     clearSession: () =>
         set({
             activeBatteryId: null,
@@ -76,6 +93,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             resultNotes: {},
             completedTests: [],
             notes: '',
+            pesoKg: null,
+            estaturaCm: null,
+            imc: null,
             isLoading: false,
         }),
 
@@ -94,6 +114,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
                 user?.id || 'unknown',
                 state.notes || undefined,
                 true,
+                state.pesoKg ?? undefined,
+                state.estaturaCm ?? undefined,
+                state.imc ?? undefined,
             );
             await saveBatteryResults(battery.id, state.results, state.resultNotes, true);
         } catch (error) {
@@ -109,6 +132,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             resultNotes: {},
             completedTests: [],
             notes: '',
+            pesoKg: null,
+            estaturaCm: null,
+            imc: null,
         }),
 
     resetBattery: () =>
@@ -119,6 +145,9 @@ export const useBatteryStore = create<BatteryState>()((set, get) => ({
             resultNotes: {},
             completedTests: [],
             notes: '',
+            pesoKg: null,
+            estaturaCm: null,
+            imc: null,
             isLoading: false,
         }),
 
