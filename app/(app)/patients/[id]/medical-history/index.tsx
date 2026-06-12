@@ -26,8 +26,8 @@ export default function MedicalHistoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
   const router = useRouter();
-  const { isAdmin, isProfessional } = usePermissions();
-  const canEdit = isAdmin || isProfessional;
+  const { isAdmin, isProfessional, isCaregiver } = usePermissions();
+  const canEdit = isAdmin || isProfessional || isCaregiver;
 
   const [tab, setTab] = useState<Tab>('pathologies');
   const { pathologies, medications, medicalNotes, isLoading, loadAll, removePathology, removeMedication, removeMedicalNote } = useMedicalHistoryStore();
@@ -153,6 +153,7 @@ export default function MedicalHistoryScreen() {
               tipoNota={n.tipoNota}
               contenido={n.contenido}
               creadoEn={n.creadoEn}
+              registradoPorNombre={n.registradoPorNombre}
               canEdit={canEdit}
               onPress={() => router.push(`/(app)/patients/${id}/medical-history/add-note?noteId=${n.id}` as never)}
               onEdit={() => router.push(`/(app)/patients/${id}/medical-history/add-note?noteId=${n.id}` as never)}

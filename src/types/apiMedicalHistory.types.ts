@@ -8,6 +8,7 @@ export interface ApiPathology {
   fechaDiagnostico: string | null;
   estado: ApiPathologyStatus;
   registradoPor: number | null;
+  registradoPorNombre: string | null;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -35,6 +36,7 @@ export interface ApiMedication {
   estado: ApiMedicationStatus;
   observaciones: string | null;
   registradoPor: number | null;
+  registradoPorNombre: string | null;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -60,6 +62,7 @@ export interface ApiMedicalNote {
   tipoNota: ApiMedicalNoteType;
   contenido: string;
   registradoPor: number | null;
+  registradoPorNombre: string | null;
   creadoEn: string;
 }
 

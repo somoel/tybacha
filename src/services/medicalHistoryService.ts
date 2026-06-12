@@ -39,6 +39,7 @@ function mapPathologyFromApi(api: ApiPathology): Pathology {
     fechaDiagnostico: api.fechaDiagnostico ?? undefined,
     estado: api.estado,
     registradoPor: api.registradoPor ? String(api.registradoPor) : undefined,
+    registradoPorNombre: api.registradoPorNombre ?? undefined,
     creadoEn: api.creadoEn,
     actualizadoEn: api.actualizadoEn,
   };
@@ -57,6 +58,7 @@ function mapMedicationFromApi(api: ApiMedication): Medication {
     estado: api.estado,
     observaciones: api.observaciones ?? undefined,
     registradoPor: api.registradoPor ? String(api.registradoPor) : undefined,
+    registradoPorNombre: api.registradoPorNombre ?? undefined,
     creadoEn: api.creadoEn,
     actualizadoEn: api.actualizadoEn,
   };
@@ -69,6 +71,7 @@ function mapMedicalNoteFromApi(api: ApiMedicalNote): MedicalNote {
     tipoNota: api.tipoNota,
     contenido: api.contenido,
     registradoPor: api.registradoPor ? String(api.registradoPor) : undefined,
+    registradoPorNombre: api.registradoPorNombre ?? undefined,
     creadoEn: api.creadoEn,
   };
 }

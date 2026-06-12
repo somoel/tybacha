@@ -19,13 +19,14 @@ interface MedicalNoteCardProps {
   tipoNota: MedicalNoteType;
   contenido: string;
   creadoEn: string;
+  registradoPorNombre?: string;
   canEdit?: boolean;
   onPress?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
 }
 
-export function MedicalNoteCard({ tipoNota, contenido, creadoEn, canEdit, onPress, onEdit, onDelete }: MedicalNoteCardProps) {
+export function MedicalNoteCard({ tipoNota, contenido, creadoEn, registradoPorNombre, canEdit, onPress, onEdit, onDelete }: MedicalNoteCardProps) {
   const config = NOTE_TYPE_CONFIG[tipoNota];
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -63,6 +64,12 @@ export function MedicalNoteCard({ tipoNota, contenido, creadoEn, canEdit, onPres
         )}
       </View>
       <Text style={styles.content}>{contenido}</Text>
+      {registradoPorNombre && (
+        <View style={styles.registeredBy}>
+          <MaterialCommunityIcons name="account-outline" size={12} color="#9ca3af" />
+          <Text style={styles.registeredByText}>{registradoPorNombre}</Text>
+        </View>
+      )}
     </AppCard>
   );
 }
@@ -97,4 +104,6 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     lineHeight: 20,
   },
+  registeredBy: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  registeredByText: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#9ca3af' },
 });

@@ -12,6 +12,7 @@ export interface Pathology {
   fechaDiagnostico?: string;
   estado: PathologyStatus;
   registradoPor?: string;
+  registradoPorNombre?: string;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -35,6 +36,7 @@ export interface Medication {
   estado: MedicationStatus;
   observaciones?: string;
   registradoPor?: string;
+  registradoPorNombre?: string;
   creadoEn: string;
   actualizadoEn: string;
 }
@@ -56,6 +58,7 @@ export interface MedicalNote {
   tipoNota: MedicalNoteType;
   contenido: string;
   registradoPor?: string;
+  registradoPorNombre?: string;
   creadoEn: string;
 }
 

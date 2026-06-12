@@ -49,6 +49,7 @@ interface PathologyRow extends RowDataPacket {
   fecha_diagnostico: string | null;
   estado: string;
   registrado_por: number | null;
+  registrado_por_nombre: string | null;
   creado_en: string;
   actualizado_en: string;
 }
@@ -65,6 +66,7 @@ interface MedicationRow extends RowDataPacket {
   estado: string;
   observaciones: string | null;
   registrado_por: number | null;
+  registrado_por_nombre: string | null;
   creado_en: string;
   actualizado_en: string;
 }
@@ -75,6 +77,7 @@ interface MedicalNoteRow extends RowDataPacket {
   tipo_nota: string;
   contenido: string;
   registrado_por: number | null;
+  registrado_por_nombre: string | null;
   creado_en: string;
 }
 
@@ -107,6 +110,7 @@ function mapPathology(row: PathologyRow) {
     fechaDiagnostico: row.fecha_diagnostico,
     estado: row.estado,
     registradoPor: row.registrado_por,
+    registradoPorNombre: row.registrado_por_nombre,
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
   };
@@ -125,6 +129,7 @@ function mapMedication(row: MedicationRow) {
     estado: row.estado,
     observaciones: row.observaciones,
     registradoPor: row.registrado_por,
+    registradoPorNombre: row.registrado_por_nombre,
     creadoEn: row.creado_en,
     actualizadoEn: row.actualizado_en,
   };
@@ -137,6 +142,7 @@ function mapMedicalNote(row: MedicalNoteRow) {
     tipoNota: row.tipo_nota,
     contenido: row.contenido,
     registradoPor: row.registrado_por,
+    registradoPorNombre: row.registrado_por_nombre,
     creadoEn: row.creado_en,
   };
 }
@@ -155,10 +161,11 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [rows] = await pool.query<PathologyRow[]>(
-      `select *
-       from patologia_adulto_mayor
-       where id_adulto_mayor = :idAdultoMayor
-       order by estado, creado_en desc`,
+      `select p.*, concat(pe.nombres, ' ', pe.apellidos) as registrado_por_nombre
+       from patologia_adulto_mayor p
+       left join perfil_usuario pe on pe.id_usuario = p.registrado_por
+       where p.id_adulto_mayor = :idAdultoMayor
+       order by p.estado, p.creado_en desc`,
       { idAdultoMayor: params.id },
     );
 
@@ -171,9 +178,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
     const body = pathologySchema.parse(request.body);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores registran patologias');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const connection = await pool.getConnection();
@@ -245,9 +249,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     }).parse(request.params);
     const body = updatePathologySchema.parse(request.body);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores modifican patologias');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const connection = await pool.getConnection();
@@ -309,9 +310,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       pathologyId: z.coerce.number().int().positive(),
     }).parse(request.params);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores eliminan patologias');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [result] = await pool.query<ResultSetHeader>(
@@ -336,10 +334,11 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [rows] = await pool.query<MedicationRow[]>(
-      `select *
-       from medicamento_adulto_mayor
-       where id_adulto_mayor = :idAdultoMayor
-       order by estado, creado_en desc`,
+      `select m.*, concat(pe.nombres, ' ', pe.apellidos) as registrado_por_nombre
+       from medicamento_adulto_mayor m
+       left join perfil_usuario pe on pe.id_usuario = m.registrado_por
+       where m.id_adulto_mayor = :idAdultoMayor
+       order by m.estado, m.creado_en desc`,
       { idAdultoMayor: params.id },
     );
 
@@ -352,9 +351,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
     const body = medicationSchema.parse(request.body);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores registran medicamentos');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const connection = await pool.getConnection();
@@ -432,9 +428,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     }).parse(request.params);
     const body = updateMedicationSchema.parse(request.body);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores modifican medicamentos');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const connection = await pool.getConnection();
@@ -500,9 +493,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       medicationId: z.coerce.number().int().positive(),
     }).parse(request.params);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores eliminan medicamentos');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [result] = await pool.query<ResultSetHeader>(
@@ -527,10 +517,11 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [rows] = await pool.query<MedicalNoteRow[]>(
-      `select id_nota_historial_medico, id_adulto_mayor, tipo_nota, contenido, registrado_por, creado_en
-       from nota_historial_medico
-       where id_adulto_mayor = :idAdultoMayor
-       order by creado_en desc`,
+      `select n.*, concat(pe.nombres, ' ', pe.apellidos) as registrado_por_nombre
+       from nota_historial_medico n
+       left join perfil_usuario pe on pe.id_usuario = n.registrado_por
+       where n.id_adulto_mayor = :idAdultoMayor
+       order by n.creado_en desc`,
       { idAdultoMayor: params.id },
     );
 
@@ -543,9 +534,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
     const body = medicalNoteSchema.parse(request.body);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores registran notas medicas');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [insertResult] = await pool.query<ResultSetHeader>(
@@ -578,9 +566,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
     }).parse(request.params);
     const body = updateMedicalNoteSchema.parse(request.body);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores modifican notas medicas');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const connection = await pool.getConnection();
@@ -640,9 +625,6 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       noteId: z.coerce.number().int().positive(),
     }).parse(request.params);
 
-    if (actor.rol === 'cuidador') {
-      throw forbidden('Solo profesionales o administradores eliminan notas medicas');
-    }
     await assertCanAccessOlderAdult(params.id, actor.idUsuario, actor.rol);
 
     const [result] = await pool.query<ResultSetHeader>(

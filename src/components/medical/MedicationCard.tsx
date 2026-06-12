@@ -57,6 +57,12 @@ export function MedicationCard({ medication, canEdit, onPress, onEdit, onDelete 
       {medication.observaciones && (
         <Text style={styles.notes} numberOfLines={2}>{medication.observaciones}</Text>
       )}
+      {medication.registradoPorNombre && (
+        <View style={styles.registeredBy}>
+          <MaterialCommunityIcons name="account-outline" size={12} color="#9ca3af" />
+          <Text style={styles.registeredByText}>{medication.registradoPorNombre}</Text>
+        </View>
+      )}
     </AppCard>
   );
 }
@@ -68,4 +74,6 @@ const styles = StyleSheet.create({
   detail: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151', marginTop: 8 },
   route: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2 },
   notes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 4, fontStyle: 'italic' },
+  registeredBy: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  registeredByText: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#9ca3af' },
 });

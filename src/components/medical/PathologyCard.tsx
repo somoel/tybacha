@@ -59,6 +59,12 @@ export function PathologyCard({ pathology, canEdit, onPress, onEdit, onDelete }:
           Diagnóstico: {format(new Date(pathology.fechaDiagnostico), 'dd MMM yyyy', { locale: es })}
         </Text>
       )}
+      {pathology.registradoPorNombre && (
+        <View style={styles.registeredBy}>
+          <MaterialCommunityIcons name="account-outline" size={12} color="#9ca3af" />
+          <Text style={styles.registeredByText}>{pathology.registradoPorNombre}</Text>
+        </View>
+      )}
     </AppCard>
   );
 }
@@ -69,4 +75,6 @@ const styles = StyleSheet.create({
   name: { fontFamily: 'Montserrat_600SemiBold', fontSize: 15, color: '#1f2937' },
   desc: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', marginTop: 8, lineHeight: 18 },
   date: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#9ca3af', marginTop: 6 },
+  registeredBy: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  registeredByText: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#9ca3af' },
 });
