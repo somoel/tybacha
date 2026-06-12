@@ -4,6 +4,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { BatteryDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { SFT_TESTS } from '@/src/constants/sftTests';
+import { exportBatteryXlsx } from '@/src/api/reportsApi';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { usePermissions } from '@/src/hooks/usePermissions';
@@ -12,8 +13,8 @@ import type { ExercisePlan } from '@/src/types/exercise.types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
 function getImcColor(imc: number): string {
@@ -29,6 +30,7 @@ export default function BatteryDetailScreen() {
     const [battery, setBattery] = useState<BatteryWithResults | null>(null);
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const { isAdmin, isProfessional } = usePermissions();
     const hasStaffAccess = isAdmin || isProfessional;
 
@@ -50,6 +52,29 @@ export default function BatteryDetailScreen() {
         };
         load();
     }, [batteryId, patientId]);
+
+    const handleExportXlsx = useCallback(async () => {
+        if (!batteryId) return;
+        setIsExporting(true);
+        try {
+            const blob = await exportBatteryXlsx(Number(batteryId));
+            const url = URL.createObjectURL(blob);
+            if (Platform.OS === 'web') {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `bateria-sft-${batteryId}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Error al exportar';
+            Alert.alert('Error', message);
+        } finally {
+            setIsExporting(false);
+        }
+    }, [batteryId]);
 
     if (isLoading) return <BatteryDetailSkeleton />;
     if (!battery) return <BatteryDetailSkeleton />;
@@ -84,6 +109,19 @@ export default function BatteryDetailScreen() {
                     </View>
                 )}
             </AppCard>
+
+            {/* Export button */}
+            {hasStaffAccess && (
+                <AppButton
+                    label={isExporting ? 'Exportando...' : 'Exportar XLSX'}
+                    variant="outlined"
+                    icon="file-excel"
+                    onPress={handleExportXlsx}
+                    disabled={isExporting}
+                    style={styles.exportButton}
+                    accessibilityLabel="Exportar batería a archivo Excel"
+                />
+            )}
 
             {/* Chart */}
             {battery.results.length > 0 && (
@@ -164,5 +202,6 @@ const styles = StyleSheet.create({
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
     resultNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#374151', marginTop: 6, fontStyle: 'italic' },
     createPlanButton: { marginTop: 24 },
+    exportButton: { marginBottom: 16 },
     bottomPadding: { height: 32 },
 });

@@ -26,3 +26,20 @@ export async function generateProgressReport(
     return response.blob();
 }
 
+export async function exportBatteryXlsx(idAplicacionSft: number): Promise<Blob> {
+    const token = await getAccessToken();
+    const response = await fetch(`${API_URL}/sft-applications/${idAplicacionSft}/export.xlsx`, {
+        method: 'GET',
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+    });
+
+    if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message ?? 'Error exportando batería');
+    }
+
+    return response.blob();
+}
+

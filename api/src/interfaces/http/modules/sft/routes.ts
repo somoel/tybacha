@@ -1,9 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import type { TokenUser } from '../../../../infrastructure/auth/tokens.js';
-import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
+import { insertAccessAuditWithPool, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import {
+  renderBatteryXlsx,
+  type BatteryReportData,
+} from '../../../../infrastructure/reports/batteryReport.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -76,6 +81,14 @@ interface ApplicationDetailRow extends RowDataPacket {
   resultado_observaciones: string | null;
 }
 
+interface AdultRow extends RowDataPacket {
+  id_adulto_mayor: number;
+  nombres: string;
+  apellidos: string;
+  fecha_nacimiento: string;
+  genero: string;
+}
+
 async function getActiveSftBatteryId(): Promise<number> {
   const [rows] = await pool.query<BatteryRow[]>(
     `select id_bateria_sft, nombre, descripcion, version
@@ -109,6 +122,86 @@ async function assertCanAccessOlderAdult(
   );
 
   if (!rows[0]) throw forbidden();
+}
+
+const NORMATIVE_RANGES_BY_ORDER: Record<number, {
+  prueba: string;
+  unidad: string;
+  higherIsBetter: boolean;
+  belowBelowAvg: number;
+  belowAvg: number;
+  avg: number;
+  aboveAvg: number;
+  excellent: number;
+}> = {
+  1: { prueba: 'Sentarse y levantarse de silla', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 8, belowAvg: 12, avg: 15, aboveAvg: 19, excellent: 23 },
+  2: { prueba: 'Flexión de codo (Arm Curl)', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 10, belowAvg: 13, avg: 16, aboveAvg: 20, excellent: 24 },
+  3: { prueba: 'Caminata de 6 minutos', unidad: 'meters', higherIsBetter: true, belowBelowAvg: 350, belowAvg: 450, avg: 550, aboveAvg: 650, excellent: 750 },
+  4: { prueba: 'Marcha estacionaria 2 minutos', unidad: 'steps', higherIsBetter: true, belowBelowAvg: 60, belowAvg: 75, avg: 90, aboveAvg: 110, excellent: 130 },
+  5: { prueba: 'Sentado y extenderse (Chair Sit-and-Reach)', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -4, belowAvg: -1, avg: 2, aboveAvg: 5, excellent: 8 },
+  6: { prueba: 'Rascarse la espalda (Back Scratch)', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -12, belowAvg: -6, avg: -1, aboveAvg: 4, excellent: 8 },
+  7: { prueba: '8-Foot Up-and-Go', unidad: 'seconds', higherIsBetter: false, belowBelowAvg: 14, belowAvg: 12, avg: 10, aboveAvg: 8, excellent: 6 },
+};
+
+function calculatePerformance(value: number, ranges: (typeof NORMATIVE_RANGES_BY_ORDER)[number]): { label: string; percentage: number } {
+  const { belowBelowAvg, excellent, higherIsBetter } = ranges;
+  let percentage: number;
+  if (higherIsBetter) {
+    const totalRange = excellent - belowBelowAvg;
+    percentage = totalRange <= 0 ? 50 : Math.max(0, Math.min(100, ((value - belowBelowAvg) / totalRange) * 100));
+  } else {
+    const totalRange = belowBelowAvg - excellent;
+    percentage = totalRange <= 0 ? 50 : Math.max(0, Math.min(100, ((belowBelowAvg - value) / totalRange) * 100));
+  }
+  let label: string;
+  if (percentage >= 80) label = 'Excelente';
+  else if (percentage >= 60) label = 'Por encima del promedio';
+  else if (percentage >= 40) label = 'Promedio';
+  else if (percentage >= 20) label = 'Por debajo del promedio';
+  else label = 'Bajo promedio';
+  return { label, percentage };
+}
+
+async function persistBatteryReport(input: {
+  actorId: number;
+  title: string;
+  fileName: string;
+  content: Buffer;
+}): Promise<void> {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [reportResult] = await connection.query<ResultSetHeader>(
+      `insert into reporte_generado
+        (tipo_reporte, titulo, filtros, resumen, formato, generado_por)
+       values
+        ('sft', :title, '{}', '{}', 'xlsx', :actorId)`,
+      { title: input.title, actorId: input.actorId },
+    );
+
+    const hash = createHash('sha256').update(input.content).digest('hex');
+    await connection.query<ResultSetHeader>(
+      `insert into archivo_exportado
+        (id_reporte_generado, nombre_archivo, tipo_mime, contenido_binario, tamano_bytes, huella_sha256)
+       values
+        (:idReporte, :fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', :content, :size, :hash)`,
+      {
+        idReporte: reportResult.insertId,
+        fileName: input.fileName,
+        content: input.content,
+        size: input.content.byteLength,
+        hash,
+      },
+    );
+
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
@@ -308,5 +401,104 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
     } finally {
       connection.release();
     }
+  });
+
+  app.get('/sft-applications/:id/export.xlsx', { preHandler: requireAuth(app) }, async (request, reply) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+
+    const [rows] = await pool.query<ApplicationDetailRow[]>(
+      `select aps.id_aplicacion_sft, aps.id_adulto_mayor, aps.id_bateria_sft, aps.responsable,
+              aps.fecha_aplicacion, aps.estado, aps.observaciones,
+              aps.peso_kg, aps.estatura_cm, aps.imc,
+              rs.id_resultado_sft, ps.id_prueba_sft, ps.nombre as prueba_nombre, ps.unidad_resultado,
+              ps.orden, rs.valor_numerico, rs.valor_texto, rs.clasificacion,
+              rs.observaciones as resultado_observaciones
+       from aplicacion_sft aps
+       left join resultado_sft rs on rs.id_aplicacion_sft = aps.id_aplicacion_sft
+       left join prueba_sft ps on ps.id_prueba_sft = rs.id_prueba_sft
+       where aps.id_aplicacion_sft = :id
+       order by ps.orden`,
+      { id: params.id },
+    );
+
+    const first = rows[0];
+    if (!first) throw notFound('Aplicacion SFT no encontrada');
+    await assertCanAccessOlderAdult(first.id_adulto_mayor, actor);
+
+    const [adultRows] = await pool.query<AdultRow[]>(
+      `select id_adulto_mayor, nombres, apellidos, fecha_nacimiento, genero
+       from adulto_mayor
+       where id_adulto_mayor = :idAdultoMayor
+       limit 1`,
+      { idAdultoMayor: first.id_adulto_mayor },
+    );
+
+    const adult = adultRows[0];
+    if (!adult) throw notFound('Adulto mayor no encontrado');
+
+    const reportData: BatteryReportData = {
+      paciente: {
+        nombres: adult.nombres,
+        apellidos: adult.apellidos,
+        fechaNacimiento: String(adult.fecha_nacimiento),
+        genero: adult.genero,
+      },
+      bateria: {
+        idAplicacionSft: first.id_aplicacion_sft,
+        fechaAplicacion: first.fecha_aplicacion,
+        pesoKg: first.peso_kg,
+        estaturaCm: first.estatura_cm,
+        imc: first.imc,
+        observaciones: first.observaciones,
+        estado: first.estado,
+      },
+      resultados: rows
+        .filter((row) => row.id_resultado_sft !== null && row.orden !== null)
+        .map((row) => {
+          const orden = row.orden!;
+          const ranges = NORMATIVE_RANGES_BY_ORDER[orden];
+          const valor = row.valor_numerico ?? 0;
+          const perf = ranges ? calculatePerformance(valor, ranges) : { label: row.clasificacion ?? '', percentage: 0 };
+          return {
+            prueba: row.prueba_nombre ?? `Prueba ${orden}`,
+            valor,
+            unidad: row.unidad_resultado ?? '',
+            desempeno: perf.label,
+            porcentaje: Math.round(perf.percentage),
+            observaciones: row.resultado_observaciones,
+          };
+        }),
+    };
+
+    const content = await renderBatteryXlsx(reportData);
+    const fileName = `bateria-sft-${params.id}.xlsx`;
+    const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    await persistBatteryReport({
+      actorId: actor.idUsuario,
+      title: `Bateria SFT ${params.id} - ${adult.nombres} ${adult.apellidos}`,
+      fileName,
+      content,
+    });
+
+    await insertAccessAuditWithPool(() => pool.getConnection(), {
+      idUsuario: actor.idUsuario,
+      idAdultoMayor: first.id_adulto_mayor,
+      tipoDato: 'reporte',
+      accion: 'exportar',
+      resultado: 'permitido',
+      motivo: `Exportacion de batería SFT ${params.id} a XLSX`,
+      context: {
+        userId: actor.idUsuario,
+        ip: request.ip,
+        userAgent: request.headers['user-agent'] ?? null,
+      },
+    });
+
+    return reply
+      .header('Content-Type', mimeType)
+      .header('Content-Disposition', `attachment; filename="${fileName}"`)
+      .send(content);
   });
 }
