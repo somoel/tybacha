@@ -4,7 +4,7 @@ import type { SFTTestDefinition } from '@/src/types/battery.types';
 export const SFT_TESTS: SFTTestDefinition[] = [
     {
         type: 'chair_stand',
-        name: 'Sentarse y levantarse de silla',
+        name: 'Sentarse y levantarse de una silla',
         shortName: 'Fuerza inferior',
         description:
             'El adulto mayor se sienta y se levanta de la silla el mayor número de veces posible en 30 segundos con los brazos cruzados sobre el pecho.',
@@ -26,7 +26,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
     },
     {
         type: 'arm_curl',
-        name: 'Flexión de codo (Arm Curl)',
+        name: 'Flexiones del brazo',
         shortName: 'Fuerza superior',
         description:
             'Flexiones de codo con mancuerna (2.27 kg mujeres / 3.63 kg hombres) en 30 segundos, sentado.',
@@ -48,7 +48,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
     },
     {
         type: 'two_min_step',
-        name: 'Marcha estacionaria 2 minutos',
+        name: 'Marcha de dos minutos',
         shortName: 'Resistencia (alternativa)',
         description:
             'Elevar las rodillas alternativamente durante 2 minutos. Se cuentan las elevaciones de la rodilla derecha.',
@@ -70,7 +70,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
     },
     {
         type: 'chair_sit_reach',
-        name: 'Sentado y extenderse (Chair Sit-and-Reach)',
+        name: 'Flexión del tronco en silla',
         shortName: 'Flexibilidad inferior',
         description:
             'Sentado al borde de la silla, extender una pierna y alcanzar los dedos del pie. Se registra la distancia en cm (negativo si no alcanza).',
@@ -91,7 +91,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
     },
     {
         type: 'back_scratch',
-        name: 'Rascarse la espalda (Back Scratch)',
+        name: 'Juntar las manos tras la espalda',
         shortName: 'Flexibilidad superior',
         description:
             'Un brazo por encima del hombro y el otro por detrás de la espalda, intentando que los dedos se toquen. Se registra la distancia en cm (negativo si no se tocan).',
@@ -112,7 +112,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
     },
     {
         type: 'up_and_go',
-        name: '8-Foot Up-and-Go',
+        name: 'Levantarse, caminar y volverse a sentar',
         shortName: 'Agilidad y equilibrio',
         description:
             'Levantarse de la silla, caminar 2.44 m, rodear un cono y volver a sentarse. Se mide el tiempo en segundos. Menor tiempo = mejor.',
@@ -133,7 +133,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
     },
     {
         type: 'six_min_walk',
-        name: 'Caminata de 6 minutos',
+        name: 'Caminar 6 minutos',
         shortName: 'Resistencia aeróbica',
         description:
             'Caminar lo más rápido posible durante 6 minutos por un circuito rectangular de 18,8 m × 4,57 m (perímetro 45,72 m). Cada vuelta equivale a 45,72 m. Se avisará a los 3 y a los 2 minutos para ajustar el ritmo. Al terminar, caminar en el sitio elevando las piernas.',
