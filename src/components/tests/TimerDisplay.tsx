@@ -1,4 +1,4 @@
-import type { EncouragementCue, TimerMode } from '@/src/types/battery.types';
+import type { EncouragementCue, SoundVariant, TimerMode } from '@/src/types/battery.types';
 import { playCue, preloadCue, setMuted } from '@/src/services/soundService';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
@@ -11,6 +11,7 @@ interface TimerDisplayProps {
     onTick?: (seconds: number) => void;
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;
+    endSound?: SoundVariant;
 }
 
 /**
@@ -26,6 +27,7 @@ export function TimerDisplay({
     onTick,
     encouragementCues,
     soundCues = false,
+    endSound,
 }: TimerDisplayProps) {
     const theme = useTheme();
     const [seconds, setSeconds] = useState(mode === 'countdown' ? initialSeconds : 0);
@@ -71,6 +73,9 @@ export function TimerDisplay({
 
                 if (mode === 'countdown' && next <= 0) {
                     clearTimer();
+                    if (soundCues && endSound) {
+                        playCue(endSound).catch(() => {});
+                    }
                     // Use setTimeout to defer state updates and avoid setState during render
                     setTimeout(() => {
                         setIsRunning(false);
@@ -91,7 +96,7 @@ export function TimerDisplay({
                         firedCuesRef.current.add(crossed.atSecond);
                         setActiveCue(crossed);
                         if (soundCues) {
-                            playCue().catch(() => {});
+                            playCue(crossed.sound ?? 'bell').catch(() => {});
                         }
                     }
                 }
@@ -102,7 +107,7 @@ export function TimerDisplay({
         }, 1000);
 
         return clearTimer;
-    }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer, encouragementCues, soundCues]);
+    }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer, encouragementCues, soundCues, endSound]);
 
     const toggleTimer = () => {
         if (!hasStarted) setHasStarted(true);
@@ -143,7 +148,7 @@ export function TimerDisplay({
 
     return (
         <View style={styles.container} accessibilityRole="timer">
-            {activeCue && (
+            {activeCue?.message && (
                 <Animated.View
                     style={[
                         styles.cueCard,

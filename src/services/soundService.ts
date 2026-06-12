@@ -1,8 +1,22 @@
 import * as Haptics from 'expo-haptics';
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import type { SoundVariant } from '@/src/types/battery.types';
 
-let player: AudioPlayer | null = null;
-let muted = false;
+type CueVariant = SoundVariant;
+
+const SOURCES: Record<CueVariant, ReturnType<typeof require>> = {
+    bell:  require('@/assets/sounds/cue-bell.wav'),
+    chime: require('@/assets/sounds/cue-chime.wav'),
+    end:   require('@/assets/sounds/test-end.wav'),
+};
+
+const VOLUMES: Record<CueVariant, number> = {
+    bell:  0.4,
+    chime: 0.3,
+    end:   0.5,
+};
+
+const players = new Map<CueVariant, AudioPlayer>();
 let audioModeConfigured = false;
 
 async function ensureAudioMode(): Promise<void> {
@@ -19,15 +33,15 @@ async function ensureAudioMode(): Promise<void> {
     }
 }
 
-async function ensurePlayer(): Promise<AudioPlayer | null> {
-    if (player) return player;
+function ensurePlayer(variant: CueVariant): AudioPlayer | null {
+    const existing = players.get(variant);
+    if (existing) return existing;
     try {
-        await ensureAudioMode();
-        const p = createAudioPlayer(require('@/assets/sounds/cue-chime.wav'));
-        p.volume = 0.4;
+        const p = createAudioPlayer(SOURCES[variant]);
+        p.volume = VOLUMES[variant];
         p.pause();
-        player = p;
-        return player;
+        players.set(variant, p);
+        return p;
     } catch {
         return null;
     }
@@ -37,17 +51,22 @@ export function setMuted(value: boolean): void {
     muted = value;
 }
 
+let muted = false;
+
 export function isMuted(): boolean {
     return muted;
 }
 
 export async function preloadCue(): Promise<void> {
-    await ensurePlayer();
+    await ensureAudioMode();
+    for (const variant of ['bell', 'chime', 'end'] as CueVariant[]) {
+        ensurePlayer(variant);
+    }
 }
 
-export async function playCue(): Promise<void> {
+export async function playCue(variant: CueVariant = 'bell'): Promise<void> {
     if (muted) return;
-    const p = await ensurePlayer();
+    const p = ensurePlayer(variant);
     if (!p) return;
     try {
         await p.seekTo(0);

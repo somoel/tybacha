@@ -169,6 +169,7 @@ export default function ActiveTestScreen() {
                         onComplete={handleTimerComplete}
                         encouragementCues={test.encouragementCues}
                         soundCues={test.soundCues}
+                        endSound={test.endSound}
                     />
                 )}
 

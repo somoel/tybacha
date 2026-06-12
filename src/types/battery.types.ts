@@ -22,9 +22,12 @@ export interface NormativeRanges {
     higherIsBetter: boolean;
 }
 
+export type SoundVariant = 'bell' | 'chime' | 'end';
+
 export interface EncouragementCue {
     atSecond: number;
-    message: string;
+    message?: string;
+    sound?: SoundVariant;
 }
 
 export interface SFTTestDefinition {
@@ -42,6 +45,7 @@ export interface SFTTestDefinition {
     normativeRanges?: NormativeRanges;
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;
+    endSound?: SoundVariant;
 }
 
 export interface SFTBattery {
