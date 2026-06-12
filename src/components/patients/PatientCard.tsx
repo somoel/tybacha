@@ -9,7 +9,7 @@ import { differenceInYears, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Checkbox, Text, useTheme } from 'react-native-paper';
 
 interface PatientCardProps {
     patient: Patient;
@@ -19,8 +19,11 @@ interface PatientCardProps {
     weeklyExerciseData?: WeeklyExerciseData;
     showQuickActions?: boolean;
     showStatusBadge?: boolean;
+    selectionMode?: boolean;
+    selected?: boolean;
     onExercisePress?: () => void;
     onPress: () => void;
+    onToggleSelect?: () => void;
 }
 
 function getStatusFromToday(completed: number, total: number): 'healthy' | 'warning' | 'urgent' | 'neutral' {
@@ -50,8 +53,11 @@ export function PatientCard({
     weeklyExerciseData,
     showQuickActions = false,
     showStatusBadge = true,
+    selectionMode = false,
+    selected = false,
     onExercisePress,
     onPress,
+    onToggleSelect,
 }: PatientCardProps) {
     const theme = useTheme();
     const photoThumbnails = usePatientsStore((s) => s.photoThumbnails);
@@ -68,10 +74,27 @@ export function PatientCard({
 
     const status = hasActivePlan ? getStatusFromToday(todayCompleted, todayTotal) : 'neutral';
     const statusLabel = hasActivePlan ? getTodayLabel(todayCompleted, todayTotal) : 'Sin plan';
+    const hasBatteries = batteryCount != null && batteryCount > 0;
+    const isSelectable = selectionMode && hasBatteries;
 
     return (
-        <AppCard onPress={onPress} accessibilityLabel={`Adulto mayor ${fullName}`}>
+        <AppCard
+            onPress={isSelectable ? onToggleSelect : selectionMode ? undefined : onPress}
+            accessibilityLabel={`Adulto mayor ${fullName}`}
+            style={[
+                selected ? styles.selectedCard : undefined,
+                selectionMode && !hasBatteries ? styles.disabledCard : undefined,
+            ]}
+        >
             <View style={styles.row}>
+                {selectionMode && (
+                    <Checkbox
+                        status={selected ? 'checked' : hasBatteries ? 'unchecked' : 'indeterminate'}
+                        onPress={hasBatteries ? onToggleSelect : undefined}
+                        color="#006d77"
+                        disabled={!hasBatteries}
+                    />
+                )}
                 <PatientAvatar
                     photoData={photoData}
                     firstName={patient.first_name}
@@ -182,5 +205,12 @@ const styles = StyleSheet.create({
     actionText: {
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 13,
+    },
+    selectedCard: {
+        borderColor: '#006d77',
+        borderWidth: 2,
+    },
+    disabledCard: {
+        opacity: 0.5,
     },
 });

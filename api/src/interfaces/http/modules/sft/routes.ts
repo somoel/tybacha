@@ -9,6 +9,10 @@ import {
   renderBatteryXlsx,
   type BatteryReportData,
 } from '../../../../infrastructure/reports/batteryReport.js';
+import {
+  renderBulkBatteryXlsx,
+  type BulkBatteryRow,
+} from '../../../../infrastructure/reports/bulkBatteryReport.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -134,13 +138,13 @@ const NORMATIVE_RANGES_BY_ORDER: Record<number, {
   aboveAvg: number;
   excellent: number;
 }> = {
-  1: { prueba: 'Sentarse y levantarse de silla', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 8, belowAvg: 12, avg: 15, aboveAvg: 19, excellent: 23 },
-  2: { prueba: 'Flexión de codo (Arm Curl)', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 10, belowAvg: 13, avg: 16, aboveAvg: 20, excellent: 24 },
-  3: { prueba: 'Caminata de 6 minutos', unidad: 'meters', higherIsBetter: true, belowBelowAvg: 350, belowAvg: 450, avg: 550, aboveAvg: 650, excellent: 750 },
-  4: { prueba: 'Marcha estacionaria 2 minutos', unidad: 'steps', higherIsBetter: true, belowBelowAvg: 60, belowAvg: 75, avg: 90, aboveAvg: 110, excellent: 130 },
-  5: { prueba: 'Sentado y extenderse (Chair Sit-and-Reach)', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -4, belowAvg: -1, avg: 2, aboveAvg: 5, excellent: 8 },
-  6: { prueba: 'Rascarse la espalda (Back Scratch)', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -12, belowAvg: -6, avg: -1, aboveAvg: 4, excellent: 8 },
-  7: { prueba: '8-Foot Up-and-Go', unidad: 'seconds', higherIsBetter: false, belowBelowAvg: 14, belowAvg: 12, avg: 10, aboveAvg: 8, excellent: 6 },
+  1: { prueba: 'Sentarse y levantarse de una silla', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 8, belowAvg: 12, avg: 15, aboveAvg: 19, excellent: 23 },
+  2: { prueba: 'Flexiones del brazo', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 10, belowAvg: 13, avg: 16, aboveAvg: 20, excellent: 24 },
+  3: { prueba: 'Caminar 6 minutos', unidad: 'meters', higherIsBetter: true, belowBelowAvg: 350, belowAvg: 450, avg: 550, aboveAvg: 650, excellent: 750 },
+  4: { prueba: 'Marcha de dos minutos', unidad: 'steps', higherIsBetter: true, belowBelowAvg: 60, belowAvg: 75, avg: 90, aboveAvg: 110, excellent: 130 },
+  5: { prueba: 'Flexión del tronco en silla', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -4, belowAvg: -1, avg: 2, aboveAvg: 5, excellent: 8 },
+  6: { prueba: 'Juntar las manos tras la espalda', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -12, belowAvg: -6, avg: -1, aboveAvg: 4, excellent: 8 },
+  7: { prueba: 'Levantarse, caminar y volverse a sentar', unidad: 'seconds', higherIsBetter: false, belowBelowAvg: 14, belowAvg: 12, avg: 10, aboveAvg: 8, excellent: 6 },
 };
 
 function calculatePerformance(value: number, ranges: (typeof NORMATIVE_RANGES_BY_ORDER)[number]): { label: string; percentage: number } {
@@ -489,6 +493,136 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       accion: 'exportar',
       resultado: 'permitido',
       motivo: `Exportacion de batería SFT ${params.id} a XLSX`,
+      context: {
+        userId: actor.idUsuario,
+        ip: request.ip,
+        userAgent: request.headers['user-agent'] ?? null,
+      },
+    });
+
+    return reply
+      .header('Content-Type', mimeType)
+      .header('Content-Disposition', `attachment; filename="${fileName}"`)
+      .send(content);
+  });
+
+  app.post('/sft-applications/export-bulk.xlsx', { preHandler: requireAuth(app) }, async (request, reply) => {
+    const actor = request.authUser!;
+    const body = z.object({ patientIds: z.array(z.coerce.number().int().positive()).min(1).max(100) }).parse(request.body);
+
+    if (actor.rol === 'cuidador') {
+      throw forbidden('Solo profesionales o administradores pueden exportar baterías');
+    }
+
+    // Assert access to all patients
+    for (const id of body.patientIds) {
+      await assertCanAccessOlderAdult(id, actor);
+    }
+
+    // 1. Get latest finalized application per patient
+    const [appRows] = await pool.query<RowDataPacket[]>(
+      `select aps.id_aplicacion_sft, aps.id_adulto_mayor, aps.fecha_aplicacion, aps.peso_kg, aps.estatura_cm, aps.imc
+       from aplicacion_sft aps
+       inner join (
+         select id_adulto_mayor, max(fecha_aplicacion) as max_fecha
+         from aplicacion_sft
+         where id_adulto_mayor IN (:ids) and estado = 'finalizada'
+         group by id_adulto_mayor
+       ) latest on latest.id_adulto_mayor = aps.id_adulto_mayor and latest.max_fecha = aps.fecha_aplicacion`,
+      { ids: body.patientIds },
+    );
+
+    if (appRows.length === 0) {
+      throw notFound('Ninguno de los pacientes seleccionados tiene baterías finalizadas');
+    }
+
+    const appIds = appRows.map((r) => r.id_aplicacion_sft);
+
+    // 2. Get results for those applications
+    const [resultRows] = await pool.query<RowDataPacket[]>(
+      `select rs.id_aplicacion_sft, ps.orden, rs.valor_numerico
+       from resultado_sft rs
+       join prueba_sft ps on ps.id_prueba_sft = rs.id_prueba_sft
+       where rs.id_aplicacion_sft IN (:appIds)
+       order by rs.id_aplicacion_sft, ps.orden`,
+      { appIds },
+    );
+
+    // 3. Get patient data
+    const [adultRows] = await pool.query<AdultRow[]>(
+      `select id_adulto_mayor, nombres, apellidos, fecha_nacimiento, genero
+       from adulto_mayor
+       where id_adulto_mayor IN (:ids)`,
+      { ids: body.patientIds },
+    );
+
+    const adultMap = new Map(adultRows.map((a) => [a.id_adulto_mayor, a]));
+
+    // Group results by application
+    const resultsByApp = new Map<number, Map<number, number | null>>();
+    for (const row of resultRows) {
+      const appId = row.id_aplicacion_sft;
+      if (!resultsByApp.has(appId)) resultsByApp.set(appId, new Map());
+      resultsByApp.get(appId)!.set(row.orden, row.valor_numerico);
+    }
+
+    // Build rows
+    const bulkRows: BulkBatteryRow[] = appRows.map((app) => {
+      const adult = adultMap.get(app.id_adulto_mayor);
+      const results = resultsByApp.get(app.id_aplicacion_sft) ?? new Map();
+
+      const valores: (number | null)[] = [];
+      const porcentajes: (number | null)[] = [];
+
+      for (let orden = 1; orden <= 7; orden++) {
+        const valor = results.get(orden) ?? null;
+        valores.push(valor);
+        const ranges = NORMATIVE_RANGES_BY_ORDER[orden];
+        if (valor !== null && ranges) {
+          const perf = calculatePerformance(valor, ranges);
+          porcentajes.push(Math.round(perf.percentage));
+        } else {
+          porcentajes.push(null);
+        }
+      }
+
+      return {
+        paciente: {
+          nombres: adult?.nombres ?? '',
+          apellidos: adult?.apellidos ?? '',
+          fechaNacimiento: adult ? String(adult.fecha_nacimiento) : '',
+          genero: adult?.genero ?? '',
+        },
+        bateria: {
+          fechaAplicacion: app.fecha_aplicacion,
+          pesoKg: app.peso_kg,
+          estaturaCm: app.estatura_cm,
+          imc: app.imc,
+        },
+        valores,
+        porcentajes,
+      };
+    });
+
+    const content = await renderBulkBatteryXlsx(bulkRows, new Date());
+    const patientCount = body.patientIds.length;
+    const fileName = `baterias-sft-masivo-${patientCount}-pacientes.xlsx`;
+    const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+    await persistBatteryReport({
+      actorId: actor.idUsuario,
+      title: `Exportación masiva SFT — ${patientCount} pacientes`,
+      fileName,
+      content,
+    });
+
+    await insertAccessAuditWithPool(() => pool.getConnection(), {
+      idUsuario: actor.idUsuario,
+      idAdultoMayor: null,
+      tipoDato: 'reporte',
+      accion: 'exportar',
+      resultado: 'permitido',
+      motivo: `Exportación masiva SFT de ${patientCount} pacientes`,
       context: {
         userId: actor.idUsuario,
         ip: request.ip,

@@ -14,6 +14,9 @@ interface PatientSectionListProps {
     isCaregiver: boolean;
     onPatientPress: (patient: Patient) => void;
     lastBatteryDates?: Record<string, string>;
+    selectionMode?: boolean;
+    selectedIds?: Set<string>;
+    onToggleSelect?: (patient: Patient) => void;
 }
 
 interface SectionData {
@@ -37,6 +40,9 @@ export function PatientSectionList({
     isCaregiver,
     onPatientPress,
     lastBatteryDates,
+    selectionMode = false,
+    selectedIds,
+    onToggleSelect,
 }: PatientSectionListProps) {
     const theme = useTheme();
 
@@ -76,6 +82,9 @@ export function PatientSectionList({
                         showQuickActions={isCaregiver}
                         onExercisePress={() => onPatientPress(item)}
                         onPress={() => onPatientPress(item)}
+                        selectionMode={selectionMode}
+                        selected={selectedIds?.has(item.id) ?? false}
+                        onToggleSelect={() => onToggleSelect?.(item)}
                     />
                 </View>
             )}

@@ -43,3 +43,22 @@ export async function exportBatteryXlsx(idAplicacionSft: number): Promise<Blob> 
     return response.blob();
 }
 
+export async function exportBulkBatteryXlsx(patientIds: number[]): Promise<Blob> {
+    const token = await getAccessToken();
+    const response = await fetch(`${API_URL}/sft-applications/export-bulk.xlsx`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ patientIds }),
+    });
+
+    if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.message ?? 'Error exportando baterías');
+    }
+
+    return response.blob();
+}
+
