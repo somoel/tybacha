@@ -47,7 +47,7 @@ export default function BatteryDetailScreen() {
                     patientId ? fetchPatientById(patientId) : null,
                 ]);
                 setBattery(batteryData);
-                setActivePlan(plans.find((p) => p.status === 'active') ?? null);
+                setActivePlan(plans[0] ?? null);
                 setPatient(patientData);
             } catch (error) {
                 console.error('Error:', error);

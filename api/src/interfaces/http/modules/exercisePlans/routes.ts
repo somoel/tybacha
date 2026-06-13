@@ -377,25 +377,55 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
       await connection.beginTransaction();
 
-      const [insertPlan] = await connection.query<ResultSetHeader>(
-        `insert into plan_ejercicio
-          (id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad, creado_por, datos_personalizacion)
-         values
-          (:idAdultoMayor, :titulo, :objetivo, 'ia', 'generado', :nivelDificultad, :creadoPor, :datosPersonalizacion)`,
-        {
-          idAdultoMayor: body.idAdultoMayor,
-          titulo: body.titulo,
-          objetivo: parsed.objetivo ?? body.objetivo ?? null,
-          nivelDificultad: parsed.nivelDificultad,
-          creadoPor: actor.idUsuario,
-          datosPersonalizacion: JSON.stringify({
-            resumen: parsed.resumen,
-            idAplicacionSft: body.idAplicacionSft ?? null,
-          }),
-        },
+      const [existingRows] = await connection.query<RowDataPacket[]>(
+        `select id_plan_ejercicio from plan_ejercicio where id_adulto_mayor = :id limit 1`,
+        { id: body.idAdultoMayor },
       );
 
-      const idPlanEjercicio = insertPlan.insertId;
+      let idPlanEjercicio: number;
+      const datosPersonalizacion = JSON.stringify({
+        resumen: parsed.resumen,
+        idAplicacionSft: body.idAplicacionSft ?? null,
+      });
+
+      if (existingRows.length > 0) {
+        idPlanEjercicio = existingRows[0].id_plan_ejercicio;
+        await connection.query(
+          `update plan_ejercicio
+           set titulo = :titulo, objetivo = :objetivo, origen = 'ia', estado = 'generado',
+               nivel_dificultad = :nivelDificultad, datos_personalizacion = :datos,
+               creado_por = :creadoPor, actualizado_en = current_timestamp(3)
+           where id_plan_ejercicio = :idPlanEjercicio`,
+          {
+            idPlanEjercicio,
+            titulo: body.titulo,
+            objetivo: parsed.objetivo ?? body.objetivo ?? null,
+            nivelDificultad: parsed.nivelDificultad,
+            datos: datosPersonalizacion,
+            creadoPor: actor.idUsuario,
+          },
+        );
+        await connection.query(
+          `update ejercicio_plan set activo = 0 where id_plan_ejercicio = :idPlanEjercicio`,
+          { idPlanEjercicio },
+        );
+      } else {
+        const [insertPlan] = await connection.query<ResultSetHeader>(
+          `insert into plan_ejercicio
+            (id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad, creado_por, datos_personalizacion)
+           values
+            (:idAdultoMayor, :titulo, :objetivo, 'ia', 'generado', :nivelDificultad, :creadoPor, :datosPersonalizacion)`,
+          {
+            idAdultoMayor: body.idAdultoMayor,
+            titulo: body.titulo,
+            objetivo: parsed.objetivo ?? body.objetivo ?? null,
+            nivelDificultad: parsed.nivelDificultad,
+            creadoPor: actor.idUsuario,
+            datosPersonalizacion,
+          },
+        );
+        idPlanEjercicio = insertPlan.insertId;
+      }
 
       for (let index = 0; index < parsed.ejercicios.length; index++) {
         const exercise = parsed.ejercicios[index]!;
@@ -436,10 +466,11 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
         },
       );
 
+      const existingRow = existingRows.length > 0;
       await insertChangeAudit(connection, {
         tabla: 'plan_ejercicio',
         registroId: idPlanEjercicio,
-        accion: 'crear',
+        accion: existingRow ? 'actualizar' : 'crear',
         nuevos: parsed,
         context: {
           userId: actor.idUsuario,
@@ -471,22 +502,51 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
     try {
       await connection.beginTransaction();
 
-      const [insertPlan] = await connection.query<ResultSetHeader>(
-        `insert into plan_ejercicio
-          (id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad, creado_por)
-         values
-          (:idAdultoMayor, :titulo, :objetivo, :origen, 'generado', :nivelDificultad, :creadoPor)`,
-        {
-          idAdultoMayor: body.idAdultoMayor,
-          titulo: body.titulo,
-          objetivo: body.objetivo ?? null,
-          origen: body.origen,
-          nivelDificultad: body.nivelDificultad,
-          creadoPor: actor.idUsuario,
-        },
+      const [existingRows] = await connection.query<RowDataPacket[]>(
+        `select id_plan_ejercicio from plan_ejercicio where id_adulto_mayor = :id limit 1`,
+        { id: body.idAdultoMayor },
       );
 
-      const idPlanEjercicio = insertPlan.insertId;
+      let idPlanEjercicio: number;
+
+      if (existingRows.length > 0) {
+        idPlanEjercicio = existingRows[0].id_plan_ejercicio;
+        await connection.query(
+          `update plan_ejercicio
+           set titulo = :titulo, objetivo = :objetivo, origen = :origen, estado = 'generado',
+               nivel_dificultad = :nivelDificultad, creado_por = :creadoPor,
+               actualizado_en = current_timestamp(3)
+           where id_plan_ejercicio = :idPlanEjercicio`,
+          {
+            idPlanEjercicio,
+            titulo: body.titulo,
+            objetivo: body.objetivo ?? null,
+            origen: body.origen,
+            nivelDificultad: body.nivelDificultad,
+            creadoPor: actor.idUsuario,
+          },
+        );
+        await connection.query(
+          `update ejercicio_plan set activo = 0 where id_plan_ejercicio = :idPlanEjercicio`,
+          { idPlanEjercicio },
+        );
+      } else {
+        const [insertPlan] = await connection.query<ResultSetHeader>(
+          `insert into plan_ejercicio
+            (id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad, creado_por)
+           values
+            (:idAdultoMayor, :titulo, :objetivo, :origen, 'generado', :nivelDificultad, :creadoPor)`,
+          {
+            idAdultoMayor: body.idAdultoMayor,
+            titulo: body.titulo,
+            objetivo: body.objetivo ?? null,
+            origen: body.origen,
+            nivelDificultad: body.nivelDificultad,
+            creadoPor: actor.idUsuario,
+          },
+        );
+        idPlanEjercicio = insertPlan.insertId;
+      }
 
       for (let index = 0; index < body.ejercicios.length; index++) {
         const exercise = body.ejercicios[index]!;
@@ -513,10 +573,11 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
         );
       }
 
+      const existingRow = existingRows.length > 0;
       await insertChangeAudit(connection, {
         tabla: 'plan_ejercicio',
         registroId: idPlanEjercicio,
-        accion: 'crear',
+        accion: existingRow ? 'actualizar' : 'crear',
         nuevos: body,
         context: {
           userId: actor.idUsuario,

@@ -230,8 +230,7 @@ export async function fetchActivePlanStatus(
     const entries = await Promise.all(
         patientIds.map(async (patientId) => {
             const plans = await fetchApiExercisePlans(Number(patientId));
-            const hasActive = plans.some((plan) => ['asignado', 'activo', 'generado', 'revisado'].includes(plan.estado));
-            return [patientId, hasActive] as const;
+            return [patientId, plans.length > 0] as const;
         }),
     );
 
@@ -284,7 +283,7 @@ export async function fetchWeeklyExerciseDataForPatients(
                     fetchExercisePlans(patientId),
                 ]);
 
-                const activePlan = plans.find((p) => p.status === 'active');
+                const activePlan = plans[0] ?? null;
 
                 const todayExercises = activePlan?.exercises.filter((ex) => ex.frequency === todayKey) ?? [];
                 const todayTotal = todayExercises.length;

@@ -55,8 +55,8 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
         load();
     }, [patientId]);
 
-    const activePlan = plans.find((p) => p.status === 'active');
-    const hasActivePlan = !!activePlan;
+    const activePlan = plans[0] ?? null;
+    const hasActivePlan = plans.length > 0;
     const showPlanCreation = hasStaffAccess && battery.results.length > 0 && (!hasActivePlan || forceCreatePlan);
 
     const handleGeneratePlan = async () => {

@@ -57,7 +57,7 @@ export default function WeeklySummaryScreen() {
                 if (!isActive) return;
                 setPatient(p);
 
-                const active = plans.find((pl) => pl.status === 'active');
+                const active = plans[0] ?? null;
                 setActivePlan(active ?? null);
 
                 if (active) {

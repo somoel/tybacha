@@ -25,7 +25,7 @@ export default function ExerciseDetailScreen() {
             setIsLoading(true);
             try {
                 const plans = await fetchExercisePlans(id);
-                const activePlan = plans.find((p) => p.status === 'active');
+                const activePlan = plans[0] ?? null;
                 if (!isActive || !activePlan) return;
 
                 const foundExercise = activePlan.exercises.find(
