@@ -10,6 +10,7 @@
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
+    "build": "npx expo export --platform web",
     "web": "expo start --web",
     "lint": "expo lint"
   },
