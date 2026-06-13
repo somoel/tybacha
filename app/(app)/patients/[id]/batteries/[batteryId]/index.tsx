@@ -7,8 +7,10 @@ import { SFT_TESTS } from '@/src/constants/sftTests';
 import { exportBatteryXlsx } from '@/src/api/reportsApi';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
+import { fetchPatientById } from '@/src/services/patientService';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import type { BatteryWithResults } from '@/src/types/battery.types';
+import type { Patient } from '@/src/types/database.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -28,6 +30,7 @@ export default function BatteryDetailScreen() {
     const { id: patientId, batteryId } = useLocalSearchParams<{ id: string; batteryId: string }>();
     const theme = useTheme();
     const [battery, setBattery] = useState<BatteryWithResults | null>(null);
+    const [patient, setPatient] = useState<Patient | null>(null);
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
@@ -38,12 +41,14 @@ export default function BatteryDetailScreen() {
         const load = async () => {
             if (!batteryId) return;
             try {
-                const [batteryData, plans] = await Promise.all([
+                const [batteryData, plans, patientData] = await Promise.all([
                     fetchBatteryWithResults(batteryId),
                     fetchExercisePlans(patientId!),
+                    patientId ? fetchPatientById(patientId) : null,
                 ]);
                 setBattery(batteryData);
                 setActivePlan(plans.find((p) => p.status === 'active') ?? null);
+                setPatient(patientData);
             } catch (error) {
                 console.error('Error:', error);
             } finally {
@@ -126,7 +131,11 @@ export default function BatteryDetailScreen() {
             {/* Chart */}
             {battery.results.length > 0 && (
                 <AppCard>
-                    <ResultChart results={battery.results} />
+                    <ResultChart
+                        results={battery.results}
+                        patientGender={patient?.gender === 'M' ? 'M' : patient?.gender === 'F' ? 'F' : undefined}
+                        patientBirthDate={patient?.birth_date}
+                    />
                 </AppCard>
             )}
 

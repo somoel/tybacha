@@ -1,5 +1,7 @@
 import { SFT_TESTS } from '@/src/constants/sftTests';
-import type { NormativeRanges, SFTResult } from '@/src/types/battery.types';
+import type { SFTResult } from '@/src/types/battery.types';
+import { calculateAgeBand, calculateNormativePercentage, getNormativeRange } from '@shared/constants/normativeRanges';
+import type { NormativeRange, PatientGender, SFTTestType as SharedSFTTestType } from '@shared/constants/normativeRanges';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -7,6 +9,8 @@ import { Text, useTheme } from 'react-native-paper';
 interface ResultChartProps {
     results: SFTResult[];
     previousResults?: SFTResult[];
+    patientGender?: PatientGender;
+    patientBirthDate?: string;
 }
 
 function getPerformanceColor(percentage: number): string {
@@ -25,7 +29,7 @@ function getPerformanceLabel(percentage: number): string {
     return 'Bajo promedio';
 }
 
-function calculatePercentage(value: number, ranges: NormativeRanges): number {
+function calculateLegacyPercentage(value: number, ranges: { belowBelowAvg: number; excellent: number; higherIsBetter: boolean }): number {
     const { belowBelowAvg, excellent, higherIsBetter } = ranges;
 
     if (higherIsBetter) {
@@ -39,23 +43,57 @@ function calculatePercentage(value: number, ranges: NormativeRanges): number {
     return Math.max(0, Math.min(100, ((belowBelowAvg - value) / totalRange) * 100));
 }
 
+function getNormForTest(
+    testType: SharedSFTTestType,
+    gender?: PatientGender,
+    birthDate?: string,
+): NormativeRange | null {
+    if (!gender || !birthDate) return null;
+    const ageBand = calculateAgeBand(birthDate);
+    if (!ageBand) return null;
+    return getNormativeRange(testType, gender, ageBand);
+}
+
 function NormalizedBar({
     value,
     unit,
-    ranges,
+    normRange,
+    legacyRanges,
     previousValue,
 }: {
     value: number;
     unit: string;
-    ranges: NormativeRanges;
+    normRange: NormativeRange | null;
+    legacyRanges?: { belowBelowAvg: number; excellent: number; higherIsBetter: boolean };
     previousValue?: number;
 }) {
     const theme = useTheme();
-    const percentage = calculatePercentage(value, ranges);
+    const higherIsBetter = legacyRanges?.higherIsBetter ?? true;
+
+    let percentage: number;
+    if (normRange) {
+        percentage = calculateNormativePercentage(value, normRange, higherIsBetter);
+    } else if (legacyRanges) {
+        percentage = calculateLegacyPercentage(value, legacyRanges);
+    } else {
+        percentage = 50;
+    }
+
     const color = getPerformanceColor(percentage);
 
-    const avgPercentage = calculatePercentage(ranges.avg, ranges);
-    const excellentPercentage = calculatePercentage(ranges.excellent, ranges);
+    let avgPercentage: number;
+    let excellentPercentage: number;
+    if (normRange) {
+        const avgVal = (normRange.low + normRange.high) / 2;
+        avgPercentage = calculateNormativePercentage(avgVal, normRange, higherIsBetter);
+        excellentPercentage = higherIsBetter ? 85 : 15;
+    } else if (legacyRanges) {
+        avgPercentage = calculateLegacyPercentage(legacyRanges.belowBelowAvg + (legacyRanges.excellent - legacyRanges.belowBelowAvg) * 0.5, legacyRanges);
+        excellentPercentage = calculateLegacyPercentage(legacyRanges.excellent, legacyRanges);
+    } else {
+        avgPercentage = 50;
+        excellentPercentage = 80;
+    }
 
     return (
         <View style={barStyles.row}>
@@ -66,7 +104,11 @@ function NormalizedBar({
                             style={[
                                 barStyles.previousFill,
                                 {
-                                    width: `${calculatePercentage(previousValue, ranges)}%`,
+                                    width: `${normRange
+                                        ? calculateNormativePercentage(previousValue, normRange, higherIsBetter)
+                                        : legacyRanges
+                                            ? calculateLegacyPercentage(previousValue, legacyRanges)
+                                            : 50}%`,
                                     backgroundColor: theme.colors.outlineVariant,
                                 },
                             ]}
@@ -109,7 +151,7 @@ function NormalizedBar({
     );
 }
 
-export function ResultChart({ results, previousResults }: ResultChartProps) {
+export function ResultChart({ results, previousResults, patientGender, patientBirthDate }: ResultChartProps) {
     const theme = useTheme();
 
     return (
@@ -135,7 +177,12 @@ export function ResultChart({ results, previousResults }: ResultChartProps) {
                     const current = results.find((r) => r.test_type === test.type);
                     const previous = previousResults?.find((r) => r.test_type === test.type);
 
-                    if (!current || !test.normativeRanges) return null;
+                    if (!current) return null;
+
+                    const normRange = getNormForTest(test.type as SharedSFTTestType, patientGender, patientBirthDate);
+                    const hasRanges = normRange || test.normativeRanges;
+
+                    if (!hasRanges) return null;
 
                     return (
                         <View key={test.type} style={styles.barSection}>
@@ -143,7 +190,8 @@ export function ResultChart({ results, previousResults }: ResultChartProps) {
                             <NormalizedBar
                                 value={current.value}
                                 unit={current.unit}
-                                ranges={test.normativeRanges}
+                                normRange={normRange}
+                                legacyRanges={test.normativeRanges}
                                 previousValue={previous?.value}
                             />
                         </View>
@@ -154,9 +202,17 @@ export function ResultChart({ results, previousResults }: ResultChartProps) {
             <View style={styles.valuesGrid}>
                 {SFT_TESTS.map((test) => {
                     const current = results.find((r) => r.test_type === test.type);
-                    const percentage = current && test.normativeRanges
-                        ? Math.round(calculatePercentage(current.value, test.normativeRanges))
-                        : null;
+                    const normRange = getNormForTest(test.type as SharedSFTTestType, patientGender, patientBirthDate);
+                    const higherIsBetter = test.normativeRanges?.higherIsBetter ?? true;
+
+                    let percentage: number | null = null;
+                    if (current) {
+                        if (normRange) {
+                            percentage = Math.round(calculateNormativePercentage(current.value, normRange, higherIsBetter));
+                        } else if (test.normativeRanges) {
+                            percentage = Math.round(calculateLegacyPercentage(current.value, test.normativeRanges));
+                        }
+                    }
 
                     return (
                         <View key={test.type} style={styles.valueItem}>
@@ -164,7 +220,7 @@ export function ResultChart({ results, previousResults }: ResultChartProps) {
                             <Text style={styles.valueText}>
                                 {current ? `${current.value} ${current.unit}` : '—'}
                             </Text>
-                            {percentage !== null && (
+                            {percentage !== null ? (
                                 <Text
                                     style={[
                                         styles.valuePercentage,
@@ -173,7 +229,11 @@ export function ResultChart({ results, previousResults }: ResultChartProps) {
                                 >
                                     {getPerformanceLabel(percentage)}
                                 </Text>
-                            )}
+                            ) : current ? (
+                                <Text style={[styles.valuePercentage, { color: '#9ca3af' }]}>
+                                    Sin datos normativos
+                                </Text>
+                            ) : null}
                         </View>
                     );
                 })}

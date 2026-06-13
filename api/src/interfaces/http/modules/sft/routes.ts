@@ -15,6 +15,13 @@ import {
 } from '../../../../infrastructure/reports/bulkBatteryReport.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
+import {
+  calculateAgeBand,
+  calculateNormativePercentage,
+  getPerformanceCategory,
+  getNormativeRange,
+} from '../../../../../../shared/constants/normativeRanges.js';
+import type { SFTTestType, PatientGender } from '../../../../../../shared/constants/normativeRanges.js';
 
 const resultSchema = z.object({
   idPruebaSft: z.number().int().positive(),
@@ -128,41 +135,82 @@ async function assertCanAccessOlderAdult(
   if (!rows[0]) throw forbidden();
 }
 
-const NORMATIVE_RANGES_BY_ORDER: Record<number, {
-  prueba: string;
-  unidad: string;
-  higherIsBetter: boolean;
-  belowBelowAvg: number;
-  belowAvg: number;
-  avg: number;
-  aboveAvg: number;
-  excellent: number;
-}> = {
-  1: { prueba: 'Sentarse y levantarse de una silla', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 8, belowAvg: 12, avg: 15, aboveAvg: 19, excellent: 23 },
-  2: { prueba: 'Flexiones del brazo', unidad: 'reps', higherIsBetter: true, belowBelowAvg: 10, belowAvg: 13, avg: 16, aboveAvg: 20, excellent: 24 },
-  3: { prueba: 'Caminar 6 minutos', unidad: 'meters', higherIsBetter: true, belowBelowAvg: 350, belowAvg: 450, avg: 550, aboveAvg: 650, excellent: 750 },
-  4: { prueba: 'Marcha de dos minutos', unidad: 'steps', higherIsBetter: true, belowBelowAvg: 60, belowAvg: 75, avg: 90, aboveAvg: 110, excellent: 130 },
-  5: { prueba: 'Flexión del tronco en silla', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -4, belowAvg: -1, avg: 2, aboveAvg: 5, excellent: 8 },
-  6: { prueba: 'Juntar las manos tras la espalda', unidad: 'cm', higherIsBetter: true, belowBelowAvg: -12, belowAvg: -6, avg: -1, aboveAvg: 4, excellent: 8 },
-  7: { prueba: 'Levantarse, caminar y volverse a sentar', unidad: 'seconds', higherIsBetter: false, belowBelowAvg: 14, belowAvg: 12, avg: 10, aboveAvg: 8, excellent: 6 },
+/**
+ * Map test order (1-7) to SFTTestType.
+ * This matches the order in the database.
+ */
+const ORDER_TO_TEST_TYPE: Record<number, SFTTestType> = {
+  1: 'chair_stand',
+  2: 'arm_curl',
+  3: 'six_min_walk',
+  4: 'two_min_step',
+  5: 'chair_sit_reach',
+  6: 'back_scratch',
+  7: 'up_and_go',
 };
 
-function calculatePerformance(value: number, ranges: (typeof NORMATIVE_RANGES_BY_ORDER)[number]): { label: string; percentage: number } {
-  const { belowBelowAvg, excellent, higherIsBetter } = ranges;
+/**
+ * Higher-is-better flag per test (for up_and_go it's false).
+ */
+const HIGHER_IS_BETTER: Record<SFTTestType, boolean> = {
+  chair_stand: true,
+  arm_curl: true,
+  six_min_walk: true,
+  two_min_step: true,
+  chair_sit_reach: true,
+  back_scratch: true,
+  up_and_go: false,
+};
+
+function calculatePerformance(
+  value: number,
+  testType: SFTTestType,
+  gender: PatientGender | null,
+  birthDate: string | null,
+): { label: string; percentage: number } {
+  const higherIsBetter = HIGHER_IS_BETTER[testType];
+
+  // Try gender/age-specific range first
+  if (gender && birthDate) {
+    const ageBand = calculateAgeBand(birthDate);
+    if (ageBand) {
+      const range = getNormativeRange(testType, gender, ageBand);
+      if (range) {
+        const percentage = calculateNormativePercentage(value, range, higherIsBetter);
+        const label = getPerformanceCategory(value, range, higherIsBetter);
+        return { label, percentage };
+      }
+    }
+  }
+
+  // Fallback: use legacy flat ranges (approximate values from the original code)
+  const LEGACY_RANGES: Record<SFTTestType, { belowBelowAvg: number; excellent: number }> = {
+    chair_stand: { belowBelowAvg: 8, excellent: 23 },
+    arm_curl: { belowBelowAvg: 10, excellent: 24 },
+    six_min_walk: { belowBelowAvg: 350, excellent: 750 },
+    two_min_step: { belowBelowAvg: 60, excellent: 130 },
+    chair_sit_reach: { belowBelowAvg: -4, excellent: 8 },
+    back_scratch: { belowBelowAvg: -12, excellent: 8 },
+    up_and_go: { belowBelowAvg: 14, excellent: 6 },
+  };
+
+  const legacy = LEGACY_RANGES[testType];
   let percentage: number;
   if (higherIsBetter) {
-    const totalRange = excellent - belowBelowAvg;
-    percentage = totalRange <= 0 ? 50 : Math.max(0, Math.min(100, ((value - belowBelowAvg) / totalRange) * 100));
+    const totalRange = legacy.excellent - legacy.belowBelowAvg;
+    percentage = totalRange <= 0 ? 50 : Math.max(0, Math.min(100, ((value - legacy.belowBelowAvg) / totalRange) * 100));
   } else {
-    const totalRange = belowBelowAvg - excellent;
-    percentage = totalRange <= 0 ? 50 : Math.max(0, Math.min(100, ((belowBelowAvg - value) / totalRange) * 100));
+    const totalRange = legacy.belowBelowAvg - legacy.excellent;
+    percentage = totalRange <= 0 ? 50 : Math.max(0, Math.min(100, ((legacy.belowBelowAvg - value) / totalRange) * 100));
   }
+
   let label: string;
   if (percentage >= 80) label = 'Excelente';
   else if (percentage >= 60) label = 'Por encima del promedio';
   else if (percentage >= 40) label = 'Promedio';
   else if (percentage >= 20) label = 'Por debajo del promedio';
   else label = 'Bajo promedio';
+
   return { label, percentage };
 }
 
@@ -461,9 +509,11 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
         .filter((row) => row.id_resultado_sft !== null && row.orden !== null)
         .map((row) => {
           const orden = row.orden!;
-          const ranges = NORMATIVE_RANGES_BY_ORDER[orden];
+          const testType = ORDER_TO_TEST_TYPE[orden];
           const valor = row.valor_numerico ?? 0;
-          const perf = ranges ? calculatePerformance(valor, ranges) : { label: row.clasificacion ?? '', percentage: 0 };
+          const gender = adult.genero === 'masculino' ? 'M' : 'F' as PatientGender;
+          const birthDate = adult.fecha_nacimiento ? String(adult.fecha_nacimiento) : null;
+          const perf = testType ? calculatePerformance(valor, testType, gender, birthDate) : { label: row.clasificacion ?? '', percentage: 0 };
           return {
             prueba: row.prueba_nombre ?? `Prueba ${orden}`,
             valor,
@@ -574,12 +624,15 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       const valores: (number | null)[] = [];
       const porcentajes: (number | null)[] = [];
 
+      const gender = adult?.genero === 'masculino' ? 'M' : 'F' as PatientGender;
+      const birthDate = adult?.fecha_nacimiento ? String(adult.fecha_nacimiento) : null;
+
       for (let orden = 1; orden <= 7; orden++) {
         const valor = results.get(orden) ?? null;
         valores.push(valor);
-        const ranges = NORMATIVE_RANGES_BY_ORDER[orden];
-        if (valor !== null && ranges) {
-          const perf = calculatePerformance(valor, ranges);
+        const testType = ORDER_TO_TEST_TYPE[orden];
+        if (valor !== null && testType) {
+          const perf = calculatePerformance(valor, testType, gender, birthDate);
           porcentajes.push(Math.round(perf.percentage));
         } else {
           porcentajes.push(null);

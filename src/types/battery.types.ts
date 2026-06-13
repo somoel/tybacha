@@ -1,11 +1,6 @@
-export type SFTTestType =
-    | 'chair_stand'
-    | 'arm_curl'
-    | 'six_min_walk'
-    | 'two_min_step'
-    | 'chair_sit_reach'
-    | 'back_scratch'
-    | 'up_and_go';
+import type { AgeBand as SharedAgeBand, NormativeRange as SharedNormativeRange, PatientGender as SharedPatientGender, SFTTestType as SharedSFTTestType } from '@shared/constants/normativeRanges';
+
+export type SFTTestType = SharedSFTTestType;
 
 export type SFTUnit = 'reps' | 'meters' | 'steps' | 'cm' | 'seconds';
 
@@ -13,6 +8,14 @@ export type TimerMode = 'countdown' | 'stopwatch' | 'none';
 
 export type CounterMode = 'increment' | 'manual_input' | 'timer_result';
 
+export type PatientGender = SharedPatientGender;
+export type AgeBand = SharedAgeBand;
+export type NormativeRange = SharedNormativeRange;
+
+/**
+ * @deprecated Use NormativeRange from shared/constants/normativeRanges.ts instead.
+ * This flat structure is kept for backward compatibility with ResultChart and sftTests.ts.
+ */
 export interface NormativeRanges {
     belowBelowAvg: number;
     belowAvg: number;
@@ -44,6 +47,7 @@ export interface SFTTestDefinition {
     inputLabel: string;
     lapTracking?: boolean;
     lapLengthMeters?: number;
+    /** @deprecated Use getNormativeRange() from @shared/constants/normativeRanges.ts instead */
     normativeRanges?: NormativeRanges;
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;
