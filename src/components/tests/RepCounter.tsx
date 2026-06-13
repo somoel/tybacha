@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { IconButton, Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
+import { Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
 
 interface RepCounterProps {
     initialValue?: number;
@@ -14,6 +14,8 @@ interface RepCounterProps {
  * Counter with +/- buttons for test repetitions, or manual text input
  * for distance/time measurements. In increment mode the numeric display
  * is tappable – it switches to an inline TextInput for direct entry.
+ * When allowNegative is true in manual_input mode, a stepper with
+ * ±1 and ±0.1 steps is shown instead of a text input.
  */
 export function RepCounter({
     initialValue = 0,
@@ -26,11 +28,12 @@ export function RepCounter({
     const [value, setValue] = useState(initialValue);
     const [editing, setEditing] = useState(false);
     const [editText, setEditText] = useState(String(initialValue));
-    const [textValue, setTextValue] = useState(String(initialValue));
+    const [textValue, setTextValue] = useState(Math.abs(initialValue).toString());
 
     const applyValue = (newValue: number) => {
-        setValue(newValue);
-        onValueChange(newValue);
+        const rounded = Math.round(newValue * 10) / 10;
+        setValue(rounded);
+        onValueChange(rounded);
     };
 
     const handleIncrement = () => applyValue(value + 1);
@@ -58,13 +61,68 @@ export function RepCounter({
         setTextValue(text);
         const parsed = parseFloat(text);
         if (!isNaN(parsed)) {
-            if (!allowNegative && parsed < 0) return;
-            setValue(parsed);
-            onValueChange(parsed);
+            applyValue(parsed);
         }
     };
 
+    const step = (amount: number) => {
+        applyValue(value + amount);
+    };
+
     if (mode === 'manual_input') {
+        if (allowNegative) {
+            return (
+                <View style={styles.stepperContainer}>
+                    <Text style={styles.label}>{label}</Text>
+                    <View style={styles.stepperRow}>
+                        <Pressable
+                            onPress={() => step(-1)}
+                            style={[styles.stepperBtn, { backgroundColor: theme.colors.errorContainer }]}
+                            accessibilityLabel="Restar 1"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.stepperBtnText, { color: theme.colors.onErrorContainer }]}>-1</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => step(-0.1)}
+                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant }]}
+                            accessibilityLabel="Restar 0.1"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.stepperBtnText, styles.stepperBtnTextSmall, { color: theme.colors.onSurfaceVariant }]}>-0.1</Text>
+                        </Pressable>
+                        <View style={styles.stepperValueRow}>
+                            <Text
+                                style={[
+                                    styles.stepperValue,
+                                    { color: value < 0 ? theme.colors.error : theme.colors.primary },
+                                ]}
+                            >
+                                {value < 0 ? '\u2212' : value > 0 ? '+' : ''}{Math.abs(value).toFixed(1)}
+                            </Text>
+                            <Text style={[styles.stepperUnit, { color: theme.colors.outline }]}> cm</Text>
+                        </View>
+                        <Pressable
+                            onPress={() => step(0.1)}
+                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant }]}
+                            accessibilityLabel="Sumar 0.1"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.stepperBtnText, styles.stepperBtnTextSmall, { color: theme.colors.onSurfaceVariant }]}>+0.1</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => step(1)}
+                            style={[styles.stepperBtn, { backgroundColor: theme.colors.primaryContainer }]}
+                            accessibilityLabel="Sumar 1"
+                            accessibilityRole="button"
+                        >
+                            <Text style={[styles.stepperBtnText, { color: theme.colors.onPrimaryContainer }]}>+1</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            );
+        }
+
         return (
             <View style={styles.manualContainer}>
                 <Text style={styles.label}>{label}</Text>
@@ -85,17 +143,15 @@ export function RepCounter({
         <View style={styles.container} accessibilityRole="adjustable">
             <Text style={styles.label}>{label}</Text>
             <View style={styles.counterRow}>
-                <IconButton
-                    icon="minus"
-                    mode="contained"
-                    size={28}
-                    containerColor={theme.colors.surfaceVariant}
-                    iconColor={theme.colors.onSurfaceVariant}
+                <Pressable
                     onPress={handleDecrement}
-                    accessibilityLabel="Disminuir"
                     disabled={!allowNegative && value <= 0}
-                    style={styles.counterButton}
-                />
+                    style={[styles.counterBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+                    accessibilityLabel="Disminuir"
+                    accessibilityRole="button"
+                >
+                    <Text style={[styles.counterBtnText, { color: (!allowNegative && value <= 0) ? theme.colors.outline : theme.colors.onSurfaceVariant }]}>-1</Text>
+                </Pressable>
                 <View style={styles.valueContainer}>
                     {editing ? (
                         <TextInput
@@ -117,16 +173,14 @@ export function RepCounter({
                         </TouchableOpacity>
                     )}
                 </View>
-                <IconButton
-                    icon="plus"
-                    mode="contained"
-                    size={28}
-                    containerColor={theme.colors.primary}
-                    iconColor={theme.colors.onPrimary}
+                <Pressable
                     onPress={handleIncrement}
+                    style={[styles.counterBtn, { backgroundColor: theme.colors.primaryContainer }]}
                     accessibilityLabel="Incrementar"
-                    style={styles.counterButton}
-                />
+                    accessibilityRole="button"
+                >
+                    <Text style={[styles.counterBtnText, { color: theme.colors.onPrimaryContainer }]}>+1</Text>
+                </Pressable>
             </View>
         </View>
     );
@@ -153,10 +207,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 16,
     },
-    counterButton: {
+    counterBtn: {
         width: 56,
         height: 56,
         borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    counterBtnText: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 18,
     },
     valueContainer: {
         minWidth: 80,
@@ -185,5 +245,48 @@ const styles = StyleSheet.create({
     },
     inputOutline: {
         borderRadius: 12,
+    },
+    stepperContainer: {
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    stepperRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    stepperBtn: {
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+    },
+    stepperBtnSmall: {
+        height: 36,
+        borderRadius: 10,
+        paddingHorizontal: 8,
+    },
+    stepperBtnText: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 15,
+    },
+    stepperBtnTextSmall: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 12,
+    },
+    stepperValue: {
+        fontFamily: 'Montserrat_800ExtraBold',
+        fontSize: 36,
+        lineHeight: 42,
+    },
+    stepperValueRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    stepperUnit: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 14,
     },
 });

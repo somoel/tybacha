@@ -92,7 +92,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         timerMode: 'none',
         counterMode: 'manual_input',
         allowNegative: true,
-        inputLabel: 'Distancia (cm, puede ser negativo)',
+        inputLabel: 'Distancia entre dedos',
         normativeRanges: {
             belowBelowAvg: -4,
             belowAvg: -1,
@@ -119,7 +119,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         timerMode: 'none',
         counterMode: 'manual_input',
         allowNegative: true,
-        inputLabel: 'Distancia (cm, puede ser negativo)',
+        inputLabel: 'Distancia entre dedos',
         normativeRanges: {
             belowBelowAvg: -12,
             belowAvg: -6,
