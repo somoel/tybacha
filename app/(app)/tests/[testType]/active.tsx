@@ -10,7 +10,7 @@ import type { SFTTestType } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 
 /**
@@ -29,6 +29,7 @@ export default function ActiveTestScreen() {
     const [timerCompleted, setTimerCompleted] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
+    const [safetyExpanded, setSafetyExpanded] = useState(false);
     const allowExitRef = useRef(false);
     const pendingNavigationActionRef = useRef<unknown>(null);
 
@@ -40,6 +41,7 @@ export default function ActiveTestScreen() {
 
     useEffect(() => {
         setTestNotes('');
+        setSafetyExpanded(false);
     }, [testType]);
 
     useEffect(() => {
@@ -164,6 +166,42 @@ export default function ActiveTestScreen() {
                     <Text style={styles.testDescription}>{test.description}</Text>
                 </View>
 
+                {test.safetyTips && test.safetyTips.length > 0 && (
+                    <Pressable
+                        style={[styles.safetyCard, { borderColor: theme.colors.outlineVariant }]}
+                        onPress={() => setSafetyExpanded((prev) => !prev)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Normas de seguridad"
+                    >
+                        <View style={styles.safetyHeader}>
+                            <View style={styles.safetyTitleRow}>
+                                <MaterialCommunityIcons name="shield-check-outline" size={18} color="#006d77" />
+                                <Text style={styles.safetyTitle}>Normas de seguridad</Text>
+                            </View>
+                            <MaterialCommunityIcons
+                                name={safetyExpanded ? 'chevron-up' : 'chevron-down'}
+                                size={20}
+                                color="#6b7280"
+                            />
+                        </View>
+                        {!safetyExpanded && test.safetyTips.length > 0 && (
+                            <Text style={styles.safetyPreview} numberOfLines={1}>
+                                {test.safetyTips[0]}
+                            </Text>
+                        )}
+                        {safetyExpanded && (
+                            <View style={styles.safetyList}>
+                                {test.safetyTips.map((tip, i) => (
+                                    <View key={i} style={styles.safetyTipRow}>
+                                        <Text style={styles.safetyBullet}>•</Text>
+                                        <Text style={styles.safetyTip}>{tip}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </Pressable>
+                )}
+
                 {test.timerMode !== 'none' && (
                     <TimerDisplay
                         mode={test.timerMode}
@@ -271,4 +309,13 @@ const styles = StyleSheet.create({
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
     notesInput: { marginTop: 20 },
     notesOutline: { borderRadius: 12 },
+    safetyCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 16 },
+    safetyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    safetyTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    safetyTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
+    safetyPreview: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', marginTop: 4 },
+    safetyList: { marginTop: 8, gap: 6 },
+    safetyTipRow: { flexDirection: 'row', gap: 8 },
+    safetyBullet: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#4b5563', lineHeight: 18 },
+    safetyTip: { flex: 1, fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#4b5563', lineHeight: 18 },
 });

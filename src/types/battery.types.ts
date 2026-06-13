@@ -48,6 +48,7 @@ export interface SFTTestDefinition {
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;
     endSound?: SoundVariant;
+    safetyTips?: string[];
 }
 
 export interface SFTBattery {

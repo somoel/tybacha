@@ -23,6 +23,11 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 23,
             higherIsBetter: true,
         },
+        safetyTips: [
+            'El respaldo de la silla debe estar apoyado en la pared o alguien lo sujeta.',
+            'Observar si el participante presenta algún problema de equilibrio.',
+            'Parar el test inmediatamente si siente dolor.',
+        ],
     },
     {
         type: 'arm_curl',
@@ -45,6 +50,9 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 24,
             higherIsBetter: true,
         },
+        safetyTips: [
+            'Parar el test si el participante siente dolor.',
+        ],
     },
     {
         type: 'two_min_step',
@@ -67,6 +75,11 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 130,
             higherIsBetter: true,
         },
+        safetyTips: [
+            'Si tiene problemas de equilibrio, colocarse cerca de una pared o silla.',
+            'Supervisar signos de esfuerzo excesivo.',
+            'Al finalizar, caminar despacio durante un minuto.',
+        ],
     },
     {
         type: 'chair_sit_reach',
@@ -88,6 +101,12 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 8,
             higherIsBetter: true,
         },
+        safetyTips: [
+            'El respaldo de la silla debe estar apoyado en la pared.',
+            'Exhalar el aire lentamente al realizar la flexión.',
+            'Nunca debe llegar al punto de dolor.',
+            'Personas con osteoporosis severa no deben realizar el test.',
+        ],
     },
     {
         type: 'back_scratch',
@@ -109,6 +128,10 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 8,
             higherIsBetter: true,
         },
+        safetyTips: [
+            'Detener el test si siente dolor.',
+            'Continuar respirando y evitar movimientos bruscos.',
+        ],
     },
     {
         type: 'up_and_go',
@@ -130,6 +153,10 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 6,
             higherIsBetter: false,
         },
+        safetyTips: [
+            'El examinador se colocará entre el cono y la silla para ayudar si pierde el equilibrio.',
+            'Valorar que el participante se levante y siente de forma segura.',
+        ],
     },
     {
         type: 'six_min_walk',
@@ -170,6 +197,11 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             excellent: 750,
             higherIsBetter: true,
         },
+        safetyTips: [
+            'Seleccionar una superficie lisa que no deslice.',
+            'Colocar sillas a lo largo del circuito, fuera del área de circulación.',
+            'Interrumpir el test ante signos de esfuerzo excesivo.',
+        ],
     },
 ];
 
