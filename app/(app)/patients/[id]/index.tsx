@@ -6,7 +6,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { PatientDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
+import { fetchApiExerciseRecords } from '@/src/api/trackingApi';
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
@@ -14,7 +14,7 @@ import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { SFTBattery } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
-import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTracking.types';
+import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -35,11 +35,11 @@ function getWeekRange(): { from: string; to: string } {
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(now);
     monday.setDate(now.getDate() + mondayOffset);
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
     return {
-        from: monday.toISOString().slice(0, 10),
-        to: friday.toISOString().slice(0, 10),
+        from: format(monday, 'yyyy-MM-dd'),
+        to: format(sunday, 'yyyy-MM-dd'),
     };
 }
 
@@ -55,7 +55,6 @@ export default function PatientDetailScreen() {
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [exerciseRecords, setExerciseRecords] = useState<ApiExerciseRecord[]>([]);
-    const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
     const [startedExercises, setStartedExercises] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [menuVisible, setMenuVisible] = useState(false);
@@ -90,11 +89,15 @@ export default function PatientDetailScreen() {
                         // silent
                     }
 
-                    try {
-                        const stats = await fetchApiProgressStats(Number(id));
-                        if (isActive) setProgressStats(stats);
-                    } catch {
-                        // silent
+                    const activePlanExists = pl.some((p) => p.status === 'active');
+                    if (activePlanExists) {
+                        const weekRange = getWeekRange();
+                        try {
+                            const records = await fetchApiExerciseRecords(Number(id), weekRange.from, weekRange.to);
+                            if (isActive) setExerciseRecords(records);
+                        } catch {
+                            // silent - records are optional
+                        }
                     }
                 } else {
                     const [p, pl] = await Promise.all([
@@ -353,6 +356,19 @@ export default function PatientDetailScreen() {
     }
 
     // Staff view (admin/professional) - redesigned
+    const completedIndices = new Set<number>();
+    const skippedIndices = new Set<number>();
+    exerciseRecords.forEach((record) => {
+        const exercise = activePlan?.exercises.find(
+            (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
+        );
+        if (!exercise) return;
+        if (record.estado === 'completado') completedIndices.add(exercise.index);
+        else if (record.estado === 'omitido') skippedIndices.add(exercise.index);
+    });
+
+    const todayKey = getTodayKey();
+
     return (
         <>
             {/* Header action buttons */}
@@ -515,52 +531,105 @@ export default function PatientDetailScreen() {
                 </AppCard>
 
                 {/* Sección 2: Progreso de Ejercicios */}
-                {hasActivePlan && progressStats.length > 0 && (
-                    <Pressable
-                        style={styles.progressSection}
-                        onPress={() => router.push(`/(app)/patients/${id}/progress` as never)}
-                        accessibilityLabel={`Progreso: ${Math.round(progressStats[0].porcentaje_cumplimiento)}% cumplimiento. Ver progreso completo`}
-                        accessibilityRole="button"
-                    >
-                        <Text style={styles.sectionLabel}>Progreso de ejercicios</Text>
-                        <AppCard style={styles.groupCard}>
-                            <View style={styles.progressBody}>
-                                <Text style={styles.progressPercent}>
-                                    {Math.round(progressStats[0].porcentaje_cumplimiento)}%
-                                </Text>
-                                <Text style={styles.progressLabel}>cumplimiento</Text>
-                            </View>
+                {hasActivePlan && (() => {
+                    const totalExercises = activePlan!.exercises.length;
+                    const completedCount = completedIndices.size;
+                    const omittedCount = skippedIndices.size;
+                    const compliance = totalExercises > 0
+                        ? Math.round((completedCount / totalExercises) * 100)
+                        : 0;
 
-                            {/* Progress bar */}
-                            <View style={styles.progressTrack}>
-                                <View
-                                    style={[
-                                        styles.progressFill,
-                                        {
-                                            width: `${Math.min(progressStats[0].porcentaje_cumplimiento, 100)}%`,
-                                            backgroundColor: theme.colors.primary,
-                                        },
-                                    ]}
-                                />
-                            </View>
+                    const DAY_KEYS_WEEK = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
+                    const DAY_LABELS = ['L', 'M', 'X', 'J', 'V'];
 
-                            <View style={styles.progressStats}>
-                                <View style={styles.progressStatChip}>
-                                    <MaterialCommunityIcons name="check-circle-outline" size={16} color="#059669" />
-                                    <Text style={styles.progressStatText}>
-                                        {progressStats[0].ejercicios_completados} completados
+                    const dayStatus = DAY_KEYS_WEEK.map((key) => {
+                        const dayExercises = activePlan!.exercises.filter((ex) => ex.frequency === key);
+                        const allCompleted = dayExercises.length > 0 && dayExercises.every((ex) => completedIndices.has(ex.index));
+                        const someCompleted = dayExercises.some((ex) => completedIndices.has(ex.index));
+                        const isToday = key === todayKey;
+                        return { key, allCompleted, someCompleted, isToday };
+                    });
+
+                    return (
+                        <Pressable
+                            style={styles.progressSection}
+                            onPress={() => router.push(`/(app)/patients/${id}/progress` as never)}
+                            accessibilityLabel={`Progreso: ${compliance}% cumplimiento. Ver progreso completo`}
+                            accessibilityRole="button"
+                        >
+                            <Text style={styles.sectionLabel}>Progreso de ejercicios</Text>
+                            <AppCard style={styles.groupCard}>
+                                <View style={styles.progressBody}>
+                                    <Text style={styles.progressPercent}>
+                                        {compliance}%
                                     </Text>
+                                    <Text style={styles.progressLabel}>cumplimiento</Text>
                                 </View>
-                                <View style={styles.progressStatChip}>
-                                    <MaterialCommunityIcons name="close-circle-outline" size={16} color="#94a3b8" />
-                                    <Text style={styles.progressStatText}>
-                                        {progressStats[0].ejercicios_omitidos} omitidos
-                                    </Text>
+
+                                {/* Progress bar */}
+                                <View style={styles.progressTrack}>
+                                    <View
+                                        style={[
+                                            styles.progressFill,
+                                            {
+                                                width: `${Math.min(compliance, 100)}%`,
+                                                backgroundColor: theme.colors.primary,
+                                            },
+                                        ]}
+                                    />
                                 </View>
-                            </View>
-                        </AppCard>
-                    </Pressable>
-                )}
+
+                                {/* Weekly day strip */}
+                                <View style={styles.weekDaysRow}>
+                                    {dayStatus.map((day, i) => (
+                                        <View
+                                            key={day.key}
+                                            style={[
+                                                styles.dayBadge,
+                                                day.isToday && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary },
+                                                day.allCompleted && { backgroundColor: '#e8f5e9', borderColor: '#2e7d32' },
+                                            ]}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.dayLabel,
+                                                    day.isToday && { color: theme.colors.primary },
+                                                    day.allCompleted && { color: '#2e7d32' },
+                                                ]}
+                                            >
+                                                {DAY_LABELS[i]}
+                                            </Text>
+                                            {day.allCompleted ? (
+                                                <MaterialCommunityIcons name="check-circle" size={14} color="#2e7d32" />
+                                            ) : day.someCompleted ? (
+                                                <MaterialCommunityIcons name="minus-circle" size={14} color={theme.colors.primary} />
+                                            ) : (
+                                                <MaterialCommunityIcons name="circle-outline" size={14} color="#94a3b8" />
+                                            )}
+                                        </View>
+                                    ))}
+                                </View>
+
+                                <View style={styles.progressStats}>
+                                    <View style={styles.progressStatChip}>
+                                        <MaterialCommunityIcons name="check-circle-outline" size={16} color="#059669" />
+                                        <Text style={styles.progressStatText}>
+                                            {completedCount} completados
+                                        </Text>
+                                    </View>
+                                    {omittedCount > 0 && (
+                                        <View style={styles.progressStatChip}>
+                                            <MaterialCommunityIcons name="close-circle-outline" size={16} color="#94a3b8" />
+                                            <Text style={styles.progressStatText}>
+                                                {omittedCount} omitidos
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </AppCard>
+                        </Pressable>
+                    );
+                })()}
 
                 {/* Sección 3: Últimas baterías */}
                 <Pressable
@@ -681,6 +750,18 @@ const styles = StyleSheet.create({
     progressStats: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
     progressStatChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     progressStatText: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151' },
+    weekDaysRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+    dayBadge: {
+        flex: 1,
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 6,
+        marginHorizontal: 3,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#e5e7eb',
+    },
+    dayLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 12, color: '#6b7280' },
     sectionHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
