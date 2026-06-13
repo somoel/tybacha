@@ -12,6 +12,7 @@ export const pool = mysql.createPool({
   namedPlaceholders: true,
   ssl: env.TIDB_SSL ? { minVersion: 'TLSv1.2' } : undefined,
   decimalNumbers: true,
+  dateStrings: true,
 });
 
 export async function pingDatabase(): Promise<void> {

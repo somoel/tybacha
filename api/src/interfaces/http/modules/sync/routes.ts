@@ -5,6 +5,7 @@ import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
 import { badRequest, forbidden } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
+import { recalculateWeeklyStats } from '../tracking/routes.js';
 
 const syncOperationSchema = z.object({
   idLocal: z.string().uuid(),
@@ -288,6 +289,13 @@ async function applyExerciseRecord(
     { idEjercicioPlan, fechaProgramada },
   );
   const record = recordRows[0] as { id_registro_ejercicio_plan?: number } | undefined;
+
+  await recalculateWeeklyStats(connection, {
+    idAdultoMayor,
+    idPlanEjercicio: plan.id_plan_ejercicio,
+    fecha: fechaProgramada,
+  });
+
   return record?.id_registro_ejercicio_plan ?? null;
 }
 

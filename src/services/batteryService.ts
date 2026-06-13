@@ -11,6 +11,7 @@ import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { generateUUID } from '@/src/lib/sqlite';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import type { BatteryWithResults, SFTBattery, SFTResult, SFTTestType } from '@/src/types/battery.types';
+import { format } from 'date-fns';
 
 const pendingBatteryContext = new Map<string, { patientId: string; notes?: string; pesoKg?: number; estaturaCm?: number; imc?: number }>();
 
@@ -250,11 +251,11 @@ function getWeekRange(): { from: string; to: string } {
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     const monday = new Date(now);
     monday.setDate(now.getDate() + mondayOffset);
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
     return {
-        from: monday.toISOString().slice(0, 10),
-        to: friday.toISOString().slice(0, 10),
+        from: format(monday, 'yyyy-MM-dd'),
+        to: format(sunday, 'yyyy-MM-dd'),
     };
 }
 

@@ -6,7 +6,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { PatientDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { fetchApiExerciseRecords } from '@/src/api/trackingApi';
+import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
@@ -14,7 +14,7 @@ import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { SFTBattery } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
-import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
+import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -55,6 +55,7 @@ export default function PatientDetailScreen() {
     const [batteries, setBatteries] = useState<SFTBattery[]>([]);
     const [plans, setPlans] = useState<ExercisePlan[]>([]);
     const [exerciseRecords, setExerciseRecords] = useState<ApiExerciseRecord[]>([]);
+    const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
     const [startedExercises, setStartedExercises] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [menuVisible, setMenuVisible] = useState(false);
@@ -85,6 +86,13 @@ export default function PatientDetailScreen() {
 
                     try {
                         await loadMedicalHistory(Number(id));
+                    } catch {
+                        // silent
+                    }
+
+                    try {
+                        const stats = await fetchApiProgressStats(Number(id));
+                        if (isActive) setProgressStats(stats);
                     } catch {
                         // silent
                     }
@@ -339,7 +347,7 @@ export default function PatientDetailScreen() {
                                             key={record.idRegistroEjercicioPlan}
                                             exerciseName={exercise.name}
                                             completedAt={record.fechaRealizacion ?? record.fechaProgramada}
-                                            status={record.estado === 'completado' ? 'completed' : 'skipped'}
+                                            status={record.estado === 'completado' ? 'completed' : record.estado === 'parcial' ? 'partial' : 'skipped'}
                                             reps={record.repeticionesRealizadas ?? undefined}
                                             duration={record.duracionRealSegundos ?? undefined}
                                         />
@@ -535,8 +543,19 @@ export default function PatientDetailScreen() {
                     const totalExercises = activePlan!.exercises.length;
                     const completedCount = completedIndices.size;
                     const omittedCount = skippedIndices.size;
-                    const compliance = totalExercises > 0
+                    const weeklyCompliance = totalExercises > 0
                         ? Math.round((completedCount / totalExercises) * 100)
+                        : 0;
+
+                    const allTimeStats = progressStats.reduce(
+                        (acc, stat) => ({
+                            programmed: acc.programmed + stat.ejercicios_programados,
+                            completed: acc.completed + stat.ejercicios_completados,
+                        }),
+                        { programmed: 0, completed: 0 },
+                    );
+                    const allTimeCompliance = allTimeStats.programmed > 0
+                        ? Math.round((allTimeStats.completed / allTimeStats.programmed) * 100)
                         : 0;
 
                     const DAY_KEYS_WEEK = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
@@ -554,29 +573,44 @@ export default function PatientDetailScreen() {
                         <Pressable
                             style={styles.progressSection}
                             onPress={() => router.push(`/(app)/patients/${id}/progress` as never)}
-                            accessibilityLabel={`Progreso: ${compliance}% cumplimiento. Ver progreso completo`}
+                            accessibilityLabel={`Progreso semanal: ${weeklyCompliance}%, todos los tiempos: ${allTimeCompliance}%. Ver progreso completo`}
                             accessibilityRole="button"
                         >
                             <Text style={styles.sectionLabel}>Progreso de ejercicios</Text>
                             <AppCard style={styles.groupCard}>
-                                <View style={styles.progressBody}>
-                                    <Text style={styles.progressPercent}>
-                                        {compliance}%
-                                    </Text>
-                                    <Text style={styles.progressLabel}>cumplimiento</Text>
-                                </View>
+                                {/* Dual compliance row */}
+                                <View style={styles.progressDualRow}>
+                                    <View style={styles.progressDualColumn}>
+                                        <Text style={styles.progressDualLabel}>Semanal</Text>
+                                        <Text style={styles.progressDualPercent}>{weeklyCompliance}%</Text>
+                                        <View style={styles.progressTrack}>
+                                            <View
+                                                style={[
+                                                    styles.progressFill,
+                                                    {
+                                                        width: `${Math.min(weeklyCompliance, 100)}%`,
+                                                        backgroundColor: theme.colors.primary,
+                                                    },
+                                                ]}
+                                            />
+                                        </View>
+                                    </View>
 
-                                {/* Progress bar */}
-                                <View style={styles.progressTrack}>
-                                    <View
-                                        style={[
-                                            styles.progressFill,
-                                            {
-                                                width: `${Math.min(compliance, 100)}%`,
-                                                backgroundColor: theme.colors.primary,
-                                            },
-                                        ]}
-                                    />
+                                    <View style={styles.progressDualColumn}>
+                                        <Text style={styles.progressDualLabel}>Todos los tiempos</Text>
+                                        <Text style={styles.progressDualPercent}>{allTimeCompliance}%</Text>
+                                        <View style={styles.progressTrack}>
+                                            <View
+                                                style={[
+                                                    styles.progressFill,
+                                                    {
+                                                        width: `${Math.min(allTimeCompliance, 100)}%`,
+                                                        backgroundColor: '#059669',
+                                                    },
+                                                ]}
+                                            />
+                                        </View>
+                                    </View>
                                 </View>
 
                                 {/* Weekly day strip */}
@@ -736,6 +770,10 @@ const styles = StyleSheet.create({
     progressBody: { alignItems: 'center', marginBottom: 8 },
     progressPercent: { fontFamily: 'Montserrat_700Bold', fontSize: 40, color: '#1f2937', fontVariant: ['tabular-nums'] },
     progressLabel: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', marginTop: -2 },
+    progressDualRow: { flexDirection: 'row', gap: 16, marginBottom: 12 },
+    progressDualColumn: { flex: 1, alignItems: 'center' },
+    progressDualLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 12, color: '#6b7280', marginBottom: 2 },
+    progressDualPercent: { fontFamily: 'Montserrat_700Bold', fontSize: 28, color: '#1f2937', fontVariant: ['tabular-nums'], marginBottom: 4 },
     progressTrack: {
         height: 8,
         backgroundColor: '#e5e7eb',

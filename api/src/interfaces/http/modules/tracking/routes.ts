@@ -309,7 +309,7 @@ async function createAndSendTrackingNotification(input: {
   }
 }
 
-async function recalculateWeeklyStats(connection: Awaited<ReturnType<typeof pool.getConnection>>, input: {
+export async function recalculateWeeklyStats(connection: Awaited<ReturnType<typeof pool.getConnection>>, input: {
   idAdultoMayor: number;
   idPlanEjercicio: number;
   fecha: string;
