@@ -2,7 +2,6 @@ import { WeeklyProgressCard } from '@/src/components/exercises/WeeklyProgressCar
 import { DailyProgressCard } from '@/src/components/exercises/DailyProgressCard';
 import { TodayExerciseCard } from '@/src/components/exercises/TodayExerciseCard';
 import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryItem';
-import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { PatientDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
@@ -19,10 +18,10 @@ import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTrackin
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Divider, Text, useTheme } from 'react-native-paper';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { IconButton, Menu, Text, useTheme } from 'react-native-paper';
 
 const DAY_KEYS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 
@@ -59,6 +58,8 @@ export default function PatientDetailScreen() {
     const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
     const [startedExercises, setStartedExercises] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
+    const [menuVisible, setMenuVisible] = useState(false);
+    const { width: screenWidth } = useWindowDimensions();
 
     const hasStaffAccess = isAdmin || isProfessional;
     const totalPathologies = pathologies.length;
@@ -209,16 +210,16 @@ export default function PatientDetailScreen() {
 
                 {/* Medical history summary */}
                 <AppCard
-                    style={styles.medicalHistoryCard}
+                    style={styles.sectionCard}
                     onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
                     accessibilityLabel="Ver historial médico"
                 >
-                    <View style={styles.medicalHistoryRow}>
+                    <View style={styles.infoRow}>
                         <MaterialCommunityIcons name="medical-bag" size={22} color={theme.colors.primary} />
-                        <View style={styles.medicalHistoryInfo}>
-                            <Text style={styles.medicalHistoryTitle}>Historial médico</Text>
+                        <View style={styles.infoRowContent}>
+                            <Text style={styles.infoRowTitle}>Historial médico</Text>
                             {hasMedicalHistory ? (
-                                <Text style={styles.medicalHistorySummary}>
+                                <Text style={styles.infoRowSummary}>
                                     {[
                                         totalPathologies > 0 && `${totalPathologies} patologías`,
                                         totalMedications > 0 && `${totalMedications} medicamentos`,
@@ -226,7 +227,7 @@ export default function PatientDetailScreen() {
                                     ].filter(Boolean).join(' · ')}
                                 </Text>
                             ) : (
-                                <Text style={styles.medicalHistoryEmpty}>Agregar patologías, medicamentos y notas</Text>
+                                <Text style={styles.infoRowEmpty}>Agregar patologías, medicamentos y notas</Text>
                             )}
                         </View>
                         <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
@@ -235,15 +236,15 @@ export default function PatientDetailScreen() {
 
                 {/* Consents summary */}
                 <AppCard
-                    style={styles.medicalHistoryCard}
+                    style={styles.sectionCard}
                     onPress={() => router.push(`/(app)/patients/${id}/consents` as never)}
                     accessibilityLabel="Ver consentimientos"
                 >
-                    <View style={styles.medicalHistoryRow}>
+                    <View style={styles.infoRow}>
                         <MaterialCommunityIcons name="shield-check" size={22} color={theme.colors.primary} />
-                        <View style={styles.medicalHistoryInfo}>
-                            <Text style={styles.medicalHistoryTitle}>Consentimientos</Text>
-                            <Text style={styles.medicalHistoryEmpty}>Ver consentimientos registrados</Text>
+                        <View style={styles.infoRowContent}>
+                            <Text style={styles.infoRowTitle}>Consentimientos</Text>
+                            <Text style={styles.infoRowEmpty}>Ver consentimientos registrados</Text>
                         </View>
                         <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
                     </View>
@@ -343,16 +344,6 @@ export default function PatientDetailScreen() {
                                 })}
                             </>
                         )}
-
-                        {/* View full plan */}
-                        <AppButton
-                            label="Ver plan semanal completo"
-                            variant="outlined"
-                            icon="calendar-week"
-                            onPress={() => router.push(`/(app)/patients/${id}/exercise` as never)}
-                            style={styles.viewPlanButton}
-                            accessibilityLabel="Ver plan semanal completo"
-                        />
                     </>
                 )}
 
@@ -361,40 +352,138 @@ export default function PatientDetailScreen() {
         );
     }
 
-    // Staff view (admin/professional) - original logic
+    // Staff view (admin/professional) - redesigned
     return (
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-            {/* Patient info card */}
-            <AppCard style={styles.infoCard}>
-                <View style={styles.header}>
-                    <PatientAvatar
-                        photoData={patient.photo_data}
-                        firstName={patient.first_name}
-                        firstLastname={patient.first_lastname}
-                        size={56}
-                    />
-                    <View style={styles.headerInfo}>
-                        <Text style={styles.fullName}>{fullName}</Text>
-                        <Text style={styles.detailText}>{genderLabel} · {age} años</Text>
-                        <Text style={styles.detailText}>
-                            Nacimiento: {format(new Date(patient.birth_date), 'dd MMM yyyy', { locale: es })}
-                        </Text>
+        <>
+            {/* Header action buttons */}
+            <Stack.Screen
+                options={{
+                    title: fullName,
+                    headerRight: () => (
+                        <View style={styles.headerActions}>
+                            <IconButton
+                                icon="clipboard-plus-outline"
+                                size={24}
+                                iconColor={theme.colors.primary}
+                                onPress={() => router.push(`/(app)/patients/${id}/batteries/new` as never)}
+                                accessibilityLabel="Realizar batería SFT"
+                            />
+                            {screenWidth >= 360 ? (
+                                <>
+                                    <IconButton
+                                        icon="pencil-outline"
+                                        size={24}
+                                        iconColor={theme.colors.onSurface}
+                                        onPress={() => router.push(`/(app)/patients/${id}/edit` as never)}
+                                        accessibilityLabel="Editar adulto mayor"
+                                    />
+                                    <IconButton
+                                        icon="bell-outline"
+                                        size={24}
+                                        iconColor={theme.colors.onSurface}
+                                        onPress={() => router.push(`/(app)/patients/${id}/alerts` as never)}
+                                        accessibilityLabel="Alertas programadas"
+                                    />
+                                </>
+                            ) : (
+                                <Menu
+                                    visible={menuVisible}
+                                    onDismiss={() => setMenuVisible(false)}
+                                    anchor={
+                                        <IconButton
+                                            icon="dots-vertical"
+                                            size={24}
+                                            iconColor={theme.colors.onSurface}
+                                            onPress={() => setMenuVisible(true)}
+                                            accessibilityLabel="Más opciones"
+                                        />
+                                    }
+                                >
+                                    <Menu.Item
+                                        leadingIcon="pencil-outline"
+                                        onPress={() => { setMenuVisible(false); router.push(`/(app)/patients/${id}/edit` as never); }}
+                                        title="Editar"
+                                    />
+                                    <Menu.Item
+                                        leadingIcon="bell-outline"
+                                        onPress={() => { setMenuVisible(false); router.push(`/(app)/patients/${id}/alerts` as never); }}
+                                        title="Alertas"
+                                    />
+                                </Menu>
+                            )}
+                        </View>
+                    ),
+                }}
+            />
+
+            <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                {/* Patient info card with caregiver */}
+                <AppCard style={styles.infoCard}>
+                    <View style={styles.header}>
+                        <PatientAvatar
+                            photoData={patient.photo_data}
+                            firstName={patient.first_name}
+                            firstLastname={patient.first_lastname}
+                            size={56}
+                        />
+                        <View style={styles.headerInfo}>
+                            <Text style={styles.fullName}>{fullName}</Text>
+                            <Text style={styles.detailText}>{genderLabel} · {age} años</Text>
+                            <Text style={styles.detailText}>
+                                Nacimiento: {format(new Date(patient.birth_date), 'dd MMM yyyy', { locale: es })}
+                            </Text>
+                        </View>
                     </View>
-                </View>
+
+                    {/* Caregiver section */}
+                    <View style={styles.caregiverDivider} />
+                    {patient.id_cuidador ? (
+                        <Pressable
+                            style={styles.caregiverRow}
+                            onPress={() => router.push(`/(app)/patients/${id}/assign-caregiver` as never)}
+                            accessibilityLabel={`Cuidador: ${patient.caregiver_email}. Toca para cambiar`}
+                            accessibilityRole="button"
+                        >
+                            <MaterialCommunityIcons name="account-circle-outline" size={20} color={theme.colors.primary} />
+                            <View style={styles.caregiverInfo}>
+                                <Text style={styles.caregiverLabel}>Cuidador asignado</Text>
+                                <Text style={styles.caregiverName}>{patient.caregiver_email}</Text>
+                            </View>
+                            <Text style={styles.caregiverAction}>Cambiar</Text>
+                        </Pressable>
+                    ) : (
+                        <Pressable
+                            style={[styles.caregiverRow, styles.caregiverWarning]}
+                            onPress={() => router.push(`/(app)/patients/${id}/assign-caregiver` as never)}
+                            accessibilityLabel="Sin cuidador asignado. Toca para asignar"
+                            accessibilityRole="button"
+                        >
+                            <MaterialCommunityIcons name="account-alert-outline" size={20} color="#d97706" />
+                            <View style={styles.caregiverInfo}>
+                                <Text style={styles.caregiverLabel}>Sin cuidador asignado</Text>
+                                <Text style={styles.caregiverWarningText}>
+                                    Asigna uno para registrar ejercicios y seguimiento
+                                </Text>
+                            </View>
+                            <Text style={[styles.caregiverAction, { color: '#d97706' }]}>Asignar</Text>
+                        </Pressable>
+                    )}
                 </AppCard>
 
-                {/* Medical history summary */}
-                <AppCard
-                    style={styles.medicalHistoryCard}
-                    onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
-                    accessibilityLabel="Ver historial médico"
-                >
-                    <View style={styles.medicalHistoryRow}>
+                {/* Sección 1: Información Médica */}
+                <Text style={styles.sectionLabel}>Información médica</Text>
+                <AppCard style={styles.groupCard}>
+                    <Pressable
+                        style={styles.groupRow}
+                        onPress={() => router.push(`/(app)/patients/${id}/medical-history` as never)}
+                        accessibilityLabel="Ver historial médico"
+                        accessibilityRole="button"
+                    >
                         <MaterialCommunityIcons name="medical-bag" size={22} color={theme.colors.primary} />
-                        <View style={styles.medicalHistoryInfo}>
-                            <Text style={styles.medicalHistoryTitle}>Historial médico</Text>
+                        <View style={styles.infoRowContent}>
+                            <Text style={styles.infoRowTitle}>Historial médico</Text>
                             {hasMedicalHistory ? (
-                                <Text style={styles.medicalHistorySummary}>
+                                <Text style={styles.infoRowSummary}>
                                     {[
                                         totalPathologies > 0 && `${totalPathologies} patologías`,
                                         totalMedications > 0 && `${totalMedications} medicamentos`,
@@ -402,198 +491,227 @@ export default function PatientDetailScreen() {
                                     ].filter(Boolean).join(' · ')}
                                 </Text>
                             ) : (
-                                <Text style={styles.medicalHistoryEmpty}>Agregar patologías, medicamentos y notas</Text>
+                                <Text style={styles.infoRowEmpty}>Agregar patologías, medicamentos y notas</Text>
                             )}
                         </View>
                         <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
-                    </View>
-                </AppCard>
+                    </Pressable>
 
-                {/* Consents summary */}
-                <AppCard
-                    style={styles.medicalHistoryCard}
-                    onPress={() => router.push(`/(app)/patients/${id}/consents` as never)}
-                    accessibilityLabel="Ver consentimientos"
-                >
-                    <View style={styles.medicalHistoryRow}>
+                    <View style={styles.groupDivider} />
+
+                    <Pressable
+                        style={styles.groupRow}
+                        onPress={() => router.push(`/(app)/patients/${id}/consents` as never)}
+                        accessibilityLabel="Ver consentimientos"
+                        accessibilityRole="button"
+                    >
                         <MaterialCommunityIcons name="shield-check" size={22} color={theme.colors.primary} />
-                        <View style={styles.medicalHistoryInfo}>
-                            <Text style={styles.medicalHistoryTitle}>Consentimientos</Text>
-                            <Text style={styles.medicalHistoryEmpty}>Ver consentimientos registrados</Text>
+                        <View style={styles.infoRowContent}>
+                            <Text style={styles.infoRowTitle}>Consentimientos</Text>
+                            <Text style={styles.infoRowEmpty}>Ver consentimientos registrados</Text>
                         </View>
                         <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
-                    </View>
+                    </Pressable>
                 </AppCard>
 
-                {/* Caregiver status indicator */}
-            {!patient.id_cuidador && hasStaffAccess && (
-                <AppCard style={styles.warningCard}>
-                    <View style={styles.warningContent}>
-                        <MaterialCommunityIcons name="account-alert-outline" size={20} color="#d97706" />
-                        <Text style={styles.warningText}>
-                            Este adulto mayor no tiene cuidador asignado. Asigne uno para poder registrar ejercicios y seguimiento.
-                        </Text>
-                    </View>
-                    {isProfessional && (
-                        <AppButton
-                            label="Crear cuidador"
-                            icon="account-plus"
-                            variant="outlined"
-                            onPress={() => router.push('/(app)/admin')}
-                            style={styles.warningButton}
-                        />
-                    )}
-                </AppCard>
-            )}
-
-            {/* Action buttons */}
-            <View style={styles.actions}>
-                <AppButton
-                    label="Realizar bateria"
-                    variant="filled"
-                    icon="clipboard-plus"
-                    onPress={() => router.push(`/(app)/patients/${id}/batteries/new` as never)}
-                    accessibilityLabel="Realizar bateria SFT"
-                />
-                <AppButton
-                    label="Ver historial baterías"
-                    variant="outlined"
-                    icon="history"
-                    onPress={() => router.push(`/(app)/patients/${id}/batteries` as never)}
-                    accessibilityLabel="Ver historial de baterías"
-                />
-                {hasStaffAccess && batteries.length > 0 && !hasActivePlan && (
-                    <AppButton
-                        label="Generar plan IA"
-                        variant="filled"
-                        icon="robot"
-                        onPress={() => router.push(`/(app)/patients/${id}/batteries/${batteries[0].id}` as never)}
-                        accessibilityLabel="Generar plan de ejercicios con IA"
-                    />
-                )}
-                {hasStaffAccess && (
-                    <>
-                        <Divider style={styles.divider} />
-                        <AppButton
-                            label="Editar adulto mayor"
-                            variant="outlined"
-                            icon="pencil"
-                            onPress={() => router.push(`/(app)/patients/${id}/edit` as never)}
-                            accessibilityLabel="Editar adulto mayor"
-                        />
-                        <AppButton
-                            label="Asignar cuidador"
-                            variant="outlined"
-                            icon="account-plus"
-                            onPress={() => router.push(`/(app)/patients/${id}/assign-caregiver` as never)}
-                            accessibilityLabel="Asignar cuidador"
-                        />
-                        <AppButton
-                            label="Alertas programadas"
-                            variant="outlined"
-                            icon="bell-outline"
-                            onPress={() => router.push(`/(app)/patients/${id}/alerts` as never)}
-                            accessibilityLabel="Ver alertas programadas"
-                        />
-                    </>
-                )}
-            </View>
-
-            {/* Recent batteries */}
-            <Text style={styles.sectionTitle}>Últimas baterías</Text>
-            {batteries.length === 0 ? (
-                <AppCard>
-                    <Text style={styles.emptyText}>No hay baterías registradas aún.</Text>
-                </AppCard>
-            ) : (
-                batteries.slice(0, 3).map((battery) => (
-                    <AppCard
-                        key={battery.id}
-                        onPress={() => router.push(`/(app)/patients/${id}/batteries/${battery.id}` as never)}
-                    >
-                        <View style={styles.batteryRow}>
-                            <MaterialCommunityIcons name="clipboard-check" size={24} color={theme.colors.primary} />
-                            <View style={styles.batteryInfo}>
-                                <Text style={styles.batteryDate}>
-                                    {format(new Date(battery.performed_at), 'dd MMM yyyy, HH:mm', { locale: es })}
-                                </Text>
-                                {battery.notes && <Text style={styles.batteryNotes}>{battery.notes}</Text>}
-                            </View>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
-                        </View>
-                    </AppCard>
-                ))
-            )}
-
-            {/* Exercise progress summary for staff */}
-            {hasActivePlan && progressStats.length > 0 && (
-                <>
-                    <Text style={styles.sectionTitle}>Progreso de ejercicios</Text>
-                    <AppCard
-                        style={styles.progressCard}
+                {/* Sección 2: Progreso de Ejercicios */}
+                {hasActivePlan && progressStats.length > 0 && (
+                    <Pressable
+                        style={styles.progressSection}
                         onPress={() => router.push(`/(app)/patients/${id}/progress` as never)}
+                        accessibilityLabel={`Progreso: ${Math.round(progressStats[0].porcentaje_cumplimiento)}% cumplimiento. Ver progreso completo`}
+                        accessibilityRole="button"
                     >
-                        <View style={styles.progressHeader}>
-                            <MaterialCommunityIcons name="chart-line" size={20} color={theme.colors.primary} />
-                            <Text style={styles.progressTitle}>Ver progreso completo</Text>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
-                        </View>
-                        {progressStats[0] && (
-                            <View style={styles.progressSummary}>
+                        <Text style={styles.sectionLabel}>Progreso de ejercicios</Text>
+                        <AppCard style={styles.groupCard}>
+                            <View style={styles.progressBody}>
                                 <Text style={styles.progressPercent}>
-                                    {Math.round(progressStats[0].porcentaje_cumplimiento)}% cumplimiento
+                                    {Math.round(progressStats[0].porcentaje_cumplimiento)}%
                                 </Text>
-                                <Text style={styles.progressDetail}>
-                                    {progressStats[0].ejercicios_completados} completados · {progressStats[0].ejercicios_omitidos} omitidos
-                                </Text>
+                                <Text style={styles.progressLabel}>cumplimiento</Text>
                             </View>
-                        )}
-                    </AppCard>
-                </>
-            )}
 
-            <View style={styles.bottomPadding} />
-        </ScrollView>
+                            {/* Progress bar */}
+                            <View style={styles.progressTrack}>
+                                <View
+                                    style={[
+                                        styles.progressFill,
+                                        {
+                                            width: `${Math.min(progressStats[0].porcentaje_cumplimiento, 100)}%`,
+                                            backgroundColor: theme.colors.primary,
+                                        },
+                                    ]}
+                                />
+                            </View>
+
+                            <View style={styles.progressStats}>
+                                <View style={styles.progressStatChip}>
+                                    <MaterialCommunityIcons name="check-circle-outline" size={16} color="#059669" />
+                                    <Text style={styles.progressStatText}>
+                                        {progressStats[0].ejercicios_completados} completados
+                                    </Text>
+                                </View>
+                                <View style={styles.progressStatChip}>
+                                    <MaterialCommunityIcons name="close-circle-outline" size={16} color="#94a3b8" />
+                                    <Text style={styles.progressStatText}>
+                                        {progressStats[0].ejercicios_omitidos} omitidos
+                                    </Text>
+                                </View>
+                            </View>
+                        </AppCard>
+                    </Pressable>
+                )}
+
+                {/* Sección 3: Últimas baterías */}
+                <Pressable
+                    style={styles.sectionHeaderRow}
+                    onPress={() => router.push(`/(app)/patients/${id}/batteries` as never)}
+                    accessibilityLabel="Ver historial completo de baterías"
+                    accessibilityRole="button"
+                >
+                    <Text style={styles.sectionLabel}>Últimas baterías</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.primary} />
+                </Pressable>
+
+                {batteries.length === 0 ? (
+                    <AppCard style={styles.sectionCard}>
+                        <Text style={styles.emptyText}>No hay baterías registradas aún.</Text>
+                    </AppCard>
+                ) : (
+                    batteries.slice(0, 3).map((battery) => (
+                        <AppCard
+                            key={battery.id}
+                            style={styles.sectionCard}
+                            onPress={() => router.push(`/(app)/patients/${id}/batteries/${battery.id}` as never)}
+                        >
+                            <View style={styles.infoRow}>
+                                <MaterialCommunityIcons name="clipboard-check" size={22} color={theme.colors.primary} />
+                                <View style={styles.infoRowContent}>
+                                    <Text style={styles.infoRowTitle}>
+                                        {format(new Date(battery.performed_at), 'dd MMM yyyy, HH:mm', { locale: es })}
+                                    </Text>
+                                    {battery.notes && <Text style={styles.infoRowEmpty}>{battery.notes}</Text>}
+                                </View>
+                                <MaterialCommunityIcons name="chevron-right" size={20} color={theme.colors.outline} />
+                            </View>
+                        </AppCard>
+                    ))
+                )}
+
+                <View style={styles.bottomPadding} />
+            </ScrollView>
+
+            {/* Contextual FAB */}
+            {batteries.length === 0 ? (
+                <Pressable
+                    style={[styles.fab, { backgroundColor: '#006d77' }]}
+                    onPress={() => router.push(`/(app)/patients/${id}/batteries/new` as never)}
+                    accessibilityLabel="Realizar batería SFT"
+                    accessibilityRole="button"
+                >
+                    <MaterialCommunityIcons name="clipboard-plus" size={20} color="#FFFFFF" />
+                    <Text style={styles.fabText}>Realizar batería SFT</Text>
+                </Pressable>
+            ) : batteries.length > 0 && !hasActivePlan ? (
+                <Pressable
+                    style={[styles.fab, { backgroundColor: '#006d77' }]}
+                    onPress={() => router.push(`/(app)/patients/${id}/batteries/${batteries[0].id}` as never)}
+                    accessibilityLabel="Generar plan de ejercicios con IA"
+                    accessibilityRole="button"
+                >
+                    <MaterialCommunityIcons name="robot" size={20} color="#FFFFFF" />
+                    <Text style={styles.fabText}>Generar plan IA</Text>
+                </Pressable>
+            ) : null}
+        </>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 16 },
-    infoCard: { marginBottom: 16 },
-    warningCard: { marginBottom: 16, backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fcd34d' },
-    warningContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    warningText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#92400e', flex: 1 },
-    warningButton: { marginTop: 12 },
+    infoCard: { marginBottom: 12 },
     header: { flexDirection: 'row', gap: 14, alignItems: 'center' },
     headerInfo: { flex: 1, gap: 2 },
+    headerActions: { flexDirection: 'row', alignItems: 'center' },
     fullName: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
     detailText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
-    medicalHistoryCard: { marginBottom: 16 },
-    medicalHistoryRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    medicalHistoryInfo: { flex: 1 },
-    medicalHistoryTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 15, color: '#1f2937' },
-    medicalHistorySummary: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#374151', marginTop: 2 },
-    medicalHistoryEmpty: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#9ca3af', marginTop: 2, fontStyle: 'italic' },
-    actions: { gap: 8, marginBottom: 24 },
-    divider: { marginVertical: 4 },
+    caregiverDivider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 12 },
+    caregiverRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    caregiverWarning: { backgroundColor: '#fffbeb', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, marginHorizontal: -6 },
+    caregiverInfo: { flex: 1 },
+    caregiverLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151' },
+    caregiverName: { fontFamily: 'Montserrat_700Bold', fontSize: 14, color: '#1f2937', marginTop: 1 },
+    caregiverWarningText: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#92400e', marginTop: 1 },
+    caregiverAction: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#006d77' },
+    groupCard: { marginBottom: 8 },
+    groupRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 2 },
+    groupDivider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 12 },
+    sectionLabel: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 12,
+        letterSpacing: 0.5,
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        marginTop: 8,
+        marginBottom: 8,
+        marginLeft: 4,
+    },
     sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginBottom: 10, marginTop: 8 },
+    sectionCard: { marginBottom: 8 },
+    infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    infoRowContent: { flex: 1 },
+    infoRowTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 15, color: '#1f2937' },
+    infoRowSummary: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#374151', marginTop: 2 },
+    infoRowEmpty: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#9ca3af', marginTop: 2, fontStyle: 'italic' },
+    progressSection: { marginBottom: 8 },
+    progressBody: { alignItems: 'center', marginBottom: 8 },
+    progressPercent: { fontFamily: 'Montserrat_700Bold', fontSize: 40, color: '#1f2937', fontVariant: ['tabular-nums'] },
+    progressLabel: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', marginTop: -2 },
+    progressTrack: {
+        height: 8,
+        backgroundColor: '#e5e7eb',
+        borderRadius: 4,
+        overflow: 'hidden',
+        marginBottom: 10,
+    },
+    progressFill: {
+        height: '100%',
+        borderRadius: 4,
+    },
+    progressStats: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
+    progressStatChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    progressStatText: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151' },
+    sectionHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        marginBottom: 0,
+        paddingLeft: 4,
+    },
     emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', textAlign: 'center', paddingVertical: 8 },
-    batteryRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    batteryInfo: { flex: 1 },
-    batteryDate: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
-    batteryNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
-    bottomPadding: { height: 32 },
-    waitingCard: { marginBottom: 16 },
+    waitingCard: { marginBottom: 12 },
     waitingContent: { alignItems: 'center', paddingVertical: 20, gap: 12 },
     waitingTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', textAlign: 'center' },
     waitingText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', textAlign: 'center', lineHeight: 20 },
     emptyCard: { marginBottom: 8 },
     emptyContent: { alignItems: 'center', paddingVertical: 16, gap: 8 },
-    viewPlanButton: { marginTop: 16 },
-    progressCard: { marginBottom: 8 },
-    progressHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    progressTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937', flex: 1 },
-    progressSummary: { marginTop: 8 },
-    progressPercent: { fontFamily: 'Montserrat_700Bold', fontSize: 18, color: '#1f2937' },
-    progressDetail: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2 },
+    bottomPadding: { height: 96 },
+    fab: {
+        position: 'absolute',
+        right: 16,
+        bottom: 24,
+        borderRadius: 16,
+        minHeight: 56,
+        paddingHorizontal: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        elevation: 4,
+    },
+    fabText: {
+        color: '#FFFFFF',
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 14,
+    },
 });
