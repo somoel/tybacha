@@ -29,10 +29,21 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/batteries/new" options={{ title: 'Realizar bateria SFT' }} />
             <Stack.Screen name="[id]/batteries/summary" options={{ title: 'Resumen bateria SFT' }} />
             <Stack.Screen name="[id]/batteries/[batteryId]/index" options={{ title: 'Resultados' }} />
-            <Stack.Screen name="[id]/batteries/[batteryId]/plan" options={{ title: 'Plan de ejercicios' }} />
             <Stack.Screen name="[id]/exercise" options={{ headerShown: false, title: 'Plan semanal' }} />
             <Stack.Screen name="[id]/exercise/[exerciseId]/active" options={{ headerShown: false, title: 'Ejercicio' }} />
-            <Stack.Screen name="[id]/progress/index" options={{ title: 'Progreso de ejercicios' }} />
+            <Stack.Screen name="[id]/progress/index" options={{ title: 'Plan de ejercicios' }} />
+            <Stack.Screen
+                name="[id]/progress/edit-plan"
+                options={{
+                    title: 'Editar plan',
+                    presentation: 'formSheet',
+                    sheetGrabberVisible: true,
+                    sheetAllowedDetents: [0.5, 1.0],
+                    contentStyle: { backgroundColor: 'transparent' },
+                    headerTransparent: true,
+                    headerTintColor: theme.colors.onSurface,
+                }}
+            />
             <Stack.Screen name="[id]/consents/index" options={{ title: 'Consentimientos' }} />
             <Stack.Screen name="[id]/consents/new" options={{ title: 'Registrar consentimiento' }} />
             <Stack.Screen name="[id]/alerts/index" options={{ title: 'Alertas' }} />

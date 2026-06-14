@@ -22,6 +22,7 @@ function mapStatus(status: ApiPlanStatus): ExercisePlan['status'] {
 
 function mapApiPlan(plan: ApiExercisePlan | ApiExercisePlanSummary): ExercisePlan {
     const maybeFullPlan = plan as ApiExercisePlan;
+    const datos = maybeFullPlan.datosPersonalizacion;
 
     return {
         id: String(plan.idPlanEjercicio),
@@ -30,6 +31,8 @@ function mapApiPlan(plan: ApiExercisePlan | ApiExercisePlanSummary): ExercisePla
         generated_by: 'creadoPor' in plan && plan.creadoPor ? String(plan.creadoPor) : '',
         generated_at: plan.creadoEn,
         status: mapStatus(plan.estado),
+        titulo: plan.titulo,
+        resumen: datos?.resumen ?? undefined,
         summary: plan.objetivo ?? undefined,
         exercises: maybeFullPlan.ejercicios?.map((exercise, index) => ({
             index,

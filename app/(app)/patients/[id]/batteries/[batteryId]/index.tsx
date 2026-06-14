@@ -170,14 +170,14 @@ export default function BatteryDetailScreen() {
                     {activePlan ? (
                         <ActivePlanCard
                             plan={activePlan}
-                            onPress={() => router.push(`/(app)/patients/${patientId}/batteries/${batteryId}/plan`)}
+                            onPress={() => router.push(`/(app)/patients/${patientId}/progress` as never)}
                         />
                     ) : (
                         <AppButton
                             label="Crear plan de ejercicios"
                             variant="filled"
                             icon="dumbbell"
-                            onPress={() => router.push(`/(app)/patients/${patientId}/batteries/${batteryId}/plan`)}
+                            onPress={() => router.push(`/(app)/patients/${patientId}/progress` as never)}
                             style={styles.createPlanButton}
                             accessibilityLabel="Crear plan de ejercicios con inteligencia artificial"
                         />

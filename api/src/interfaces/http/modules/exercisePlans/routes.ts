@@ -106,6 +106,7 @@ interface PlanRow extends RowDataPacket {
   creado_por: number | null;
   revisado_por: number | null;
   asignado_por: number | null;
+  datos_personalizacion: string | null;
   creado_en: string;
 }
 
@@ -274,7 +275,7 @@ JSON esperado:
 async function fetchPlanWithExercises(idPlanEjercicio: number) {
   const [planRows] = await pool.query<PlanRow[]>(
     `select id_plan_ejercicio, id_adulto_mayor, titulo, objetivo, origen, estado, nivel_dificultad,
-            fecha_inicio, fecha_fin, creado_por, revisado_por, asignado_por, creado_en
+            fecha_inicio, fecha_fin, creado_por, revisado_por, asignado_por, datos_personalizacion, creado_en
      from plan_ejercicio
      where id_plan_ejercicio = :idPlanEjercicio
      limit 1`,
@@ -307,6 +308,7 @@ async function fetchPlanWithExercises(idPlanEjercicio: number) {
     creadoPor: plan.creado_por,
     revisadoPor: plan.revisado_por,
     asignadoPor: plan.asignado_por,
+    datosPersonalizacion: plan.datos_personalizacion ? JSON.parse(plan.datos_personalizacion) : null,
     creadoEn: plan.creado_en,
     ejercicios: exerciseRows.map((exercise) => ({
       idEjercicioPlan: exercise.id_ejercicio_plan,

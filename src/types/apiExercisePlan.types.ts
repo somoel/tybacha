@@ -40,6 +40,7 @@ export interface ApiExercisePlan extends ApiExercisePlanSummary {
     creadoPor: number | null;
     revisadoPor: number | null;
     asignadoPor: number | null;
+    datosPersonalizacion: { resumen?: string; idAplicacionSft?: number } | null;
     ejercicios: ApiExercisePlanExercise[];
 }
 

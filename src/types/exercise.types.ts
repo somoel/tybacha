@@ -18,6 +18,8 @@ export interface ExercisePlan {
     generated_at: string;
     exercises: Exercise[];
     status: 'active' | 'completed' | 'cancelled';
+    titulo: string;
+    resumen?: string;
     summary?: string;
 }
 

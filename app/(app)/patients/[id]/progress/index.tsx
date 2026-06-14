@@ -1,8 +1,10 @@
+import { PlanOverviewSection } from '@/src/components/exercises/PlanOverviewSection';
 import { ComplianceTrendChart } from '@/src/components/exercises/ComplianceTrendChart';
 import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryItem';
 import { MetricDetailCard } from '@/src/components/exercises/MetricDetailCard';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
+import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
@@ -12,9 +14,9 @@ import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTrackin
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
 const DAY_KEYS_WEEK = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
@@ -43,6 +45,9 @@ function getTodayKey(): string {
 export default function ProgressScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const theme = useTheme();
+    const router = useRouter();
+    const { isAdmin, isProfessional } = usePermissions();
+    const hasStaffAccess = isAdmin || isProfessional;
 
     const [patient, setPatient] = useState<Patient | null>(null);
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
@@ -90,6 +95,29 @@ export default function ProgressScreen() {
         load();
         return () => { isActive = false; };
     }, [id]));
+
+    const handleEditPlan = () => {
+        router.push(`/(app)/patients/${id}/progress/edit-plan` as never);
+    };
+
+    const handleRegeneratePlan = () => {
+        Alert.alert(
+            'Regenerar plan',
+            'Se generará un nuevo plan con IA. El plan actual será reemplazado. ¿Continuar?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Regenerar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        // TODO: implementar regeneración con IA
+                        // Por ahora solo muestra un mensaje
+                        Alert.alert('Función próximamente', 'La regeneración con IA se implementará pronto.');
+                    },
+                },
+            ],
+        );
+    };
 
     if (isLoading) return <ProgressSkeleton />;
     if (!patient) return <ProgressSkeleton />;
@@ -153,11 +181,22 @@ export default function ProgressScreen() {
 
     return (
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
-            <Stack.Screen options={{ title: 'Progreso de ejercicios' }} />
+            <Stack.Screen options={{ title: 'Plan de ejercicios' }} />
             <Text style={styles.patientName}>{firstName}</Text>
 
+            {/* Sección 1: Plan activo */}
+            <PlanOverviewSection
+                patientId={id!}
+                plan={activePlan}
+                exerciseRecords={exerciseRecords}
+                onEdit={hasStaffAccess ? handleEditPlan : undefined}
+                onRegenerate={hasStaffAccess ? handleRegeneratePlan : undefined}
+            />
+
+            {/* Sección 2: Progreso */}
+            <Text style={styles.sectionLabel}>Progreso</Text>
+
             {/* Esta semana */}
-            <Text style={styles.sectionLabel}>Esta semana</Text>
             <AppCard style={styles.summaryCard}>
                 <View style={styles.summaryDateRow}>
                     <MaterialCommunityIcons name="calendar-week" size={16} color={theme.colors.primary} />
