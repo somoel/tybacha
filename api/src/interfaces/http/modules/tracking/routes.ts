@@ -323,13 +323,34 @@ export async function recalculateWeeklyStats(connection: Awaited<ReturnType<type
   );
 
   const [rows] = await connection.query<ComplianceRow[]>(
-    `select count(*) as ejercicios_programados,
-            sum(case when estado = 'completado' then 1 else 0 end) as ejercicios_completados,
-            sum(case when estado = 'omitido' then 1 else 0 end) as ejercicios_omitidos,
-            sum(case when estado = 'parcial' then 1 else 0 end) as ejercicios_parciales
-     from registro_ejercicio_plan
-     where id_adulto_mayor = :idAdultoMayor
-       and fecha_programada between @week_start and @week_end`,
+    `with scheduled as (
+       select ep.id_ejercicio_plan,
+              ep.dia_semana,
+              date_add(@week_start, interval (case ep.dia_semana
+                when 'lunes'    then 0
+                when 'martes'   then 1
+                when 'miercoles' then 2
+                when 'jueves'   then 3
+                when 'viernes'  then 4
+                when 'sabado'   then 5
+                when 'domingo'  then 6
+              end) day) as expected_date
+       from plan_ejercicio pe
+       join ejercicio_plan ep
+         on ep.id_plan_ejercicio = pe.id_plan_ejercicio
+        and ep.activo = 1
+       where pe.id_adulto_mayor = :idAdultoMayor
+         and pe.estado not in ('finalizado', 'cancelado')
+     )
+     select count(*) as ejercicios_programados,
+            sum(case when rep.estado = 'completado' then 1 else 0 end) as ejercicios_completados,
+            sum(case when rep.estado = 'omitido'   then 1 else 0 end) as ejercicios_omitidos,
+            sum(case when rep.estado = 'parcial'   then 1 else 0 end) as ejercicios_parciales
+     from scheduled s
+     left join registro_ejercicio_plan rep
+       on rep.fecha_programada = s.expected_date
+      and rep.id_adulto_mayor = :idAdultoMayor
+     where s.expected_date <= current_date`,
     { idAdultoMayor: input.idAdultoMayor },
   );
 
@@ -354,7 +375,7 @@ export async function recalculateWeeklyStats(connection: Awaited<ReturnType<type
      on duplicate key update
        ejercicios_programados = values(ejercicios_programados),
        ejercicios_completados = values(ejercicios_completados),
-       ejercicios_omitidos = values(ejercicios_omitidos),
+       ejercicios_omitidos    = values(ejercicios_omitidos),
        porcentaje_cumplimiento = values(porcentaje_cumplimiento),
        datos_metricas = values(datos_metricas),
        calculado_en = current_timestamp(3)`,
