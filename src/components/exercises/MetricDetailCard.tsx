@@ -13,11 +13,24 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
     const theme = useTheme();
 
     const completedRecords = records.filter((r) => r.estado === 'completado');
-    const omittedRecords = records.filter((r) => r.estado === 'omitido');
-    // Sesiones = días únicos con actividad (completada u omitida)
-    const totalSessions = new Set(
-        [...completedRecords, ...omittedRecords].map((r) => r.fechaProgramada)
-    ).size;
+
+    // Agrupar por día y determinar status dominante:
+    // - Si en un día hay al menos 1 completado, ese día cuenta como "completado"
+    // - Si solo hay omitidos, cuenta como "omitido"
+    const completedDates = new Set<string>();
+    const omittedDates = new Set<string>();
+    records.forEach((r) => {
+        if (r.estado === 'completado') {
+            completedDates.add(r.fechaProgramada);
+            omittedDates.delete(r.fechaProgramada);
+        } else if (r.estado === 'omitido') {
+            if (!completedDates.has(r.fechaProgramada)) {
+                omittedDates.add(r.fechaProgramada);
+            }
+        }
+    });
+
+    const totalSessions = new Set([...completedDates, ...omittedDates]).size;
 
     const effortValues = completedRecords
         .map((r) => r.esfuerzoPercibido)
@@ -51,7 +64,7 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                         <MaterialCommunityIcons name="check-circle" size={20} color="#2e7d32" />
                     </View>
                     <Text style={[styles.statValue, { color: '#2e7d32' }]}>
-                        {completedRecords.length}
+                        {completedDates.size}
                     </Text>
                     <Text style={styles.statLabel}>Completados</Text>
                 </View>
@@ -61,7 +74,7 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                         <MaterialCommunityIcons name="close-circle" size={20} color="#c62828" />
                     </View>
                     <Text style={[styles.statValue, { color: '#c62828' }]}>
-                        {omittedRecords.length}
+                        {omittedDates.size}
                     </Text>
                     <Text style={styles.statLabel}>Omitidos</Text>
                 </View>
