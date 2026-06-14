@@ -406,7 +406,9 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
           },
         );
         await connection.query(
-          `update ejercicio_plan set activo = 0 where id_plan_ejercicio = :idPlanEjercicio`,
+          `update ejercicio_plan
+              set activo = 0, orden = -id_ejercicio_plan
+            where id_plan_ejercicio = :idPlanEjercicio and activo = 1`,
           { idPlanEjercicio },
         );
       } else {
@@ -536,7 +538,9 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
           },
         );
         await connection.query(
-          `update ejercicio_plan set activo = 0 where id_plan_ejercicio = :idPlanEjercicio`,
+          `update ejercicio_plan
+              set activo = 0, orden = -id_ejercicio_plan
+            where id_plan_ejercicio = :idPlanEjercicio and activo = 1`,
           { idPlanEjercicio },
         );
       } else {
@@ -730,7 +734,9 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
       if (body.ejercicios) {
         await connection.query(
-          `update ejercicio_plan set activo = 0 where id_plan_ejercicio = :id`,
+          `update ejercicio_plan
+              set activo = 0, orden = -id_ejercicio_plan
+            where id_plan_ejercicio = :id and activo = 1`,
           { id: params.id },
         );
 
