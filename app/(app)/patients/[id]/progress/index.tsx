@@ -19,6 +19,7 @@ import { Text, useTheme } from 'react-native-paper';
 
 const DAY_KEYS_WEEK = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
 const DAY_LABELS = ['L', 'M', 'X', 'J', 'V'];
+const DAY_OFFSETS: Record<string, number> = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4 };
 
 function getWeekRange(): { from: string; to: string } {
     const now = new Date();
@@ -32,6 +33,22 @@ function getWeekRange(): { from: string; to: string } {
         from: format(monday, 'yyyy-MM-dd'),
         to: format(sunday, 'yyyy-MM-dd'),
     };
+}
+
+function getWeekStart(): Date {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const d = new Date(now);
+    d.setDate(d.getDate() + mondayOffset);
+    return d;
+}
+
+function expectedDateForDay(dayKey: string, weekStart: Date): string {
+    const offset = DAY_OFFSETS[dayKey] ?? 0;
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + offset);
+    return format(d, 'yyyy-MM-dd');
 }
 
 function getTodayKey(): string {
@@ -97,6 +114,7 @@ export default function ProgressScreen() {
     if (isLoading) return <ProgressSkeleton />;
 
     const weekRange = getWeekRange();
+    const weekStart = getWeekStart();
     const todayKey = getTodayKey();
 
     // Find current week stats using robust comparison (handles both string formats)
@@ -130,12 +148,13 @@ export default function ProgressScreen() {
     const completedIndices = new Set<number>();
     const skippedIndices = new Set<number>();
     exerciseRecords.forEach((record) => {
+        if (record.estado !== 'completado' && record.estado !== 'omitido') return;
         const exercise = activePlan?.exercises.find(
-            (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
+            (ex) => expectedDateForDay(ex.frequency, weekStart) === record.fechaProgramada
         );
         if (!exercise) return;
         if (record.estado === 'completado') completedIndices.add(exercise.index);
-        else if (record.estado === 'omitido') skippedIndices.add(exercise.index);
+        else skippedIndices.add(exercise.index);
     });
 
     const dayStatus = DAY_KEYS_WEEK.map((key) => {

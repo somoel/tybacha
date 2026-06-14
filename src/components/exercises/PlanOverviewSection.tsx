@@ -18,16 +18,33 @@ const DAY_LABELS: Record<string, string> = {
     viernes: 'Viernes',
 };
 const DAY_ORDER = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
+const DAY_OFFSETS: Record<string, number> = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4 };
 
 function getTodayKey(): string {
     const day = new Date().getDay();
     return ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][day];
 }
 
+function getWeekStart(): Date {
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const d = new Date(now);
+    d.setDate(d.getDate() + mondayOffset);
+    return d;
+}
+
+function expectedDateForDay(dayKey: string, weekStart: Date): string {
+    const offset = DAY_OFFSETS[dayKey] ?? 0;
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + offset);
+    return format(d, 'yyyy-MM-dd');
+}
+
 interface PlanOverviewSectionProps {
     patientId: string;
     plan: ExercisePlan | null;
-    exerciseRecords: { idEjercicioPlan: number; estado: string }[];
+    exerciseRecords: { idEjercicioPlan: number; estado: string; fechaProgramada: string }[];
     onEdit?: () => void;
 }
 
@@ -53,16 +70,18 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }
         );
     }
 
+    const weekStart = getWeekStart();
+
     const completedIndices = new Set<number>();
     const skippedIndices = new Set<number>();
     exerciseRecords.forEach((record) => {
-        if (record.estado === 'completado') {
-            const exercise = plan.exercises.find((ex) => ex.id_ejercicio_plan === record.idEjercicioPlan);
-            if (exercise) completedIndices.add(exercise.index);
-        } else if (record.estado === 'omitido') {
-            const exercise = plan.exercises.find((ex) => ex.id_ejercicio_plan === record.idEjercicioPlan);
-            if (exercise) skippedIndices.add(exercise.index);
-        }
+        if (record.estado !== 'completado' && record.estado !== 'omitido') return;
+        const exercise = plan.exercises.find(
+            (ex) => expectedDateForDay(ex.frequency, weekStart) === record.fechaProgramada
+        );
+        if (!exercise) return;
+        if (record.estado === 'completado') completedIndices.add(exercise.index);
+        else skippedIndices.add(exercise.index);
     });
 
     const todayExercises = plan.exercises.filter((ex) => ex.frequency === todayKey);
