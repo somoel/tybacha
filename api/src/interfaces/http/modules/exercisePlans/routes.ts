@@ -481,8 +481,17 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
       await connection.commit();
       return fetchPlanWithExercises(idPlanEjercicio);
-    } catch (error) {
+    } catch (error: any) {
       await connection.rollback();
+      if (error?.code === 'ER_DUP_ENTRY') {
+        const [existing] = await pool.query<RowDataPacket[]>(
+          `select id_plan_ejercicio from plan_ejercicio where id_adulto_mayor = :id limit 1`,
+          { id: body.idAdultoMayor },
+        );
+        if (existing.length > 0) {
+          return fetchPlanWithExercises(existing[0].id_plan_ejercicio);
+        }
+      }
       throw error;
     } finally {
       connection.release();
@@ -588,8 +597,17 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
       await connection.commit();
       return fetchPlanWithExercises(idPlanEjercicio);
-    } catch (error) {
+    } catch (error: any) {
       await connection.rollback();
+      if (error?.code === 'ER_DUP_ENTRY') {
+        const [existing] = await pool.query<RowDataPacket[]>(
+          `select id_plan_ejercicio from plan_ejercicio where id_adulto_mayor = :id limit 1`,
+          { id: body.idAdultoMayor },
+        );
+        if (existing.length > 0) {
+          return fetchPlanWithExercises(existing[0].id_plan_ejercicio);
+        }
+      }
       throw error;
     } finally {
       connection.release();
