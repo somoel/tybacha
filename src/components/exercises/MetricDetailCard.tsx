@@ -13,7 +13,11 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
     const theme = useTheme();
 
     const completedRecords = records.filter((r) => r.estado === 'completado');
-    const totalSessions = completedRecords.length;
+    const omittedRecords = records.filter((r) => r.estado === 'omitido');
+    // Sesiones = días únicos con actividad (completada u omitida)
+    const totalSessions = new Set(
+        [...completedRecords, ...omittedRecords].map((r) => r.fechaProgramada)
+    ).size;
 
     const effortValues = completedRecords
         .map((r) => r.esfuerzoPercibido)
@@ -57,7 +61,7 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                         <MaterialCommunityIcons name="close-circle" size={20} color="#c62828" />
                     </View>
                     <Text style={[styles.statValue, { color: '#c62828' }]}>
-                        {records.filter((r) => r.estado === 'omitido').length}
+                        {omittedRecords.length}
                     </Text>
                     <Text style={styles.statLabel}>Omitidos</Text>
                 </View>
