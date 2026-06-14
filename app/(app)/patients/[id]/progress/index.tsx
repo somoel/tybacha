@@ -4,19 +4,17 @@ import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryI
 import { MetricDetailCard } from '@/src/components/exercises/MetricDetailCard';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
-import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import type { ExercisePlan } from '@/src/types/exercise.types';
-import type { Patient } from '@/src/types/patient.types';
 import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
 const DAY_KEYS_WEEK = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
@@ -46,10 +44,7 @@ export default function ProgressScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const theme = useTheme();
     const router = useRouter();
-    const { isAdmin, isProfessional } = usePermissions();
-    const hasStaffAccess = isAdmin || isProfessional;
 
-    const [patient, setPatient] = useState<Patient | null>(null);
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
     const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
     const [exerciseRecords, setExerciseRecords] = useState<ApiExerciseRecord[]>([]);
@@ -61,12 +56,11 @@ export default function ProgressScreen() {
             if (!id) return;
             setIsLoading(true);
             try {
-                const [p, plans] = await Promise.all([
+                const [, plans] = await Promise.all([
                     fetchPatientById(id),
                     fetchExercisePlans(id),
                 ]);
                 if (!isActive) return;
-                setPatient(p);
 
                 const active = plans[0] ?? null;
                 setActivePlan(active ?? null);
@@ -100,27 +94,7 @@ export default function ProgressScreen() {
         router.push(`/(app)/patients/${id}/progress/edit-plan` as never);
     };
 
-    const handleRegeneratePlan = () => {
-        Alert.alert(
-            'Regenerar plan',
-            'Se generará un nuevo plan con IA. El plan actual será reemplazado. ¿Continuar?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Regenerar',
-                    style: 'destructive',
-                    onPress: async () => {
-                        // TODO: implementar regeneración con IA
-                        // Por ahora solo muestra un mensaje
-                        Alert.alert('Función próximamente', 'La regeneración con IA se implementará pronto.');
-                    },
-                },
-            ],
-        );
-    };
-
     if (isLoading) return <ProgressSkeleton />;
-    if (!patient) return <ProgressSkeleton />;
 
     const weekRange = getWeekRange();
     const todayKey = getTodayKey();
@@ -177,20 +151,16 @@ export default function ProgressScreen() {
         .filter((r) => r.estado === 'completado' || r.estado === 'omitido' || r.estado === 'parcial')
         .slice(0, 10);
 
-    const firstName = patient.first_name ?? 'Adulto mayor';
-
     return (
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
             <Stack.Screen options={{ title: 'Plan de ejercicios' }} />
-            <Text style={styles.patientName}>{firstName}</Text>
 
             {/* Sección 1: Plan activo */}
             <PlanOverviewSection
                 patientId={id!}
                 plan={activePlan}
                 exerciseRecords={exerciseRecords}
-                onEdit={hasStaffAccess ? handleEditPlan : undefined}
-                onRegenerate={hasStaffAccess ? handleRegeneratePlan : undefined}
+                onEdit={handleEditPlan}
             />
 
             {/* Sección 2: Progreso */}
@@ -360,7 +330,6 @@ export default function ProgressScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
-    patientName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#6b7280', marginBottom: 8, marginTop: 4 },
     sectionLabel: {
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 12,

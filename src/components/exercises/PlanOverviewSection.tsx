@@ -1,5 +1,5 @@
 import { TodayExerciseCard } from '@/src/components/exercises/TodayExerciseCard';
-import { AppButton } from '@/src/components/ui/AppButton';
+import { AppCard } from '@/src/components/ui/AppCard';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import type { Exercise, ExercisePlan } from '@/src/types/exercise.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -7,8 +7,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { IconButton, Text, useTheme } from 'react-native-paper';
 
 const DAY_LABELS: Record<string, string> = {
     lunes: 'Lunes',
@@ -29,22 +29,20 @@ interface PlanOverviewSectionProps {
     plan: ExercisePlan | null;
     exerciseRecords: { idEjercicioPlan: number; estado: string }[];
     onEdit?: () => void;
-    onRegenerate?: () => void;
 }
 
-export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit, onRegenerate }: PlanOverviewSectionProps) {
+export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }: PlanOverviewSectionProps) {
     const theme = useTheme();
     const router = useRouter();
     const { isAdmin, isProfessional } = usePermissions();
-    const { width: screenWidth } = useWindowDimensions();
     const hasStaffAccess = isAdmin || isProfessional;
     const todayKey = getTodayKey();
-    const dayCardWidth = screenWidth - 48;
+    const dayCardWidth = 170;
 
     if (!plan) {
         return (
             <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons name="dumbbell" size={40} color="#d1d5db" />
+                <MaterialCommunityIcons name="dumbbell" size={36} color="#d1d5db" />
                 <Text style={styles.emptyTitle}>Sin plan de ejercicios</Text>
                 <Text style={styles.emptyText}>
                     {hasStaffAccess
@@ -83,49 +81,30 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit, 
 
     return (
         <View style={styles.container}>
-            {/* Header del plan */}
-            <View style={styles.headerRow}>
-                <View style={[styles.iconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
-                    <MaterialCommunityIcons name="dumbbell" size={20} color={theme.colors.primary} />
-                </View>
-                <View style={styles.headerText}>
-                    <Text style={styles.planTitle}>{plan.titulo}</Text>
-                    <View style={styles.chipsRow}>
-                        <View style={[styles.chip, { backgroundColor: theme.colors.primaryContainer }]}>
-                            <Text style={[styles.chipText, { color: theme.colors.primary }]}>{plan.status === 'active' ? 'Activo' : 'Inactivo'}</Text>
-                        </View>
-                        <Text style={styles.dateText}>{format(new Date(plan.generated_at), "dd MMM yyyy", { locale: es })}</Text>
+            {/* Header del plan - patrón infoRow */}
+            <AppCard style={styles.headerCard}>
+                <View style={styles.headerRow}>
+                    <View style={[styles.iconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
+                        <MaterialCommunityIcons name="dumbbell" size={20} color={theme.colors.primary} />
                     </View>
-                </View>
-            </View>
-
-            {displayText ? (
-                <Text style={styles.summaryText}>{displayText}</Text>
-            ) : null}
-
-            {/* Acciones staff */}
-            {hasStaffAccess && (onEdit || onRegenerate) && (
-                <View style={styles.actionsRow}>
-                    {onEdit && (
-                        <AppButton
-                            label="Editar"
-                            variant="outlined"
-                            icon="pencil"
+                    <View style={styles.headerText}>
+                        <Text style={styles.planTitle}>{plan.titulo}</Text>
+                        <Text style={styles.planDate}>{format(new Date(plan.generated_at), "dd MMM yyyy", { locale: es })}</Text>
+                    </View>
+                    {hasStaffAccess && onEdit && (
+                        <IconButton
+                            icon="pencil-outline"
+                            size={20}
+                            iconColor={theme.colors.onSurfaceVariant}
                             onPress={onEdit}
                             accessibilityLabel="Editar plan de ejercicios"
                         />
                     )}
-                    {onRegenerate && (
-                        <AppButton
-                            label="Regenerar con IA"
-                            variant="outlined"
-                            icon="robot"
-                            onPress={onRegenerate}
-                            accessibilityLabel="Regenerar plan con inteligencia artificial"
-                        />
-                    )}
                 </View>
-            )}
+                {displayText ? (
+                    <Text style={styles.summaryText} numberOfLines={3}>{displayText}</Text>
+                ) : null}
+            </AppCard>
 
             {/* Ejercicio de hoy */}
             {todayExercises.length > 0 && (
@@ -164,7 +143,7 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit, 
                 horizontal
                 pagingEnabled={false}
                 showsHorizontalScrollIndicator={false}
-                snapToInterval={dayCardWidth + 12}
+                snapToInterval={dayCardWidth + 8}
                 decelerationRate="fast"
                 contentContainerStyle={styles.horizontalScrollContent}
             >
@@ -188,11 +167,11 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit, 
                             <View style={styles.dayCardHeader}>
                                 <View style={styles.dayCardHeaderLeft}>
                                     {allCompleted ? (
-                                        <MaterialCommunityIcons name="check-circle" size={18} color="#2e7d32" />
+                                        <MaterialCommunityIcons name="check-circle" size={16} color="#2e7d32" />
                                     ) : someCompleted ? (
-                                        <MaterialCommunityIcons name="minus-circle" size={18} color={theme.colors.primary} />
+                                        <MaterialCommunityIcons name="minus-circle" size={16} color={theme.colors.primary} />
                                     ) : (
-                                        <MaterialCommunityIcons name="circle-outline" size={18} color="#94a3b8" />
+                                        <MaterialCommunityIcons name="circle-outline" size={16} color="#94a3b8" />
                                     )}
                                     <Text style={[styles.dayCardTitle, isToday && { color: theme.colors.primary }]}>
                                         {DAY_LABELS[dayKey]}
@@ -215,7 +194,7 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit, 
                                     <View key={exercise.index} style={styles.dayExerciseRow}>
                                         <MaterialCommunityIcons
                                             name={isCompleted ? 'check-circle' : isSkipped ? 'close-circle' : 'circle-outline'}
-                                            size={16}
+                                            size={14}
                                             color={isCompleted ? '#2e7d32' : isSkipped ? '#c62828' : '#94a3b8'}
                                         />
                                         <Text
@@ -256,6 +235,9 @@ const styles = StyleSheet.create({
         marginTop: 4,
         lineHeight: 18,
     },
+    headerCard: {
+        marginBottom: 12,
+    },
     headerRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -272,42 +254,23 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     planTitle: {
-        fontFamily: 'Montserrat_700Bold',
-        fontSize: 16,
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 15,
         color: '#1f2937',
     },
-    chipsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginTop: 2,
-    },
-    chip: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    chipText: {
-        fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 11,
-    },
-    dateText: {
+    planDate: {
         fontFamily: 'Montserrat_400Regular',
         fontSize: 12,
         color: '#6b7280',
+        marginTop: 1,
     },
     summaryText: {
         fontFamily: 'Montserrat_400Regular',
         fontSize: 13,
         color: '#374151',
         lineHeight: 18,
-        marginTop: 12,
+        marginTop: 10,
         fontStyle: 'italic',
-    },
-    actionsRow: {
-        flexDirection: 'row',
-        gap: 8,
-        marginTop: 12,
     },
     sectionLabel: {
         fontFamily: 'Montserrat_600SemiBold',
@@ -315,7 +278,7 @@ const styles = StyleSheet.create({
         letterSpacing: 0.5,
         color: '#6b7280',
         textTransform: 'uppercase',
-        marginTop: 16,
+        marginTop: 4,
         marginBottom: 8,
         marginLeft: 4,
     },
@@ -342,12 +305,12 @@ const styles = StyleSheet.create({
     horizontalScrollContent: {
         paddingLeft: 4,
         paddingRight: 16,
-        gap: 12,
+        gap: 8,
     },
     dayCard: {
         backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 12,
+        padding: 12,
         borderWidth: 1,
         borderColor: '#e5e7eb',
     },
@@ -355,43 +318,43 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 10,
     },
     dayCardHeaderLeft: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
     },
     dayCardTitle: {
-        fontFamily: 'Montserrat_700Bold',
-        fontSize: 15,
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 13,
         color: '#1f2937',
     },
     dayCardCount: {
         fontFamily: 'Montserrat_500Medium',
-        fontSize: 12,
+        fontSize: 11,
         color: '#6b7280',
     },
     todayTag: {
-        paddingHorizontal: 8,
+        paddingHorizontal: 6,
         paddingVertical: 2,
-        borderRadius: 6,
+        borderRadius: 4,
     },
     todayTagText: {
         fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 10,
+        fontSize: 9,
     },
     dayExerciseRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingVertical: 6,
+        gap: 6,
+        paddingVertical: 5,
         borderBottomWidth: 1,
         borderBottomColor: '#f1f5f9',
     },
     dayExerciseName: {
         fontFamily: 'Montserrat_500Medium',
-        fontSize: 13,
+        fontSize: 12,
         color: '#1f2937',
         flex: 1,
     },
