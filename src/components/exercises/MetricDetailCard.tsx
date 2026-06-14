@@ -145,37 +145,6 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                 </View>
             </View>
 
-            {/* Stats mejorados */}
-            <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                    <View style={[styles.statIconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
-                        <MaterialCommunityIcons name="calendar-check" size={18} color={theme.colors.primary} />
-                    </View>
-                    <Text style={[styles.statValue, { color: theme.colors.primary }]}>{totalSessions}</Text>
-                    <Text style={styles.statLabel}>Sesiones</Text>
-                </View>
-
-                <View style={styles.statDivider} />
-
-                <View style={styles.statItem}>
-                    <View style={[styles.statIconContainer, { backgroundColor: '#e8f5e9' }]}>
-                        <MaterialCommunityIcons name="check-circle" size={18} color="#2e7d32" />
-                    </View>
-                    <Text style={[styles.statValue, { color: '#2e7d32' }]}>{completedDays}</Text>
-                    <Text style={styles.statLabel}>Completados</Text>
-                </View>
-
-                <View style={styles.statDivider} />
-
-                <View style={styles.statItem}>
-                    <View style={[styles.statIconContainer, { backgroundColor: '#ffebee' }]}>
-                        <MaterialCommunityIcons name="close-circle" size={18} color="#c62828" />
-                    </View>
-                    <Text style={[styles.statValue, { color: '#c62828' }]}>{omittedDays}</Text>
-                    <Text style={styles.statLabel}>Omitidos</Text>
-                </View>
-            </View>
-
             {/* PieChart: Proporción */}
             {pieData.length > 0 && (
                 <View style={styles.chartSection}>
@@ -348,32 +317,6 @@ const styles = StyleSheet.create({
     headerText: { flex: 1 },
     title: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937' },
     subtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2 },
-    statsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        marginBottom: 20,
-        backgroundColor: '#f8fafc',
-        borderRadius: 12,
-        paddingVertical: 16,
-        paddingHorizontal: 8,
-    },
-    statItem: { alignItems: 'center', flex: 1 },
-    statDivider: {
-        width: 1,
-        height: 36,
-        backgroundColor: '#e5e7eb',
-    },
-    statIconContainer: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 6,
-    },
-    statValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 20 },
-    statLabel: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280', marginTop: 2 },
     chartSection: {
         marginBottom: 20,
         paddingBottom: 16,
