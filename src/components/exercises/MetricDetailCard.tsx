@@ -111,26 +111,23 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                             xAxisLabelTextStyle={styles.xAxisLabel}
                             xAxisLabelsHeight={28}
                             rotateLabel
-                            hideYAxisText
+                            yAxisTextStyle={styles.yAxisLabel}
+                            yAxisLabelWidth={28}
                             yAxisThickness={0}
                             xAxisThickness={1}
                             xAxisColor="#e5e7eb"
                             rulesType="dashed"
-                            rulesColor="#f1f5f9"
+                            rulesColor="#e5e7eb"
                             rulesThickness={1}
                             color1="#7c3aed"
                             color2="#c62828"
                             thickness1={3}
                             thickness2={3}
-                            dataPointsRadius1={6}
+                            dataPointsRadius1={5}
                             dataPointsColor1="#7c3aed"
-                            dataPointsRadius2={6}
+                            dataPointsRadius2={5}
                             dataPointsColor2="#c62828"
-                            textColor1="#7c3aed"
-                            textColor2="#c62828"
-                            textFontSize1={11}
-                            textFontSize2={11}
-                            showValuesAsDataPointsText
+                            hideDataPoints={false}
                             curved
                             curvature={0.3}
                             areaChart
@@ -213,6 +210,7 @@ const styles = StyleSheet.create({
     legendLine: { width: 18, height: 3, borderRadius: 2 },
     legendText: { fontFamily: 'Montserrat_500Medium', fontSize: 11, color: '#6b7280' },
     xAxisLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 9, color: '#9ca3af' },
+    yAxisLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 10, color: '#9ca3af' },
     averages: { marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
     averagesRow: { flexDirection: 'row', gap: 24 },
     averageItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
