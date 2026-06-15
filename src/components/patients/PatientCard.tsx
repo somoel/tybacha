@@ -38,7 +38,7 @@ function getTodayLabel(completed: number, total: number): string {
     if (completed === total) return 'Bien';
     if (completed > 0) return 'En progreso';
     const pending = total - completed;
-    return `Pendientes: ${pending} ejercicio${pending !== 1 ? 's' : ''} para hoy`;
+    return `${pending} pendiente${pending !== 1 ? 's' : ''} hoy`;
 }
 
 /**
@@ -105,7 +105,12 @@ export function PatientCard({
                     <View style={styles.nameRow}>
                         <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
                         {showStatusBadge && (
-                            <StatusBadge status={status} label={statusLabel} size="small" />
+                            <StatusBadge
+                                status={status}
+                                label={statusLabel}
+                                size="small"
+                                style={styles.statusBadge}
+                            />
                         )}
                     </View>
                     <View style={styles.detailRow}>
@@ -167,14 +172,22 @@ const styles = StyleSheet.create({
     },
     nameRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         alignItems: 'center',
-        gap: 8,
+        columnGap: 8,
+        rowGap: 4,
     },
     name: {
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 15,
         color: '#1f2937',
         flexShrink: 1,
+        flexBasis: '60%',
+        minWidth: 0,
+    },
+    statusBadge: {
+        flexShrink: 0,
+        alignSelf: 'flex-start',
     },
     detailRow: {
         flexDirection: 'row',
