@@ -229,6 +229,7 @@ const barStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        marginBottom: 4,
     },
     headerRight: {
         flexDirection: 'row',
@@ -241,17 +242,17 @@ const barStyles = StyleSheet.create({
         color: '#374151',
     },
     valueText: {
-        fontFamily: 'Montserrat_700Bold',
-        fontSize: 14,
+        fontFamily: 'Montserrat_800ExtraBold',
+        fontSize: 18,
     },
     badge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
     },
     badgeText: {
         fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 9,
+        fontSize: 10,
     },
     track: {
         height: 20,
