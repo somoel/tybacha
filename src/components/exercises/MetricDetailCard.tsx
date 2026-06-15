@@ -115,15 +115,15 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                     <LineChart
                         data={effortLineData}
                         data2={painLineData}
-                        height={150}
+                        height={160}
                         maxValue={10}
                         noOfSections={5}
-                        spacing={60}
-                        initialSpacing={20}
-                        endSpacing={20}
-                        xAxisLength={280}
+                        spacing={50}
+                        initialSpacing={16}
+                        endSpacing={16}
+                        adjustToWidth
                         xAxisLabelTextStyle={styles.xAxisLabel}
-                        xAxisLabelsHeight={30}
+                        xAxisLabelsHeight={28}
                         rotateLabel
                         hideYAxisText
                         yAxisThickness={0}
@@ -133,28 +133,32 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                         rulesColor="#f1f5f9"
                         rulesThickness={1}
                         hideDataPoints={false}
-                        dataPointsRadius1={5}
+                        color1="#7c3aed"
+                        color2="#c62828"
+                        thickness1={3}
+                        thickness2={3}
+                        dataPointsRadius1={6}
                         dataPointsColor1="#7c3aed"
-                        dataPointsRadius2={5}
+                        dataPointsRadius2={6}
                         dataPointsColor2="#c62828"
                         textColor1="#7c3aed"
                         textColor2="#c62828"
-                        textFontSize1={10}
-                        textFontSize2={10}
+                        textFontSize1={11}
+                        textFontSize2={11}
                         showValuesAsDataPointsText
                         curved
-                        curvature={0.2}
+                        curvature={0.3}
                         areaChart
                         areaChart1
                         areaChart2
                         startFillColor1="#7c3aed"
                         endFillColor1="#7c3aed"
-                        startOpacity1={0.15}
-                        endOpacity1={0.02}
+                        startOpacity1={0.2}
+                        endOpacity1={0.0}
                         startFillColor2="#c62828"
                         endFillColor2="#c62828"
-                        startOpacity2={0.15}
-                        endOpacity2={0.02}
+                        startOpacity2={0.2}
+                        endOpacity2={0.0}
                         isAnimated
                         animationDuration={800}
                     />
