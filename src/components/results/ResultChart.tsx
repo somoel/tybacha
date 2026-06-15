@@ -2,6 +2,7 @@ import { SFT_TESTS } from '@/src/constants/sftTests';
 import type { SFTResult } from '@/src/types/battery.types';
 import { calculateAgeBand, calculateNormativePercentage, getNormativeRange } from '@shared/constants/normativeRanges';
 import type { NormativeRange, PatientGender, SFTTestType as SharedSFTTestType } from '@shared/constants/normativeRanges';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -29,6 +30,14 @@ function getPerformanceLabel(percentage: number): string {
     return 'Bajo promedio';
 }
 
+function getPerformanceBadgeColor(percentage: number): string {
+    if (percentage >= 80) return '#dcfce7';
+    if (percentage >= 60) return '#ecfccb';
+    if (percentage >= 40) return '#fef9c3';
+    if (percentage >= 20) return '#ffedd5';
+    return '#fee2e2';
+}
+
 function calculateLegacyPercentage(value: number, ranges: { belowBelowAvg: number; excellent: number; higherIsBetter: boolean }): number {
     const { belowBelowAvg, excellent, higherIsBetter } = ranges;
 
@@ -37,7 +46,6 @@ function calculateLegacyPercentage(value: number, ranges: { belowBelowAvg: numbe
         if (totalRange <= 0) return 50;
         return Math.max(0, Math.min(100, ((value - belowBelowAvg) / totalRange) * 100));
     }
-    // Inverse: lower is better (e.g., Up-and-Go)
     const totalRange = belowBelowAvg - excellent;
     if (totalRange <= 0) return 50;
     return Math.max(0, Math.min(100, ((belowBelowAvg - value) / totalRange) * 100));
@@ -60,12 +68,14 @@ function NormalizedBar({
     normRange,
     legacyRanges,
     previousValue,
+    notes,
 }: {
     value: number;
     unit: string;
     normRange: NormativeRange | null;
     legacyRanges?: { belowBelowAvg: number; excellent: number; higherIsBetter: boolean };
     previousValue?: number;
+    notes?: string | null;
 }) {
     const theme = useTheme();
     const higherIsBetter = legacyRanges?.higherIsBetter ?? true;
@@ -80,6 +90,8 @@ function NormalizedBar({
     }
 
     const color = getPerformanceColor(percentage);
+    const badgeBg = getPerformanceBadgeColor(percentage);
+    const label = getPerformanceLabel(percentage);
 
     let avgPercentage: number;
     let excellentPercentage: number;
@@ -141,32 +153,39 @@ function NormalizedBar({
                     <Text style={barStyles.referenceLabel}>Excel.</Text>
                 </View>
             </View>
-            <View style={barStyles.valueContainer}>
-                <Text style={[barStyles.valueText, { color }]}>
-                    {value} {unit}
-                </Text>
-                <Text style={barStyles.percentText}>{Math.round(percentage)}%</Text>
+            <View style={barStyles.valueCol}>
+                <View style={barStyles.valueRow}>
+                    <Text style={[barStyles.valueText, { color }]}>
+                        {value} {unit}
+                    </Text>
+                    <View style={[barStyles.badge, { backgroundColor: badgeBg }]}>
+                        <Text style={[barStyles.badgeText, { color }]}>{label}</Text>
+                    </View>
+                </View>
+                {notes ? (
+                    <View style={barStyles.notesRow}>
+                        <MaterialCommunityIcons name="information-outline" size={12} color="#94a3b8" />
+                        <Text style={barStyles.notesText} numberOfLines={2}>{notes}</Text>
+                    </View>
+                ) : null}
             </View>
         </View>
     );
 }
 
 export function ResultChart({ results, previousResults, patientGender, patientBirthDate }: ResultChartProps) {
-    const theme = useTheme();
-
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Resultados por prueba</Text>
-            <Text style={styles.subtitle}>Porcentaje según valores normativos (Rikli & Jones)</Text>
 
             {previousResults && (
                 <View style={styles.legend}>
                     <View style={styles.legendItem}>
-                        <View style={[styles.legendDot, { backgroundColor: theme.colors.outlineVariant }]} />
+                        <View style={[styles.legendDot, { backgroundColor: '#e5e7eb' }]} />
                         <Text style={styles.legendText}>Anterior</Text>
                     </View>
                     <View style={styles.legendItem}>
-                        <View style={[styles.legendDot, { backgroundColor: theme.colors.primary }]} />
+                        <View style={[styles.legendDot, { backgroundColor: '#16a34a' }]} />
                         <Text style={styles.legendText}>Actual</Text>
                     </View>
                 </View>
@@ -193,47 +212,8 @@ export function ResultChart({ results, previousResults, patientGender, patientBi
                                 normRange={normRange}
                                 legacyRanges={test.normativeRanges}
                                 previousValue={previous?.value}
+                                notes={current.notes}
                             />
-                        </View>
-                    );
-                })}
-            </View>
-
-            <View style={styles.valuesGrid}>
-                {SFT_TESTS.map((test) => {
-                    const current = results.find((r) => r.test_type === test.type);
-                    const normRange = getNormForTest(test.type as SharedSFTTestType, patientGender, patientBirthDate);
-                    const higherIsBetter = test.normativeRanges?.higherIsBetter ?? true;
-
-                    let percentage: number | null = null;
-                    if (current) {
-                        if (normRange) {
-                            percentage = Math.round(calculateNormativePercentage(current.value, normRange, higherIsBetter));
-                        } else if (test.normativeRanges) {
-                            percentage = Math.round(calculateLegacyPercentage(current.value, test.normativeRanges));
-                        }
-                    }
-
-                    return (
-                        <View key={test.type} style={styles.valueItem}>
-                            <Text style={styles.valueLabel}>{test.shortName}</Text>
-                            <Text style={styles.valueText}>
-                                {current ? `${current.value} ${current.unit}` : '—'}
-                            </Text>
-                            {percentage !== null ? (
-                                <Text
-                                    style={[
-                                        styles.valuePercentage,
-                                        { color: getPerformanceColor(percentage) },
-                                    ]}
-                                >
-                                    {getPerformanceLabel(percentage)}
-                                </Text>
-                            ) : current ? (
-                                <Text style={[styles.valuePercentage, { color: '#9ca3af' }]}>
-                                    Sin datos normativos
-                                </Text>
-                            ) : null}
                         </View>
                     );
                 })}
@@ -245,7 +225,7 @@ export function ResultChart({ results, previousResults, patientGender, patientBi
 const barStyles = StyleSheet.create({
     row: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 12,
     },
     barContainer: {
@@ -291,18 +271,41 @@ const barStyles = StyleSheet.create({
         fontSize: 8,
         color: '#94a3b8',
     },
-    valueContainer: {
+    valueCol: {
         alignItems: 'flex-end',
-        minWidth: 70,
+        minWidth: 120,
+        gap: 4,
+    },
+    valueRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
     valueText: {
-        fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 13,
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 14,
     },
-    percentText: {
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    badgeText: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 9,
+    },
+    notesRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 4,
+        maxWidth: 160,
+    },
+    notesText: {
         fontFamily: 'Montserrat_400Regular',
         fontSize: 10,
         color: '#94a3b8',
+        fontStyle: 'italic',
+        flex: 1,
     },
 });
 
@@ -314,13 +317,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Montserrat_700Bold',
         fontSize: 16,
         color: '#1f2937',
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontFamily: 'Montserrat_400Regular',
-        fontSize: 11,
-        color: '#94a3b8',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     legend: {
         flexDirection: 'row',
@@ -343,42 +340,14 @@ const styles = StyleSheet.create({
         color: '#374151',
     },
     barsContainer: {
-        gap: 14,
+        gap: 18,
     },
     barSection: {
-        gap: 4,
+        gap: 6,
     },
     testName: {
-        fontFamily: 'Montserrat_500Medium',
-        fontSize: 12,
-        color: '#374151',
-    },
-    valuesGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 16,
-    },
-    valueItem: {
-        backgroundColor: '#f0f3f6',
-        borderRadius: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        minWidth: '30%',
-    },
-    valueLabel: {
-        fontFamily: 'Montserrat_500Medium',
-        fontSize: 10,
-        color: '#6b7280',
-    },
-    valueText: {
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 13,
-        color: '#1f2937',
-    },
-    valuePercentage: {
-        fontFamily: 'Montserrat_400Regular',
-        fontSize: 10,
-        marginTop: 2,
+        color: '#374151',
     },
 });

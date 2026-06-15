@@ -2,7 +2,6 @@ import { ResultChart } from '@/src/components/results/ResultChart';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { BatteryDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
-import { SFT_TESTS } from '@/src/constants/sftTests';
 import { exportBatteryXlsx } from '@/src/api/reportsApi';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
 import { fetchPatientById } from '@/src/services/patientService';
@@ -14,7 +13,7 @@ import { es } from 'date-fns/locale';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 
 function getImcColor(imc: number): string {
     if (imc < 18.5) return '#3b82f6';
@@ -25,7 +24,6 @@ function getImcColor(imc: number): string {
 
 export default function BatteryDetailScreen() {
     const { id: patientId, batteryId } = useLocalSearchParams<{ id: string; batteryId: string }>();
-    const theme = useTheme();
     const [battery, setBattery] = useState<BatteryWithResults | null>(null);
     const [patient, setPatient] = useState<Patient | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -109,7 +107,6 @@ export default function BatteryDetailScreen() {
                 )}
             </AppCard>
 
-            {/* Export button */}
             {hasStaffAccess && (
                 <AppButton
                     label={isExporting ? 'Exportando...' : 'Exportar XLSX'}
@@ -122,7 +119,6 @@ export default function BatteryDetailScreen() {
                 />
             )}
 
-            {/* Chart */}
             {battery.results.length > 0 && (
                 <AppCard>
                     <ResultChart
@@ -132,31 +128,6 @@ export default function BatteryDetailScreen() {
                     />
                 </AppCard>
             )}
-
-            {/* Individual results */}
-            <Text style={styles.sectionTitle}>Resultados individuales</Text>
-            {SFT_TESTS.map((test) => {
-                const result = battery.results.find((r) => r.test_type === test.type);
-                return (
-                    <AppCard key={test.type}>
-                        <View style={styles.resultRow}>
-                            <View style={styles.resultInfo}>
-                                <Text style={styles.testName}>{test.name}</Text>
-                                <Text style={styles.testShort}>{test.shortName}</Text>
-                            </View>
-                            <View style={styles.valueContainer}>
-                                <Text style={[styles.value, { color: result ? theme.colors.primary : theme.colors.outline }]}>
-                                    {result ? result.value : '—'}
-                                </Text>
-                                <Text style={styles.unit}>{result ? test.unit : ''}</Text>
-                            </View>
-                        </View>
-                        {result?.notes ? (
-                            <Text style={styles.resultNotes}>{result.notes}</Text>
-                        ) : null}
-                    </AppCard>
-                );
-            })}
 
             <View style={styles.bottomPadding} />
         </ScrollView>
@@ -174,15 +145,6 @@ const styles = StyleSheet.create({
     bodyMetricLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 },
     bodyMetricValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 18, color: '#1f2937', marginTop: 2 },
     bodyMetricDivider: { width: 1, height: 32, backgroundColor: '#e5e7eb' },
-    sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginTop: 16, marginBottom: 10 },
-    resultRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    resultInfo: { flex: 1 },
-    testName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
-    testShort: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
-    valueContainer: { alignItems: 'flex-end' },
-    value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
-    unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
-    resultNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#374151', marginTop: 6, fontStyle: 'italic' },
     exportButton: { marginBottom: 16 },
     bottomPadding: { height: 32 },
 });
