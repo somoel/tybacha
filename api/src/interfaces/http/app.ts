@@ -8,6 +8,7 @@ import { registerAlertRoutes } from './modules/alerts/routes.js';
 import { registerAlertCronRoutes } from './modules/alerts/cron.js';
 import { registerAuditRoutes } from './modules/audit/routes.js';
 import { registerAuthRoutes } from './modules/auth/routes.js';
+import { registerCaregiverRoutes } from './modules/caregivers/routes.js';
 import { registerConsentRoutes } from './modules/consents/routes.js';
 import { registerExercisePlanRoutes } from './modules/exercisePlans/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
@@ -144,6 +145,7 @@ export async function buildApp() {
   await registerAuthRoutes(app);
   await registerUserRoutes(app);
   await registerOlderAdultRoutes(app);
+  await registerCaregiverRoutes(app);
   await registerMedicalHistoryRoutes(app);
   await registerConsentRoutes(app);
   await registerSftRoutes(app);

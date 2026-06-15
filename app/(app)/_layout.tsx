@@ -15,7 +15,7 @@ import { useTheme } from 'react-native-paper';
 export default function AppLayout() {
     const theme = useTheme();
     const pathname = usePathname();
-    const { isCaregiver } = usePermissions();
+    const { isCaregiver, isProfessional } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
     const isHome = pathname === '/home' || pathname === '/';
     const hideTabBar =
@@ -86,6 +86,22 @@ export default function AppLayout() {
                     }}
                 />
                 <Tabs.Screen
+                    name="caregivers"
+                    options={{
+                        title: 'Cuidadores',
+                        headerShown: false,
+                        href: isCaregiver ? null : undefined,
+                        tabBarIcon: ({ color, focused }) => (
+                            <MaterialCommunityIcons
+                                name={focused ? 'account-heart' : 'account-heart-outline'}
+                                size={24}
+                                color={color}
+                            />
+                        ),
+                        tabBarAccessibilityLabel: 'Cuidadores',
+                    }}
+                />
+                <Tabs.Screen
                     name="notifications/index"
                     options={{
                         title: 'Notificaciones',
@@ -145,7 +161,7 @@ export default function AppLayout() {
                     options={{
                         title: 'Admin',
                         headerTitle: 'Administracion',
-                        href: isCaregiver ? null : undefined,
+                        href: isCaregiver || isProfessional ? null : undefined,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
                                 name={focused ? 'shield-account' : 'shield-account-outline'}

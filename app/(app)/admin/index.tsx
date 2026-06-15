@@ -4,11 +4,11 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { usePermissions } from '@/src/hooks/usePermissions';
 import type { ApiUserRole } from '@/src/types/apiAuth.types';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -18,7 +18,7 @@ import { z } from 'zod';
 const userSchema = z.object({
     correo: z.string().email('Correo invalido'),
     contrasena: z.string().min(8, 'Minimo 8 caracteres'),
-    rol: z.enum(['administrador', 'profesional', 'cuidador']),
+    rol: z.enum(['administrador', 'profesional']),
     nombres: z.string().min(1, 'Requerido'),
     apellidos: z.string().min(1, 'Requerido'),
 });
@@ -26,11 +26,12 @@ const userSchema = z.object({
 type UserForm = z.infer<typeof userSchema>;
 
 export default function AdminScreen() {
-    const { isAdmin, isProfessional } = usePermissions();
+    const router = useRouter();
     const [users, setUsers] = useState<ApiUserSummary[]>([]);
     const [auditCount, setAuditCount] = useState(0);
     const [accessCount, setAccessCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+    const [showCreateForm, setShowCreateForm] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const { control, handleSubmit, reset } = useForm<UserForm>({
@@ -38,7 +39,7 @@ export default function AdminScreen() {
         defaultValues: {
             correo: '',
             contrasena: '',
-            rol: isAdmin ? 'profesional' : 'cuidador',
+            rol: 'profesional',
             nombres: '',
             apellidos: '',
         },
@@ -49,8 +50,8 @@ export default function AdminScreen() {
         try {
             const [userRows, changes, access] = await Promise.all([
                 fetchApiUsers(),
-                isAdmin ? fetchApiAuditChanges(undefined, 20) : Promise.resolve([]),
-                isAdmin ? fetchApiAuditDataAccess(undefined, 20) : Promise.resolve([]),
+                fetchApiAuditChanges(undefined, 20),
+                fetchApiAuditDataAccess(undefined, 20),
             ]);
             setUsers(userRows);
             setAuditCount(changes.length);
@@ -64,25 +65,18 @@ export default function AdminScreen() {
         } finally {
             setIsLoading(false);
         }
-    }, [isAdmin]);
+    }, []);
 
     useEffect(() => {
-        if (isAdmin || isProfessional) {
-            void load();
-        }
-    }, [isAdmin, isProfessional, load]);
+        void load();
+    }, [load]);
 
     const onSubmit = async (data: UserForm) => {
         setIsLoading(true);
         try {
             await createApiUser(data);
-            reset({
-                correo: '',
-                contrasena: '',
-                rol: isAdmin ? 'profesional' : 'cuidador',
-                nombres: '',
-                apellidos: '',
-            });
+            reset({ correo: '', contrasena: '', rol: 'profesional', nombres: '', apellidos: '' });
+            setShowCreateForm(false);
             await load();
             setSnackbar({ visible: true, message: 'Usuario creado', type: 'success' });
         } catch (error) {
@@ -96,15 +90,6 @@ export default function AdminScreen() {
         }
     };
 
-    if (!isAdmin && !isProfessional) {
-        return (
-            <View style={styles.center}>
-                <MaterialCommunityIcons name="lock-alert-outline" size={42} color="#6b7280" />
-                <Text style={styles.empty}>No tiene permisos para administrar usuarios.</Text>
-            </View>
-        );
-    }
-
     return (
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
             <View style={styles.metrics}>
@@ -112,55 +97,78 @@ export default function AdminScreen() {
                     <Text style={styles.metricNumber}>{users.length}</Text>
                     <Text style={styles.metricLabel}>Usuarios</Text>
                 </AppCard>
-                {isAdmin && (
-                    <>
-                        <AppCard style={styles.metric}>
-                            <Text style={styles.metricNumber}>{auditCount}</Text>
-                            <Text style={styles.metricLabel}>Cambios</Text>
-                        </AppCard>
-                        <AppCard style={styles.metric}>
-                            <Text style={styles.metricNumber}>{accessCount}</Text>
-                            <Text style={styles.metricLabel}>Accesos</Text>
-                        </AppCard>
-                    </>
-                )}
+                <AppCard style={styles.metric}>
+                    <Text style={styles.metricNumber}>{auditCount}</Text>
+                    <Text style={styles.metricLabel}>Cambios</Text>
+                </AppCard>
+                <AppCard style={styles.metric}>
+                    <Text style={styles.metricNumber}>{accessCount}</Text>
+                    <Text style={styles.metricLabel}>Accesos</Text>
+                </AppCard>
             </View>
 
-            <AppCard>
-                <Text style={styles.sectionTitle}>Crear usuario</Text>
-                <AppInput control={control} name="nombres" label="Nombres" />
-                <AppInput control={control} name="apellidos" label="Apellidos" />
-                <AppInput control={control} name="correo" label="Correo" keyboardType="email-address" autoCapitalize="none" />
-                <AppInput control={control} name="contrasena" label="Contrasena" secureTextEntry />
-                {isAdmin && (
-                    <>
-                        <Text style={styles.fieldLabel}>Rol</Text>
-                        <Controller
-                            control={control}
-                            name="rol"
-                            render={({ field: { value, onChange } }) => (
-                                <SegmentedButtons
-                                    value={value}
-                                    onValueChange={(next) => onChange(next as ApiUserRole)}
-                                    buttons={[
-                                        { value: 'administrador', label: 'Admin' },
-                                        { value: 'profesional', label: 'Profesional' },
-                                        { value: 'cuidador', label: 'Cuidador' },
-                                    ]}
-                                />
-                            )}
-                        />
-                    </>
-                )}
-                <AppButton
-                    label={isAdmin ? 'Crear usuario' : 'Crear cuidador'}
-                    icon="account-plus"
-                    variant="filled"
-                    loading={isLoading}
-                    onPress={handleSubmit(onSubmit)}
-                    style={styles.submit}
-                />
+            <AppCard style={styles.linkCard}>
+                <View style={styles.linkRow}>
+                    <MaterialCommunityIcons name="account-heart" size={24} color="#006d77" />
+                    <View style={styles.linkInfo}>
+                        <Text style={styles.linkTitle}>Gestionar cuidadores</Text>
+                        <Text style={styles.linkSubtitle}>Crear, ver y administrar cuidadores y sus pacientes</Text>
+                    </View>
+                    <MaterialCommunityIcons
+                        name="chevron-right"
+                        size={24}
+                        color="#6b7280"
+                        onPress={() => router.push('/(app)/caregivers' as never)}
+                    />
+                </View>
             </AppCard>
+
+            {!showCreateForm ? (
+                <AppButton
+                    label="Crear usuario (admin/profesional)"
+                    icon="account-plus"
+                    variant="outlined"
+                    onPress={() => setShowCreateForm(true)}
+                    style={styles.showFormButton}
+                />
+            ) : (
+                <AppCard>
+                    <Text style={styles.sectionTitle}>Crear usuario del equipo</Text>
+                    <AppInput control={control} name="nombres" label="Nombres" />
+                    <AppInput control={control} name="apellidos" label="Apellidos" />
+                    <AppInput control={control} name="correo" label="Correo" keyboardType="email-address" autoCapitalize="none" />
+                    <AppInput control={control} name="contrasena" label="Contrasena" secureTextEntry />
+                    <Text style={styles.fieldLabel}>Rol</Text>
+                    <Controller
+                        control={control}
+                        name="rol"
+                        render={({ field: { value, onChange } }) => (
+                            <SegmentedButtons
+                                value={value}
+                                onValueChange={(next) => onChange(next as ApiUserRole)}
+                                buttons={[
+                                    { value: 'profesional', label: 'Profesional' },
+                                    { value: 'administrador', label: 'Administrador' },
+                                ]}
+                            />
+                        )}
+                    />
+                    <View style={styles.formActions}>
+                        <AppButton
+                            label="Cancelar"
+                            variant="text"
+                            onPress={() => setShowCreateForm(false)}
+                        />
+                        <AppButton
+                            label="Crear usuario"
+                            icon="account-plus"
+                            variant="filled"
+                            loading={isLoading}
+                            onPress={handleSubmit(onSubmit)}
+                        />
+                    </View>
+                </AppCard>
+            )}
 
             <Text style={styles.sectionTitle}>Usuarios recientes</Text>
             {users.slice(0, 10).map((user) => (
@@ -190,15 +198,19 @@ export default function AdminScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
     content: { padding: 16, paddingBottom: 40 },
-    center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#f8fafc' },
-    empty: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#6b7280', textAlign: 'center', marginTop: 8 },
     metrics: { flexDirection: 'row', gap: 8, marginBottom: 16 },
     metric: { flex: 1 },
     metricNumber: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 24, color: '#006d77', textAlign: 'center' },
     metricLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 11, color: '#6b7280', textAlign: 'center' },
+    linkCard: { marginBottom: 8 },
+    linkRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    linkInfo: { flex: 1 },
+    linkTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 14, color: '#1f2937' },
+    linkSubtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
+    showFormButton: { marginBottom: 8 },
     sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginBottom: 12, marginTop: 8 },
     fieldLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#374151', marginBottom: 8 },
-    submit: { marginTop: 16 },
+    formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
     userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#d9f0ef', alignItems: 'center', justifyContent: 'center' },
     avatarText: { fontFamily: 'Montserrat_800ExtraBold', color: '#006d77' },
