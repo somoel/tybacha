@@ -93,6 +93,7 @@ function NormalizedBar({
     const badgeBg = getPerformanceBadgeColor(percentage);
     const label = getPerformanceLabel(percentage);
 
+    // P25-P75 range as percentage of bar width
     let avgPercentage: number;
     let excellentPercentage: number;
     if (normRange) {
@@ -107,11 +108,14 @@ function NormalizedBar({
         excellentPercentage = 80;
     }
 
+    const rangeLeft = Math.min(avgPercentage, excellentPercentage);
+    const rangeRight = 100 - Math.max(avgPercentage, excellentPercentage);
+
     return (
         <View style={barStyles.wrapper}>
-            {/* Header: nombre + valor + badge */}
+            {/* Header: valor + badge */}
             <View style={barStyles.headerRow}>
-                <Text style={barStyles.testName}>{value} {unit}</Text>
+                <Text style={barStyles.valueText}>{value} {unit}</Text>
                 <View style={barStyles.headerRight}>
                     <View style={[barStyles.badge, { backgroundColor: badgeBg }]}>
                         <Text style={[barStyles.badgeText, { color }]}>{label}</Text>
@@ -119,7 +123,7 @@ function NormalizedBar({
                 </View>
             </View>
 
-            {/* Barra full-width */}
+            {/* Barra full-width con área de rango */}
             <View style={barStyles.track}>
                 {previousValue !== undefined && (
                     <View
@@ -136,6 +140,16 @@ function NormalizedBar({
                         ]}
                     />
                 )}
+
+                {/* Rango promedio P25-P75 como área sombreada */}
+                <View
+                    style={[
+                        barStyles.rangeArea,
+                        { left: `${rangeLeft}%`, right: `${rangeRight}%` },
+                    ]}
+                />
+
+                {/* Valor actual del paciente */}
                 <View
                     style={[
                         barStyles.currentFill,
@@ -145,22 +159,6 @@ function NormalizedBar({
                         },
                     ]}
                 />
-                <View
-                    style={[
-                        barStyles.referenceLine,
-                        { left: `${avgPercentage}%`, backgroundColor: '#94a3b8' },
-                    ]}
-                />
-                <View
-                    style={[
-                        barStyles.referenceLine,
-                        { left: `${excellentPercentage}%`, backgroundColor: '#16a34a' },
-                    ]}
-                />
-            </View>
-            <View style={barStyles.referenceLabels}>
-                <Text style={barStyles.referenceLabel}>Prom.</Text>
-                <Text style={barStyles.referenceLabel}>Excel.</Text>
             </View>
 
             {/* Observaciones full-width */}
@@ -184,6 +182,10 @@ export function ResultChart({ results, previousResults, patientGender, patientBi
                     <View style={styles.legendItem}>
                         <View style={[styles.legendDot, { backgroundColor: '#e5e7eb' }]} />
                         <Text style={styles.legendText}>Anterior</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendDot, { backgroundColor: '#94a3b8', opacity: 0.4 }]} />
+                        <Text style={styles.legendText}>Rango normal</Text>
                     </View>
                     <View style={styles.legendItem}>
                         <View style={[styles.legendDot, { backgroundColor: '#16a34a' }]} />
@@ -236,11 +238,6 @@ const barStyles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    testName: {
-        fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 13,
-        color: '#374151',
-    },
     valueText: {
         fontFamily: 'Montserrat_800ExtraBold',
         fontSize: 18,
@@ -255,9 +252,9 @@ const barStyles = StyleSheet.create({
         fontSize: 10,
     },
     track: {
-        height: 20,
+        height: 24,
         backgroundColor: '#f1f5f9',
-        borderRadius: 10,
+        borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
     },
@@ -266,33 +263,22 @@ const barStyles = StyleSheet.create({
         top: 0,
         left: 0,
         height: '100%',
-        borderRadius: 10,
-        opacity: 0.5,
+        borderRadius: 12,
+        opacity: 0.4,
+    },
+    rangeArea: {
+        position: 'absolute',
+        top: 0,
+        height: '100%',
+        backgroundColor: '#94a3b8',
+        opacity: 0.3,
     },
     currentFill: {
         position: 'absolute',
         top: 0,
         left: 0,
         height: '100%',
-        borderRadius: 10,
-    },
-    referenceLine: {
-        position: 'absolute',
-        top: 0,
-        width: 2,
-        height: '100%',
-        opacity: 0.6,
-    },
-    referenceLabels: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 2,
-        paddingHorizontal: 2,
-    },
-    referenceLabel: {
-        fontFamily: 'Montserrat_400Regular',
-        fontSize: 8,
-        color: '#94a3b8',
+        borderRadius: 12,
     },
     notesRow: {
         flexDirection: 'row',
