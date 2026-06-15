@@ -12,7 +12,7 @@ import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTrackin
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -60,7 +60,6 @@ function getTodayKey(): string {
 export default function ProgressScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const theme = useTheme();
-    const router = useRouter();
 
     const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
     const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
@@ -106,10 +105,6 @@ export default function ProgressScreen() {
         load();
         return () => { isActive = false; };
     }, [id]));
-
-    const handleEditPlan = () => {
-        router.push(`/(app)/patients/${id}/progress/edit-plan` as never);
-    };
 
     if (isLoading) return <ProgressSkeleton />;
 
@@ -179,7 +174,6 @@ export default function ProgressScreen() {
                 patientId={id!}
                 plan={activePlan}
                 exerciseRecords={exerciseRecords}
-                onEdit={handleEditPlan}
             />
 
             {/* Sección 2: Progreso */}

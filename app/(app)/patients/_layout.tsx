@@ -31,6 +31,7 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/batteries/[batteryId]/index" options={{ title: 'Resultados' }} />
             <Stack.Screen name="[id]/exercise" options={{ headerShown: false, title: 'Plan semanal' }} />
             <Stack.Screen name="[id]/exercise/[exerciseId]/active" options={{ headerShown: false, title: 'Ejercicio' }} />
+            <Stack.Screen name="[id]/plan/index" options={{ title: 'Plan de ejercicios' }} />
             <Stack.Screen name="[id]/progress/index" options={{ title: 'Plan de ejercicios' }} />
             <Stack.Screen
                 name="[id]/progress/edit-plan"

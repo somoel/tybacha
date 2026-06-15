@@ -7,8 +7,8 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { IconButton, Text, useTheme } from 'react-native-paper';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, useTheme } from 'react-native-paper';
 
 const DAY_LABELS: Record<string, string> = {
     lunes: 'Lunes',
@@ -56,6 +56,10 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }
     const todayKey = getTodayKey();
     const dayCardWidth = 140;
 
+    const handleViewPlan = () => {
+        router.push(`/(app)/patients/${patientId}/plan` as never);
+    };
+
     if (!plan) {
         return (
             <View style={styles.emptyContainer}>
@@ -100,30 +104,24 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }
 
     return (
         <View style={styles.container}>
-            {/* Header del plan - patrón infoRow */}
-            <AppCard style={styles.headerCard}>
-                <View style={styles.headerRow}>
-                    <View style={[styles.iconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
-                        <MaterialCommunityIcons name="dumbbell" size={20} color={theme.colors.primary} />
+            {/* Header del plan - cliqueable */}
+            <Pressable onPress={handleViewPlan}>
+                <AppCard style={styles.headerCard}>
+                    <View style={styles.headerRow}>
+                        <View style={[styles.iconContainer, { backgroundColor: theme.colors.primaryContainer }]}>
+                            <MaterialCommunityIcons name="dumbbell" size={20} color={theme.colors.primary} />
+                        </View>
+                        <View style={styles.headerText}>
+                            <Text style={styles.planTitle}>{plan.titulo}</Text>
+                            <Text style={styles.planDate}>{format(new Date(plan.generated_at), "dd MMM yyyy", { locale: es })}</Text>
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
                     </View>
-                    <View style={styles.headerText}>
-                        <Text style={styles.planTitle}>{plan.titulo}</Text>
-                        <Text style={styles.planDate}>{format(new Date(plan.generated_at), "dd MMM yyyy", { locale: es })}</Text>
-                    </View>
-                    {hasStaffAccess && onEdit && (
-                        <IconButton
-                            icon="pencil-outline"
-                            size={20}
-                            iconColor={theme.colors.onSurfaceVariant}
-                            onPress={onEdit}
-                            accessibilityLabel="Editar plan de ejercicios"
-                        />
-                    )}
-                </View>
-                {displayText ? (
-                    <Text style={styles.summaryText} numberOfLines={3}>{displayText}</Text>
-                ) : null}
-            </AppCard>
+                    {displayText ? (
+                        <Text style={styles.summaryText} numberOfLines={3}>{displayText}</Text>
+                    ) : null}
+                </AppCard>
+            </Pressable>
 
             {/* Ejercicio de hoy */}
             {todayExercises.length > 0 && (
