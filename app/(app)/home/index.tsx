@@ -121,12 +121,18 @@ export default function HomeScreen() {
                         <View style={styles.headerRow}>
                             <View style={styles.headerInfo}>
                                 <Text style={styles.greeting}>{greeting},</Text>
-                                <Text style={styles.userName}>{userName}</Text>
-                                {isAdmin && <Text style={styles.roleLabel}>Administrador</Text>}
-                                {isProfessional && <Text style={styles.roleLabel}>Profesional</Text>}
-                                {isCaregiver && (
-                                    <Text style={styles.roleLabel}>Cuidador</Text>
-                                )}
+                                <Pressable
+                                    onPress={() => router.push('/(app)/profile' as never)}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Ir al perfil"
+                                >
+                                    <Text style={styles.userName}>{userName}</Text>
+                                    {isAdmin && <Text style={styles.roleLabel}>Administrador</Text>}
+                                    {isProfessional && <Text style={styles.roleLabel}>Profesional</Text>}
+                                    {isCaregiver && (
+                                        <Text style={styles.roleLabel}>Cuidador</Text>
+                                    )}
+                                </Pressable>
                             </View>
                             <Pressable
                                 style={styles.bellButton}
