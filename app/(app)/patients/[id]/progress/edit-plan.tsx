@@ -5,7 +5,7 @@ import { fetchOlderAdultSftApplications } from '@/src/api/sftApi';
 import { fetchExercisePlans, generateExercisePlan } from '@/src/services/exercisePlanService';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 export default function EditPlanSheet() {
@@ -54,7 +54,6 @@ export default function EditPlanSheet() {
         if (!patientId || isRegenerating) return;
         setIsRegenerating(true);
         try {
-            // Get latest SFT application
             const applications = await fetchOlderAdultSftApplications(Number(patientId));
             if (!applications || applications.length === 0) {
                 console.error('No hay baterías SFT registradas para este paciente');
@@ -63,7 +62,6 @@ export default function EditPlanSheet() {
             const latestApp = applications[0];
             const batteryId = String(latestApp.idAplicacionSft);
 
-            // Generate new plan with IA
             await generateExercisePlan(
                 { id: patientId } as any,
                 [],
@@ -71,7 +69,6 @@ export default function EditPlanSheet() {
                 batteryId,
             );
 
-            // Reload the plan
             await loadPlan();
         } catch (error) {
             console.error('Error regenerando plan:', error);
@@ -86,8 +83,11 @@ export default function EditPlanSheet() {
     return (
         <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
             <Stack.Screen options={{ title: 'Editar plan de ejercicios' }} />
-            <View style={styles.container}>
-                {/* Regenerate button */}
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                 <View style={styles.regenerateSection}>
                     <AppButton
                         label={isRegenerating ? 'Regenerando con IA...' : 'Regenerar con IA'}
@@ -96,6 +96,7 @@ export default function EditPlanSheet() {
                         onPress={handleRegenerate}
                         loading={isRegenerating}
                         disabled={isRegenerating || isLoading}
+                        style={styles.regenerateButton}
                         accessibilityLabel="Regenerar plan con inteligencia artificial"
                     />
                     <Text style={styles.regenerateHint}>
@@ -105,7 +106,6 @@ export default function EditPlanSheet() {
 
                 <View style={styles.divider} />
 
-                {/* Existing form */}
                 <ExercisePlanForm
                     patientId={patientId!}
                     initialData={initialData}
@@ -118,17 +118,22 @@ export default function EditPlanSheet() {
                         router.back();
                     }}
                 />
-            </View>
+            </ScrollView>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1 },
-    regenerateSection: {
+    scrollContent: {
         paddingHorizontal: 16,
+        paddingBottom: 32,
+    },
+    regenerateSection: {
         paddingVertical: 12,
-        gap: 4,
+        gap: 6,
+    },
+    regenerateButton: {
+        alignSelf: 'stretch',
     },
     regenerateHint: {
         fontFamily: 'Montserrat_400Regular',
@@ -139,7 +144,6 @@ const styles = StyleSheet.create({
     divider: {
         height: 1,
         backgroundColor: '#e5e7eb',
-        marginHorizontal: 16,
-        marginBottom: 8,
+        marginVertical: 8,
     },
 });
