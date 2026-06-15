@@ -1,4 +1,3 @@
-import { ActivePlanCard } from '@/src/components/results/ActivePlanCard';
 import { ResultChart } from '@/src/components/results/ResultChart';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
@@ -6,15 +5,13 @@ import { BatteryDetailSkeleton } from '@/src/components/ui/PatientDetailSkeleton
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { exportBatteryXlsx } from '@/src/api/reportsApi';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
-import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import type { BatteryWithResults } from '@/src/types/battery.types';
 import type { Patient } from '@/src/types/database.types';
-import type { ExercisePlan } from '@/src/types/exercise.types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
@@ -31,7 +28,6 @@ export default function BatteryDetailScreen() {
     const theme = useTheme();
     const [battery, setBattery] = useState<BatteryWithResults | null>(null);
     const [patient, setPatient] = useState<Patient | null>(null);
-    const [activePlan, setActivePlan] = useState<ExercisePlan | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const { isAdmin, isProfessional } = usePermissions();
@@ -41,13 +37,11 @@ export default function BatteryDetailScreen() {
         const load = async () => {
             if (!batteryId) return;
             try {
-                const [batteryData, plans, patientData] = await Promise.all([
+                const [batteryData, patientData] = await Promise.all([
                     fetchBatteryWithResults(batteryId),
-                    fetchExercisePlans(patientId!),
                     patientId ? fetchPatientById(patientId) : null,
                 ]);
                 setBattery(batteryData);
-                setActivePlan(plans[0] ?? null);
                 setPatient(patientData);
             } catch (error) {
                 console.error('Error:', error);
@@ -164,27 +158,6 @@ export default function BatteryDetailScreen() {
                 );
             })}
 
-            {/* Exercise plan section */}
-            {hasStaffAccess && battery.results.length > 0 && (
-                <>
-                    {activePlan ? (
-                        <ActivePlanCard
-                            plan={activePlan}
-                            onPress={() => router.push(`/(app)/patients/${patientId}/progress` as never)}
-                        />
-                    ) : (
-                        <AppButton
-                            label="Crear plan de ejercicios"
-                            variant="filled"
-                            icon="dumbbell"
-                            onPress={() => router.push(`/(app)/patients/${patientId}/progress` as never)}
-                            style={styles.createPlanButton}
-                            accessibilityLabel="Crear plan de ejercicios con inteligencia artificial"
-                        />
-                    )}
-                </>
-            )}
-
             <View style={styles.bottomPadding} />
         </ScrollView>
     );
@@ -210,7 +183,6 @@ const styles = StyleSheet.create({
     value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
     resultNotes: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#374151', marginTop: 6, fontStyle: 'italic' },
-    createPlanButton: { marginTop: 24 },
     exportButton: { marginBottom: 16 },
     bottomPadding: { height: 32 },
 });
