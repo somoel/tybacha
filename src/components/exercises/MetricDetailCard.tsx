@@ -22,15 +22,17 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
 
     const now = new Date();
 
-    const days: { date: string; effort: number | null; pain: number | null }[] = [];
+    const days: { date: string; effort: number | null; pain: number | null; hasExercise: boolean }[] = [];
     for (let i = 29; i >= 0; i--) {
         const d = subDays(now, i);
         const key = format(d, 'yyyy-MM-dd');
-        const dayRecords = records.filter((r) => r.fechaProgramada === key && r.estado === 'completado');
-        const effortVals = dayRecords.map((r) => r.esfuerzoPercibido).filter((v): v is number => v != null);
-        const painVals = dayRecords.map((r) => r.dolorReportado).filter((v): v is number => v != null);
+        const allDayRecords = records.filter((r) => r.fechaProgramada === key);
+        const completedDayRecords = allDayRecords.filter((r) => r.estado === 'completado');
+        const effortVals = completedDayRecords.map((r) => r.esfuerzoPercibido).filter((v): v is number => v != null);
+        const painVals = completedDayRecords.map((r) => r.dolorReportado).filter((v): v is number => v != null);
         days.push({
             date: key,
+            hasExercise: allDayRecords.length > 0,
             effort: effortVals.length > 0 ? effortVals.reduce((a, b) => a + b, 0) / effortVals.length : null,
             pain: painVals.length > 0 ? painVals.reduce((a, b) => a + b, 0) / painVals.length : null,
         });
@@ -41,25 +43,25 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
     const effortLineData = days.map((d, i) => ({
         value: d.effort ?? 0,
         label: i % 7 === 0 || i === days.length - 1 ? format(new Date(d.date), 'dd MMM', { locale: es }) : '',
-        hideDataPoint: d.effort === null,
+        hideDataPoint: !d.hasExercise,
         dataPointColor: '#7c3aed',
-        dataPointRadius: d.effort !== null ? 4 : 0,
-        showStrip: d.effort === null,
-        stripColor: '#f1f5f9',
-        stripWidth: spacing,
-        stripOpacity: 0.7,
+        dataPointRadius: d.hasExercise ? 4 : 0,
+        showStrip: !d.hasExercise,
+        stripColor: '#cbd5e1',
+        stripWidth: spacing * 1.1,
+        stripOpacity: 1,
     }));
 
     const painLineData = days.map((d, i) => ({
         value: d.pain ?? 0,
         label: i % 7 === 0 || i === days.length - 1 ? format(new Date(d.date), 'dd MMM', { locale: es }) : '',
-        hideDataPoint: d.pain === null,
+        hideDataPoint: !d.hasExercise,
         dataPointColor: '#c62828',
-        dataPointRadius: d.pain !== null ? 4 : 0,
-        showStrip: d.pain === null,
-        stripColor: '#fef2f2',
-        stripWidth: spacing,
-        stripOpacity: 0.7,
+        dataPointRadius: d.hasExercise ? 4 : 0,
+        showStrip: !d.hasExercise,
+        stripColor: '#cbd5e1',
+        stripWidth: spacing * 1.1,
+        stripOpacity: 1,
     }));
 
     const hasData = days.some((d) => d.effort !== null || d.pain !== null);
@@ -144,15 +146,15 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                                 <Text style={styles.legendText}>Dolor</Text>
                             </View>
                             <View style={styles.legendItem}>
-                                <View style={[styles.legendDot, { backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#d1d5db' }]} />
-                                <Text style={styles.legendText}>Sin datos</Text>
+                                <View style={[styles.legendDot, { backgroundColor: '#cbd5e1' }]} />
+                                <Text style={styles.legendText}>Sin ejercicio</Text>
                             </View>
                         </View>
                     </View>
                 ) : (
                     <View style={styles.emptyState}>
                         <MaterialCommunityIcons name="chart-line-variant" size={28} color="#d1d5db" />
-                        <Text style={styles.emptyText}>Sin datos de esfuerzo o dolor</Text>
+                        <Text style={styles.emptyText}>Sin registros de ejercicios</Text>
                     </View>
                 )}
 
