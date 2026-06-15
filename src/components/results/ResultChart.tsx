@@ -108,67 +108,68 @@ function NormalizedBar({
     }
 
     return (
-        <View style={barStyles.row}>
-            <View style={barStyles.barContainer}>
-                <View style={barStyles.track}>
-                    {previousValue !== undefined && (
-                        <View
-                            style={[
-                                barStyles.previousFill,
-                                {
-                                    width: `${normRange
-                                        ? calculateNormativePercentage(previousValue, normRange, higherIsBetter)
-                                        : legacyRanges
-                                            ? calculateLegacyPercentage(previousValue, legacyRanges)
-                                            : 50}%`,
-                                    backgroundColor: theme.colors.outlineVariant,
-                                },
-                            ]}
-                        />
-                    )}
-                    <View
-                        style={[
-                            barStyles.currentFill,
-                            {
-                                width: `${percentage}%`,
-                                backgroundColor: color,
-                            },
-                        ]}
-                    />
-                    <View
-                        style={[
-                            barStyles.referenceLine,
-                            { left: `${avgPercentage}%`, backgroundColor: '#94a3b8' },
-                        ]}
-                    />
-                    <View
-                        style={[
-                            barStyles.referenceLine,
-                            { left: `${excellentPercentage}%`, backgroundColor: '#16a34a' },
-                        ]}
-                    />
-                </View>
-                <View style={barStyles.referenceLabels}>
-                    <Text style={barStyles.referenceLabel}>Prom.</Text>
-                    <Text style={barStyles.referenceLabel}>Excel.</Text>
-                </View>
-            </View>
-            <View style={barStyles.valueCol}>
-                <View style={barStyles.valueRow}>
-                    <Text style={[barStyles.valueText, { color }]}>
-                        {value} {unit}
-                    </Text>
+        <View style={barStyles.wrapper}>
+            {/* Header: nombre + valor + badge */}
+            <View style={barStyles.headerRow}>
+                <Text style={barStyles.testName}>{value} {unit}</Text>
+                <View style={barStyles.headerRight}>
                     <View style={[barStyles.badge, { backgroundColor: badgeBg }]}>
                         <Text style={[barStyles.badgeText, { color }]}>{label}</Text>
                     </View>
                 </View>
-                {notes ? (
-                    <View style={barStyles.notesRow}>
-                        <MaterialCommunityIcons name="information-outline" size={12} color="#94a3b8" />
-                        <Text style={barStyles.notesText} numberOfLines={2}>{notes}</Text>
-                    </View>
-                ) : null}
             </View>
+
+            {/* Barra full-width */}
+            <View style={barStyles.track}>
+                {previousValue !== undefined && (
+                    <View
+                        style={[
+                            barStyles.previousFill,
+                            {
+                                width: `${normRange
+                                    ? calculateNormativePercentage(previousValue, normRange, higherIsBetter)
+                                    : legacyRanges
+                                        ? calculateLegacyPercentage(previousValue, legacyRanges)
+                                        : 50}%`,
+                                backgroundColor: theme.colors.outlineVariant,
+                            },
+                        ]}
+                    />
+                )}
+                <View
+                    style={[
+                        barStyles.currentFill,
+                        {
+                            width: `${percentage}%`,
+                            backgroundColor: color,
+                        },
+                    ]}
+                />
+                <View
+                    style={[
+                        barStyles.referenceLine,
+                        { left: `${avgPercentage}%`, backgroundColor: '#94a3b8' },
+                    ]}
+                />
+                <View
+                    style={[
+                        barStyles.referenceLine,
+                        { left: `${excellentPercentage}%`, backgroundColor: '#16a34a' },
+                    ]}
+                />
+            </View>
+            <View style={barStyles.referenceLabels}>
+                <Text style={barStyles.referenceLabel}>Prom.</Text>
+                <Text style={barStyles.referenceLabel}>Excel.</Text>
+            </View>
+
+            {/* Observaciones full-width */}
+            {notes ? (
+                <View style={barStyles.notesRow}>
+                    <MaterialCommunityIcons name="information-outline" size={12} color="#94a3b8" />
+                    <Text style={barStyles.notesText} numberOfLines={2}>{notes}</Text>
+                </View>
+            ) : null}
         </View>
     );
 }
@@ -223,13 +224,34 @@ export function ResultChart({ results, previousResults, patientGender, patientBi
 }
 
 const barStyles = StyleSheet.create({
-    row: {
+    wrapper: { gap: 6 },
+    headerRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        gap: 12,
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
-    barContainer: {
-        flex: 1,
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    testName: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 13,
+        color: '#374151',
+    },
+    valueText: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 14,
+    },
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    badgeText: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 9,
     },
     track: {
         height: 20,
@@ -271,34 +293,11 @@ const barStyles = StyleSheet.create({
         fontSize: 8,
         color: '#94a3b8',
     },
-    valueCol: {
-        alignItems: 'flex-end',
-        minWidth: 120,
-        gap: 4,
-    },
-    valueRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-    },
-    valueText: {
-        fontFamily: 'Montserrat_700Bold',
-        fontSize: 14,
-    },
-    badge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    badgeText: {
-        fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 9,
-    },
     notesRow: {
         flexDirection: 'row',
         alignItems: 'flex-start',
         gap: 4,
-        maxWidth: 160,
+        marginTop: 2,
     },
     notesText: {
         fontFamily: 'Montserrat_400Regular',
@@ -348,6 +347,6 @@ const styles = StyleSheet.create({
     testName: {
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 13,
-        color: '#374151',
+        color: '#1f2937',
     },
 });
