@@ -118,9 +118,9 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                         height={160}
                         maxValue={10}
                         noOfSections={5}
-                        spacing={50}
-                        initialSpacing={16}
-                        endSpacing={16}
+                        spacing={40}
+                        initialSpacing={8}
+                        endSpacing={8}
                         adjustToWidth
                         xAxisLabelTextStyle={styles.xAxisLabel}
                         xAxisLabelsHeight={28}
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     headerText: { flex: 1 },
     title: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937' },
     subtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2 },
-    chartSection: { marginBottom: 12 },
+    chartSection: { marginBottom: 12, width: '100%' as const },
     emptyState: { alignItems: 'center', paddingVertical: 24, gap: 8 },
     emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#9ca3af' },
     lineLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 8 },
