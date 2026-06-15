@@ -184,7 +184,7 @@ export function ResultChart({ results, previousResults, patientGender, patientBi
                         <Text style={styles.legendText}>Anterior</Text>
                     </View>
                     <View style={styles.legendItem}>
-                        <View style={[styles.legendDot, { backgroundColor: '#94a3b8', opacity: 0.4 }]} />
+                        <View style={[styles.legendDot, { backgroundColor: '#dbeafe' }]} />
                         <Text style={styles.legendText}>Rango normal</Text>
                     </View>
                     <View style={styles.legendItem}>
@@ -270,8 +270,8 @@ const barStyles = StyleSheet.create({
         position: 'absolute',
         top: 0,
         height: '100%',
-        backgroundColor: '#94a3b8',
-        opacity: 0.3,
+        backgroundColor: '#dbeafe',
+        borderRadius: 12,
     },
     currentFill: {
         position: 'absolute',
