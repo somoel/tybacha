@@ -26,15 +26,21 @@ const TEST_TYPE_BY_ORDER: Record<number, SFTTestType> = {
 };
 
 const TEST_TYPE_BY_NORMALIZED_NAME: Record<string, SFTTestType> = {
+    // Canonical names (matching seed / TEST_NAMES)
+    'sentarse y levantarse de una silla': 'chair_stand',
+    'flexiones del brazo': 'arm_curl',
+    'caminar 6 minutos': 'six_min_walk',
+    'marcha de dos minutos': 'two_min_step',
+    'flexion del tronco en silla': 'chair_sit_reach',
+    'juntar las manos tras la espalda': 'back_scratch',
+    'levantarse caminar y volverse a sentar': 'up_and_go',
+    // Legacy seed names (for databases that haven't been re-seeded)
     'sentarse y levantarse de silla': 'chair_stand',
     'flexion de codo': 'arm_curl',
-    'flexion de codo arm curl': 'arm_curl',
     'caminata de 6 minutos': 'six_min_walk',
     'marcha estacionaria 2 minutos': 'two_min_step',
     'sentado y extenderse': 'chair_sit_reach',
-    'sentado y extenderse chair sit and reach': 'chair_sit_reach',
     'rascarse la espalda': 'back_scratch',
-    'rascarse la espalda back scratch': 'back_scratch',
     '8 foot up and go': 'up_and_go',
 };
 

@@ -21,7 +21,7 @@ import {
   getPerformanceCategory,
   getNormativeRange,
 } from '../../../../../../shared/constants/normativeRanges.js';
-import type { SFTTestType, PatientGender } from '../../../../../../shared/constants/normativeRanges.js';
+import { TEST_NAMES, type SFTTestType, type PatientGender } from '../../../../../../shared/constants/normativeRanges.js';
 
 const resultSchema = z.object({
   idPruebaSft: z.number().int().positive(),
@@ -515,7 +515,7 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
           const birthDate = adult.fecha_nacimiento ? String(adult.fecha_nacimiento) : null;
           const perf = testType ? calculatePerformance(valor, testType, gender, birthDate) : { label: row.clasificacion ?? '', percentage: 0 };
           return {
-            prueba: row.prueba_nombre ?? `Prueba ${orden}`,
+            prueba: testType ? TEST_NAMES[testType] : (row.prueba_nombre ?? `Prueba ${orden}`),
             valor,
             unidad: row.unidad_resultado ?? '',
             desempeno: perf.label,

@@ -34,6 +34,17 @@ export interface NormativeRange {
 //  Ranges by gender × age band (units already converted)
 // ────────────────────────────────────────────────────────────
 
+/** Canonical display names for each SFT test (Spanish). */
+export const TEST_NAMES: Record<SFTTestType, string> = {
+    chair_stand: 'Sentarse y levantarse de una silla',
+    arm_curl: 'Flexiones del brazo',
+    six_min_walk: 'Caminar 6 minutos',
+    two_min_step: 'Marcha de dos minutos',
+    chair_sit_reach: 'Flexión del tronco en silla',
+    back_scratch: 'Juntar las manos tras la espalda',
+    up_and_go: 'Levantarse, caminar y volverse a sentar',
+};
+
 export const NORMATIVE_RANGES: Record<SFTTestType, Record<PatientGender, Record<AgeBand, NormativeRange>>> = {
     // ─── Sentarse y levantarse de una silla (reps) ───
     chair_stand: {

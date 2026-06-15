@@ -28,13 +28,13 @@ const rolePermissions: Record<string, string[]> = {
 };
 
 const sftTests = [
-  { nombre: 'Sentarse y levantarse de silla', unidad: 'reps', orden: 1 },
-  { nombre: 'Flexion de codo', unidad: 'reps', orden: 2 },
-  { nombre: 'Caminata de 6 minutos', unidad: 'metros', orden: 3 },
-  { nombre: 'Marcha estacionaria 2 minutos', unidad: 'pasos', orden: 4 },
-  { nombre: 'Sentado y extenderse', unidad: 'cm', orden: 5 },
-  { nombre: 'Rascarse la espalda', unidad: 'cm', orden: 6 },
-  { nombre: '8-Foot Up-and-Go', unidad: 'segundos', orden: 7 },
+  { nombre: 'Sentarse y levantarse de una silla', unidad: 'reps', orden: 1 },
+  { nombre: 'Flexiones del brazo', unidad: 'reps', orden: 2 },
+  { nombre: 'Caminar 6 minutos', unidad: 'metros', orden: 3 },
+  { nombre: 'Marcha de dos minutos', unidad: 'pasos', orden: 4 },
+  { nombre: 'Flexión del tronco en silla', unidad: 'cm', orden: 5 },
+  { nombre: 'Juntar las manos tras la espalda', unidad: 'cm', orden: 6 },
+  { nombre: 'Levantarse, caminar y volverse a sentar', unidad: 'segundos', orden: 7 },
 ];
 
 async function main() {
