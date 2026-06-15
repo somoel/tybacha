@@ -54,7 +54,7 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }
     const { isAdmin, isProfessional } = usePermissions();
     const hasStaffAccess = isAdmin || isProfessional;
     const todayKey = getTodayKey();
-    const dayCardWidth = 170;
+    const dayCardWidth = 140;
 
     if (!plan) {
         return (
@@ -157,7 +157,6 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }
             )}
 
             {/* Plan completo - scroll horizontal */}
-            <Text style={styles.sectionLabel}>Plan de la semana</Text>
             <ScrollView
                 horizontal
                 pagingEnabled={false}
@@ -329,7 +328,7 @@ const styles = StyleSheet.create({
     dayCard: {
         backgroundColor: '#ffffff',
         borderRadius: 12,
-        padding: 12,
+        padding: 8,
         borderWidth: 1,
         borderColor: '#e5e7eb',
     },
@@ -337,7 +336,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 10,
+        marginBottom: 6,
     },
     dayCardHeaderLeft: {
         flexDirection: 'row',
@@ -367,7 +366,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingVertical: 5,
+        paddingVertical: 3,
         borderBottomWidth: 1,
         borderBottomColor: '#f1f5f9',
     },
