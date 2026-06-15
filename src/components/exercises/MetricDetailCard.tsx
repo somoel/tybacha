@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-import { BarChart } from 'react-native-gifted-charts';
+import { LineChart } from 'react-native-gifted-charts';
 
 interface MetricDetailCardProps {
     records: ApiExerciseRecord[];
@@ -19,6 +19,15 @@ function getWeekKey(dateStr: string): string {
     const monday = new Date(d);
     monday.setDate(d.getDate() + mondayOffset);
     return format(monday, 'yyyy-MM-dd');
+}
+
+function getWeekLabel(dateStr: string): string {
+    const d = new Date(dateStr);
+    const dayOfWeek = d.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + mondayOffset);
+    return format(monday, 'dd MMM', { locale: es });
 }
 
 export function MetricDetailCard({ records }: MetricDetailCardProps) {
@@ -49,21 +58,35 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
 
     const weekEntries = Array.from(weekMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
-    const effortLineData = weekEntries.map(([, w]) => ({
-        value: w.effortCount > 0 ? w.effortSum / w.effortCount : 0,
-        label: '',
-        hideDataPoint: false,
-        dataPointColor: '#7c3aed',
-        dataPointRadius: 4,
-    }));
+    const effortLineData = weekEntries.map(([key, w]) => {
+        const val = w.effortCount > 0 ? w.effortSum / w.effortCount : 0;
+        return {
+            value: val,
+            label: getWeekLabel(key),
+            dataPointText: val > 0 ? val.toFixed(1) : '',
+            hideDataPoint: false,
+            dataPointColor: '#7c3aed',
+            dataPointRadius: 5,
+            textColor: '#7c3aed',
+            textFontSize: 10,
+            textShiftY: -14,
+        };
+    });
 
-    const painLineData = weekEntries.map(([, w]) => ({
-        value: w.painCount > 0 ? w.painSum / w.painCount : 0,
-        label: '',
-        hideDataPoint: false,
-        dataPointColor: '#c62828',
-        dataPointRadius: 4,
-    }));
+    const painLineData = weekEntries.map(([key, w]) => {
+        const val = w.painCount > 0 ? w.painSum / w.painCount : 0;
+        return {
+            value: val,
+            label: getWeekLabel(key),
+            dataPointText: val > 0 ? val.toFixed(1) : '',
+            hideDataPoint: false,
+            dataPointColor: '#c62828',
+            dataPointRadius: 5,
+            textColor: '#c62828',
+            textFontSize: 10,
+            textShiftY: 14,
+        };
+    });
 
     const hasLineData = effortLineData.some((d) => d.value > 0) || painLineData.some((d) => d.value > 0);
 
@@ -87,45 +110,53 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                 </View>
             </View>
 
-            {hasLineData && (
+            {hasLineData ? (
                 <View style={styles.chartSection}>
-                    <Text style={styles.sectionTitle}>Tendencia de esfuerzo y dolor</Text>
-                    <BarChart
-                        data={effortLineData.map(() => ({ value: 0 }))}
-                        height={100}
+                    <LineChart
+                        data={effortLineData}
+                        data2={painLineData}
+                        height={150}
                         maxValue={10}
                         noOfSections={5}
-                        barWidth={0}
-                        spacing={24}
-                        xAxisLength={200}
+                        spacing={60}
+                        initialSpacing={20}
+                        endSpacing={20}
+                        xAxisLength={280}
                         xAxisLabelTextStyle={styles.xAxisLabel}
+                        xAxisLabelsHeight={30}
+                        rotateLabel
                         hideYAxisText
-                        hideRules
-                        showXAxisIndices={false}
+                        yAxisThickness={0}
                         xAxisThickness={1}
                         xAxisColor="#e5e7eb"
-                        yAxisThickness={0}
-                        showLine
-                        lineData={effortLineData}
-                        lineConfig={{
-                            color: '#7c3aed',
-                            thickness: 2,
-                            curved: true,
-                            hideDataPoints: false,
-                            dataPointsColor: '#7c3aed',
-                            dataPointsRadius: 4,
-                        }}
-                        lineData2={painLineData}
-                        lineConfig2={{
-                            color: '#c62828',
-                            thickness: 2,
-                            curved: true,
-                            hideDataPoints: false,
-                            dataPointsColor: '#c62828',
-                            dataPointsRadius: 4,
-                        }}
+                        rulesType="dashed"
+                        rulesColor="#f1f5f9"
+                        rulesThickness={1}
+                        hideDataPoints={false}
+                        dataPointsRadius1={5}
+                        dataPointsColor1="#7c3aed"
+                        dataPointsRadius2={5}
+                        dataPointsColor2="#c62828"
+                        textColor1="#7c3aed"
+                        textColor2="#c62828"
+                        textFontSize1={10}
+                        textFontSize2={10}
+                        showValuesAsDataPointsText
+                        curved
+                        curvature={0.2}
+                        areaChart
+                        areaChart1
+                        areaChart2
+                        startFillColor1="#7c3aed"
+                        endFillColor1="#7c3aed"
+                        startOpacity1={0.15}
+                        endOpacity1={0.02}
+                        startFillColor2="#c62828"
+                        endFillColor2="#c62828"
+                        startOpacity2={0.15}
+                        endOpacity2={0.02}
                         isAnimated
-                        animationDuration={600}
+                        animationDuration={800}
                     />
                     <View style={styles.lineLegend}>
                         <View style={styles.legendItem}>
@@ -138,11 +169,15 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                         </View>
                     </View>
                 </View>
+            ) : (
+                <View style={styles.emptyState}>
+                    <MaterialCommunityIcons name="chart-line-variant" size={28} color="#d1d5db" />
+                    <Text style={styles.emptyText}>Sin datos de esfuerzo o dolor</Text>
+                </View>
             )}
 
             {(avgEffort != null || avgPain != null) && (
                 <View style={styles.averagesContainer}>
-                    <Text style={styles.sectionTitle}>Promedios globales</Text>
                     <View style={styles.averagesRow}>
                         {avgEffort != null && (
                             <View style={styles.averageItem}>
@@ -150,7 +185,7 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                                     <MaterialCommunityIcons name="arm-flex" size={16} color="#7c3aed" />
                                 </View>
                                 <View>
-                                    <Text style={styles.averageLabel}>Esfuerzo</Text>
+                                    <Text style={styles.averageLabel}>Esfuerzo promedio</Text>
                                     <Text style={[styles.averageValue, { color: '#7c3aed' }]}>{avgEffort.toFixed(1)}/10</Text>
                                 </View>
                             </View>
@@ -161,7 +196,7 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                                     <MaterialCommunityIcons name="heart-pulse" size={16} color="#c62828" />
                                 </View>
                                 <View>
-                                    <Text style={styles.averageLabel}>Dolor</Text>
+                                    <Text style={styles.averageLabel}>Dolor promedio</Text>
                                     <Text style={[styles.averageValue, { color: '#c62828' }]}>{avgPain.toFixed(1)}/10</Text>
                                 </View>
                             </View>
@@ -180,17 +215,18 @@ const styles = StyleSheet.create({
     headerText: { flex: 1 },
     title: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937' },
     subtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2 },
-    chartSection: { marginBottom: 16 },
-    sectionTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#374151', marginBottom: 12 },
-    lineLegend: { flexDirection: 'row', gap: 16, marginTop: 8 },
+    chartSection: { marginBottom: 12 },
+    emptyState: { alignItems: 'center', paddingVertical: 24, gap: 8 },
+    emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#9ca3af' },
+    lineLegend: { flexDirection: 'row', justifyContent: 'center', gap: 20, marginTop: 8 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    legendLine: { width: 16, height: 3, borderRadius: 2 },
-    legendText: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
+    legendLine: { width: 18, height: 3, borderRadius: 2 },
+    legendText: { fontFamily: 'Montserrat_500Medium', fontSize: 11, color: '#6b7280' },
     xAxisLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 9, color: '#9ca3af' },
-    averagesContainer: { marginTop: 4 },
-    averagesRow: { flexDirection: 'row', gap: 20 },
+    averagesContainer: { marginTop: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+    averagesRow: { flexDirection: 'row', gap: 24 },
     averageItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     averageIcon: { width: 32, height: 32, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-    averageLabel: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
-    averageValue: { fontFamily: 'Montserrat_700Bold', fontSize: 16 },
+    averageLabel: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
+    averageValue: { fontFamily: 'Montserrat_700Bold', fontSize: 15 },
 });
