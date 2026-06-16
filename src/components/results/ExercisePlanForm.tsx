@@ -5,7 +5,7 @@ import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { createExercisePlan, updateExercisePlan } from '@/src/services/exercisePlanService';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
@@ -56,6 +56,7 @@ interface ExercisePlanFormProps {
     aiError?: string | null;
     editMode?: boolean;
     planId?: string;
+    hideActions?: boolean;
     onSuccess?: () => void;
     onCancel?: () => void;
 }
@@ -79,16 +80,25 @@ function makeDefaultValues(data?: ExercisePlanFormData | null): PlanFormValues {
     };
 }
 
-export function ExercisePlanForm({
-    patientId,
-    initialData,
-    isAiFailed = false,
-    aiError,
-    editMode = false,
-    planId,
-    onSuccess,
-    onCancel,
-}: ExercisePlanFormProps) {
+export interface ExercisePlanFormHandle {
+    submit: () => void;
+    isSaving: boolean;
+}
+
+export const ExercisePlanForm = forwardRef<ExercisePlanFormHandle, ExercisePlanFormProps>(function ExercisePlanForm(
+    {
+        patientId,
+        initialData,
+        isAiFailed = false,
+        aiError,
+        editMode = false,
+        planId,
+        hideActions = false,
+        onSuccess,
+        onCancel,
+    },
+    ref,
+) {
     const theme = useTheme();
     const [isSaving, setIsSaving] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
@@ -97,6 +107,11 @@ export function ExercisePlanForm({
         resolver: zodResolver(planFormSchema),
         defaultValues: makeDefaultValues(initialData),
     });
+
+    useImperativeHandle(ref, () => ({
+        submit: handleSubmit(onSubmit),
+        isSaving,
+    }));
 
     const onSubmit = async (data: PlanFormValues) => {
         if (isSaving) return;
@@ -286,26 +301,28 @@ export function ExercisePlanForm({
                 </AppCard>
             ))}
 
-            <View style={styles.actions}>
-                {onCancel && (
+            {!hideActions && (
+                <View style={styles.actions}>
+                    {onCancel && (
+                        <AppButton
+                            label="Cancelar"
+                            variant="outlined"
+                            onPress={onCancel}
+                            disabled={isSaving}
+                            style={styles.cancelButton}
+                        />
+                    )}
                     <AppButton
-                        label="Cancelar"
-                        variant="outlined"
-                        onPress={onCancel}
+                        label={isSaving ? (editMode ? 'Actualizando...' : 'Guardando...') : (editMode ? 'Actualizar plan' : 'Guardar plan')}
+                        variant="filled"
+                        icon="content-save"
+                        onPress={handleSubmit(onSubmit)}
+                        loading={isSaving}
                         disabled={isSaving}
-                        style={styles.cancelButton}
+                        accessibilityLabel={editMode ? 'Actualizar plan de ejercicios' : 'Guardar plan de ejercicios'}
                     />
-                )}
-                <AppButton
-                    label={isSaving ? (editMode ? 'Actualizando...' : 'Guardando...') : (editMode ? 'Actualizar plan' : 'Guardar plan')}
-                    variant="filled"
-                    icon="content-save"
-                    onPress={handleSubmit(onSubmit)}
-                    loading={isSaving}
-                    disabled={isSaving}
-                    accessibilityLabel={editMode ? 'Actualizar plan de ejercicios' : 'Guardar plan de ejercicios'}
-                />
-            </View>
+                </View>
+            )}
 
             <AppSnackbar
                 visible={snackbar.visible}
@@ -315,7 +332,7 @@ export function ExercisePlanForm({
             />
         </View>
     );
-}
+});
 
 const styles = StyleSheet.create({
     container: { marginTop: 16 },

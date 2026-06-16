@@ -1,5 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
-import { ExercisePlanForm, type ExercisePlanFormData } from '@/src/components/results/ExercisePlanForm';
+import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { ExercisePlanForm, type ExercisePlanFormHandle, type ExercisePlanFormData } from '@/src/components/results/ExercisePlanForm';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { ShimmerOverlay } from '@/src/components/ui/ShimmerOverlay';
 import { fetchOlderAdultSftApplications } from '@/src/api/sftApi';
@@ -17,6 +18,8 @@ export default function EditPlanSheet() {
     const [initialData, setInitialData] = useState<ExercisePlanFormData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRegenerating, setIsRegenerating] = useState(false);
+    const [showRegeneratedSnackbar, setShowRegeneratedSnackbar] = useState(false);
+    const formRef = useRef<ExercisePlanFormHandle>(null);
 
     const formOpacity = useSharedValue(1);
     const formTranslateY = useSharedValue(0);
@@ -115,6 +118,7 @@ export default function EditPlanSheet() {
             console.error('Error regenerando plan:', error);
         } finally {
             setIsRegenerating(false);
+            setShowRegeneratedSnackbar(true);
         }
     };
 
@@ -122,56 +126,76 @@ export default function EditPlanSheet() {
     if (!planId || !initialData) return <ProgressSkeleton />;
 
     return (
-        <ScrollView
-            style={styles.container}
-            contentContainerStyle={styles.scrollContent}
-            contentInsetAdjustmentBehavior="automatic"
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-        >
-            <View style={styles.regenerateSection}>
-                <ShimmerOverlay visible={isRegenerating}>
-                    <AppButton
-                        label={isRegenerating ? 'Regenerando con IA...' : 'Regenerar con IA'}
-                        variant="outlined"
-                        icon="magic-staff"
-                        onPress={handleRegenerate}
-                        loading={isRegenerating}
-                        disabled={isRegenerating || isLoading}
-                        style={styles.regenerateButton}
-                        accessibilityLabel="Regenerar plan con inteligencia artificial"
+        <View style={styles.root}>
+            <ScrollView
+                style={styles.container}
+                contentContainerStyle={styles.scrollContent}
+                contentInsetAdjustmentBehavior="automatic"
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+                <View style={styles.regenerateSection}>
+                    <ShimmerOverlay visible={isRegenerating}>
+                        <AppButton
+                            label={isRegenerating ? 'Regenerando con IA...' : 'Regenerar con IA'}
+                            variant="outlined"
+                            icon="magic-staff"
+                            onPress={handleRegenerate}
+                            loading={isRegenerating}
+                            disabled={isRegenerating || isLoading}
+                            style={styles.regenerateButton}
+                            accessibilityLabel="Regenerar plan con inteligencia artificial"
+                        />
+                    </ShimmerOverlay>
+                    <Text style={styles.regenerateHint}>
+                        Genera un nuevo plan basado en los resultados más recientes de SFT
+                    </Text>
+                </View>
+
+                <View style={styles.divider} />
+
+                <Animated.View style={animatedFormStyle}>
+                    <ExercisePlanForm
+                        ref={formRef}
+                        patientId={patientId!}
+                        initialData={initialData}
+                        editMode
+                        planId={planId}
+                        hideActions
+                        onSuccess={() => {
+                            router.back();
+                        }}
                     />
-                </ShimmerOverlay>
-                <Text style={styles.regenerateHint}>
-                    Genera un nuevo plan basado en los resultados más recientes de SFT
-                </Text>
+                </Animated.View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+                <AppButton
+                    label="Guardar plan"
+                    variant="filled"
+                    icon="content-save"
+                    onPress={() => formRef.current?.submit()}
+                    style={styles.footerButton}
+                    accessibilityLabel="Guardar plan de ejercicios"
+                />
             </View>
 
-            <View style={styles.divider} />
-
-            <Animated.View style={animatedFormStyle}>
-                <ExercisePlanForm
-                    patientId={patientId!}
-                    initialData={initialData}
-                    editMode
-                    planId={planId}
-                    onSuccess={() => {
-                        router.back();
-                    }}
-                    onCancel={() => {
-                        router.back();
-                    }}
-                />
-            </Animated.View>
-        </ScrollView>
+            <AppSnackbar
+                visible={showRegeneratedSnackbar}
+                message="Plan regenerado. Puedes editarlo antes de guardar."
+                type="success"
+                onDismiss={() => setShowRegeneratedSnackbar(false)}
+            />
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
+    root: { flex: 1, backgroundColor: '#f8fafc' },
+    container: { flex: 1, paddingHorizontal: 16 },
     scrollContent: {
         paddingTop: 60,
-        paddingBottom: 32,
+        paddingBottom: 80,
     },
     regenerateSection: {
         paddingVertical: 12,
@@ -190,5 +214,20 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#e5e7eb',
         marginVertical: 8,
+    },
+    footer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 16,
+        paddingBottom: 32,
+        paddingTop: 12,
+        backgroundColor: '#f8fafc',
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    footerButton: {
+        alignSelf: 'stretch',
     },
 });
