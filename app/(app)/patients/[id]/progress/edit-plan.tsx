@@ -3,7 +3,7 @@ import { ExercisePlanForm, type ExercisePlanFormData } from '@/src/components/re
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchOlderAdultSftApplications } from '@/src/api/sftApi';
 import { fetchExercisePlans, generateExercisePlan } from '@/src/services/exercisePlanService';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -81,51 +81,51 @@ export default function EditPlanSheet() {
     if (!planId || !initialData) return <ProgressSkeleton />;
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-            <Stack.Screen options={{ title: 'Editar plan de ejercicios' }} />
-            <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-            >
-                <View style={styles.regenerateSection}>
-                    <AppButton
-                        label={isRegenerating ? 'Regenerando con IA...' : 'Regenerar con IA'}
-                        variant="outlined"
-                        icon="magic-staff"
-                        onPress={handleRegenerate}
-                        loading={isRegenerating}
-                        disabled={isRegenerating || isLoading}
-                        style={styles.regenerateButton}
-                        accessibilityLabel="Regenerar plan con inteligencia artificial"
-                    />
-                    <Text style={styles.regenerateHint}>
-                        Genera un nuevo plan basado en los resultados más recientes de SFT
-                    </Text>
-                </View>
-
-                <View style={styles.divider} />
-
-                <ExercisePlanForm
-                    patientId={patientId!}
-                    initialData={initialData}
-                    editMode
-                    planId={planId}
-                    onSuccess={() => {
-                        router.back();
-                    }}
-                    onCancel={() => {
-                        router.back();
-                    }}
+        <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.scrollContent}
+            contentInsetAdjustmentBehavior="automatic"
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+        >
+            <View style={styles.regenerateSection}>
+                <AppButton
+                    label={isRegenerating ? 'Regenerando con IA...' : 'Regenerar con IA'}
+                    variant="outlined"
+                    icon="magic-staff"
+                    onPress={handleRegenerate}
+                    loading={isRegenerating}
+                    disabled={isRegenerating || isLoading}
+                    style={styles.regenerateButton}
+                    accessibilityLabel="Regenerar plan con inteligencia artificial"
                 />
-            </ScrollView>
-        </View>
+                <Text style={styles.regenerateHint}>
+                    Genera un nuevo plan basado en los resultados más recientes de SFT
+                </Text>
+            </View>
+
+            <View style={styles.divider} />
+
+            <ExercisePlanForm
+                patientId={patientId!}
+                initialData={initialData}
+                editMode
+                planId={planId}
+                onSuccess={() => {
+                    router.back();
+                }}
+                onCancel={() => {
+                    router.back();
+                }}
+            />
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16 },
     scrollContent: {
-        paddingHorizontal: 16,
+        paddingTop: 60,
         paddingBottom: 32,
     },
     regenerateSection: {
