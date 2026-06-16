@@ -101,11 +101,11 @@ export default function PlanDetailScreen() {
                         return (
                             <View key={dayKey} style={styles.daySection}>
                                 <Text style={styles.dayLabel}>{DAY_LABELS[dayKey]}</Text>
-                                {dayExercises.map((exercise, i) => (
+                                {dayExercises.map((exercise) => (
                                     <AppCard key={exercise.index} style={styles.exerciseCard}>
                                         <View style={styles.exerciseRow}>
                                             <View style={styles.exerciseIcon}>
-                                                <Text style={styles.exerciseNumber}>{i + 1}</Text>
+                                                <MaterialCommunityIcons name="dumbbell" size={16} color="#1a73e8" />
                                             </View>
                                             <View style={styles.exerciseInfo}>
                                                 <Text style={styles.exerciseName}>{exercise.name}</Text>
@@ -153,7 +153,6 @@ const styles = StyleSheet.create({
     exerciseCard: { marginBottom: 8 },
     exerciseRow: { flexDirection: 'row', gap: 12 },
     exerciseIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#e8f0fe', justifyContent: 'center', alignItems: 'center' },
-    exerciseNumber: { fontFamily: 'Montserrat_700Bold', fontSize: 14, color: '#1a73e8' },
     exerciseInfo: { flex: 1 },
     exerciseName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
     exerciseDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: 2, lineHeight: 16 },
