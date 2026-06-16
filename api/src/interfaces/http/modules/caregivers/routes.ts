@@ -123,13 +123,14 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         from asignacion_cuidador_adulto_mayor ac
         inner join (
           select
-            ep.id_adulto_mayor,
+            pe.id_adulto_mayor,
             avg(case when rep.estado = 'completado' then 1.0 else 0 end) as ratio
           from ejercicio_plan ep
+          inner join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
           left join registro_ejercicio_plan rep
             on rep.id_ejercicio_plan = ep.id_ejercicio_plan
             and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
-          group by ep.id_adulto_mayor
+          group by pe.id_adulto_mayor
         ) comp_per_patient on comp_per_patient.id_adulto_mayor = ac.id_adulto_mayor
         where ac.estado = 'activa'
         group by ac.id_cuidador
@@ -203,14 +204,15 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
     if (patientIds.length > 0) {
       const [compRows] = await pool.query<RowDataPacket[]>(
         `select
-          ep.id_adulto_mayor,
+          pe.id_adulto_mayor,
           avg(case when rep.estado = 'completado' then 1.0 else 0 end) as ratio
         from ejercicio_plan ep
+        inner join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
         left join registro_ejercicio_plan rep
           on rep.id_ejercicio_plan = ep.id_ejercicio_plan
           and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
-        where ep.id_adulto_mayor in (:patientIds)
-        group by ep.id_adulto_mayor`,
+        where pe.id_adulto_mayor in (:patientIds)
+        group by pe.id_adulto_mayor`,
         { patientIds },
       );
       for (const row of compRows) {
@@ -272,14 +274,15 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
     if (patientIds.length > 0) {
       const [compRows] = await pool.query<RowDataPacket[]>(
         `select
-          ep.id_adulto_mayor,
+          pe.id_adulto_mayor,
           avg(case when rep.estado = 'completado' then 1.0 else 0 end) as ratio
         from ejercicio_plan ep
+        inner join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
         left join registro_ejercicio_plan rep
           on rep.id_ejercicio_plan = ep.id_ejercicio_plan
           and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
-        where ep.id_adulto_mayor in (:patientIds)
-        group by ep.id_adulto_mayor`,
+        where pe.id_adulto_mayor in (:patientIds)
+        group by pe.id_adulto_mayor`,
         { patientIds },
       );
       for (const row of compRows) {
