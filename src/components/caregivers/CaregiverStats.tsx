@@ -31,13 +31,13 @@ export function CaregiverStats({
             <View style={styles.statItem}>
                 <MaterialCommunityIcons name="account-group" size={22} color="#006d77" />
                 <Text style={styles.statNumber}>{cantidadPacientes}</Text>
-                <Text style={styles.statLabel}>Pacientes</Text>
+                <Text style={styles.statLabel}>Adultos mayores</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.statItem}>
                 <MaterialCommunityIcons name="clipboard-check" size={22} color="#006d77" />
                 <Text style={styles.statNumber}>{pacientesConPlanActivo}</Text>
-                <Text style={styles.statLabel}>Con plan</Text>
+                <Text style={styles.statLabel}>Con plan activo</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.statItem}>

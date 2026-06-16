@@ -27,7 +27,6 @@ interface PatientRow extends RowDataPacket {
   fecha_nacimiento: string;
   genero: string;
   tiene_plan_activo: number;
-  cumplimiento_semanal: number | null;
   tiene_alerta: number;
   cantidad_baterias: number;
 }
@@ -49,7 +48,7 @@ function mapCaregiver(row: CaregiverRow) {
   };
 }
 
-function mapPatient(row: PatientRow) {
+function mapPatient(row: PatientRow & { cumplimiento_semanal?: number }) {
   return {
     idAdultoMayor: row.id_adulto_mayor,
     nombres: row.nombres,
@@ -96,33 +95,45 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         p.ciudad,
         u.creado_en,
         u.ultimo_acceso_en,
-        coalesce(stats.cantidad_pacientes, 0) as cantidad_pacientes,
-        coalesce(stats.pacientes_con_plan_activo, 0) as pacientes_con_plan_activo,
-        coalesce(stats.cumplimiento_semanal_promedio, 0) as cumplimiento_semanal_promedio
+        coalesce(pac.cantidad_pacientes, 0) as cantidad_pacientes,
+        coalesce(plan_stats.pacientes_con_plan_activo, 0) as pacientes_con_plan_activo,
+        coalesce(comp.cumplimiento_semanal_promedio, 0) as cumplimiento_semanal_promedio
       from usuario u
       inner join perfil_usuario p on p.id_usuario = u.id_usuario
       inner join profesional_cuidador pc
         on pc.id_cuidador = u.id_usuario and pc.estado = 'activa'
       left join (
-        select
-          ac.id_cuidador,
-          count(distinct ac.id_adulto_mayor) as cantidad_pacientes,
-          sum(case when pe.estado = 'activo' then 1 else 0 end) as pacientes_con_plan_activo,
-          coalesce(
-            avg(case when rep.estado = 'completado' then 1.0 else 0 end),
-            0
-          ) as cumplimiento_semanal_promedio
+        select id_cuidador, count(distinct id_adulto_mayor) as cantidad_pacientes
+        from asignacion_cuidador_adulto_mayor
+        where estado = 'activa'
+        group by id_cuidador
+      ) pac on pac.id_cuidador = u.id_usuario
+      left join (
+        select ac.id_cuidador, count(distinct ac.id_adulto_mayor) as pacientes_con_plan_activo
         from asignacion_cuidador_adulto_mayor ac
-        left join plan_ejercicio pe
+        inner join plan_ejercicio pe
           on pe.id_adulto_mayor = ac.id_adulto_mayor and pe.estado = 'activo'
-        left join ejercicio_plan ep
-          on ep.id_plan_ejercicio = pe.id_plan_ejercicio and ep.activo = 1
-        left join registro_ejercicio_plan rep
-          on rep.id_ejercicio_plan = ep.id_ejercicio_plan
-          and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
         where ac.estado = 'activa'
         group by ac.id_cuidador
-      ) stats on stats.id_cuidador = u.id_usuario
+      ) plan_stats on plan_stats.id_cuidador = u.id_usuario
+      left join (
+        select
+          ac.id_cuidador,
+          avg(comp_per_patient.ratio) as cumplimiento_semanal_promedio
+        from asignacion_cuidador_adulto_mayor ac
+        inner join (
+          select
+            ep.id_adulto_mayor,
+            avg(case when rep.estado = 'completado' then 1.0 else 0 end) as ratio
+          from ejercicio_plan ep
+          left join registro_ejercicio_plan rep
+            on rep.id_ejercicio_plan = ep.id_ejercicio_plan
+            and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
+          group by ep.id_adulto_mayor
+        ) comp_per_patient on comp_per_patient.id_adulto_mayor = ac.id_adulto_mayor
+        where ac.estado = 'activa'
+        group by ac.id_cuidador
+      ) comp on comp.id_cuidador = u.id_usuario
       where u.rol = 'cuidador' and u.estado = 'activo'
         and (:actorRol = 'administrador' or pc.id_profesional = :actorId)
         ${searchFilter}
@@ -166,10 +177,6 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         am.genero,
         case when pe.id_plan_ejercicio is not null then 1 else 0 end as tiene_plan_activo,
         coalesce(
-          avg(case when rep.estado = 'completado' then 1.0 else 0 end),
-          0
-        ) as cumplimiento_semanal,
-        coalesce(
           (select 1 from alerta_programada ap
            where ap.id_adulto_mayor = am.id_adulto_mayor and ap.estado = 'pendiente'
            limit 1),
@@ -185,18 +192,36 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
       inner join adulto_mayor am on am.id_adulto_mayor = ac.id_adulto_mayor
       left join plan_ejercicio pe
         on pe.id_adulto_mayor = am.id_adulto_mayor and pe.estado = 'activo'
-      left join ejercicio_plan ep
-        on ep.id_plan_ejercicio = pe.id_plan_ejercicio and ep.activo = 1
-      left join registro_ejercicio_plan rep
-        on rep.id_ejercicio_plan = ep.id_ejercicio_plan
-        and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
       where ac.id_cuidador = :id and ac.estado = 'activa'
-      group by am.id_adulto_mayor, am.nombres, am.apellidos, am.fecha_nacimiento, am.genero, pe.id_plan_ejercicio
       order by am.apellidos, am.nombres`,
       { id },
     );
 
-    const patients = patientRows.map(mapPatient);
+    const patientIds = patientRows.map((r) => r.id_adulto_mayor);
+
+    let complianceMap: Record<number, number> = {};
+    if (patientIds.length > 0) {
+      const [compRows] = await pool.query<RowDataPacket[]>(
+        `select
+          ep.id_adulto_mayor,
+          avg(case when rep.estado = 'completado' then 1.0 else 0 end) as ratio
+        from ejercicio_plan ep
+        left join registro_ejercicio_plan rep
+          on rep.id_ejercicio_plan = ep.id_ejercicio_plan
+          and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
+        where ep.id_adulto_mayor in (:patientIds)
+        group by ep.id_adulto_mayor`,
+        { patientIds },
+      );
+      for (const row of compRows) {
+        complianceMap[row.id_adulto_mayor] = row.ratio;
+      }
+    }
+
+    const patients = patientRows.map((row) => mapPatient({
+      ...row,
+      cumplimiento_semanal: complianceMap[row.id_adulto_mayor] ?? 0,
+    }));
 
     return {
       ...mapCaregiver(caregiver),
@@ -221,10 +246,6 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         am.genero,
         case when pe.id_plan_ejercicio is not null then 1 else 0 end as tiene_plan_activo,
         coalesce(
-          avg(case when rep.estado = 'completado' then 1.0 else 0 end),
-          0
-        ) as cumplimiento_semanal,
-        coalesce(
           (select 1 from alerta_programada ap
            where ap.id_adulto_mayor = am.id_adulto_mayor and ap.estado = 'pendiente'
            limit 1),
@@ -240,17 +261,35 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
       inner join adulto_mayor am on am.id_adulto_mayor = ac.id_adulto_mayor
       left join plan_ejercicio pe
         on pe.id_adulto_mayor = am.id_adulto_mayor and pe.estado = 'activo'
-      left join ejercicio_plan ep
-        on ep.id_plan_ejercicio = pe.id_plan_ejercicio and ep.activo = 1
-      left join registro_ejercicio_plan rep
-        on rep.id_ejercicio_plan = ep.id_ejercicio_plan
-        and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
       where ac.id_cuidador = :id and ac.estado = 'activa'
-      group by am.id_adulto_mayor, am.nombres, am.apellidos, am.fecha_nacimiento, am.genero, pe.id_plan_ejercicio
       order by am.apellidos, am.nombres`,
       { id },
     );
 
-    return patientRows.map(mapPatient);
+    const patientIds = patientRows.map((r) => r.id_adulto_mayor);
+
+    let complianceMap: Record<number, number> = {};
+    if (patientIds.length > 0) {
+      const [compRows] = await pool.query<RowDataPacket[]>(
+        `select
+          ep.id_adulto_mayor,
+          avg(case when rep.estado = 'completado' then 1.0 else 0 end) as ratio
+        from ejercicio_plan ep
+        left join registro_ejercicio_plan rep
+          on rep.id_ejercicio_plan = ep.id_ejercicio_plan
+          and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
+        where ep.id_adulto_mayor in (:patientIds)
+        group by ep.id_adulto_mayor`,
+        { patientIds },
+      );
+      for (const row of compRows) {
+        complianceMap[row.id_adulto_mayor] = row.ratio;
+      }
+    }
+
+    return patientRows.map((row) => mapPatient({
+      ...row,
+      cumplimiento_semanal: complianceMap[row.id_adulto_mayor] ?? 0,
+    }));
   });
 }

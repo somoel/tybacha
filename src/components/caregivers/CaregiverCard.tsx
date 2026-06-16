@@ -39,7 +39,7 @@ export function CaregiverCard({ caregiver, onPress }: CaregiverCardProps) {
         : 'neutral';
     const statusLabel = caregiver.cantidadPacientes > 0
         ? `${compliancePercent}% cumplimiento`
-        : 'Sin pacientes';
+        : 'Sin adultos mayores';
 
     return (
         <AppCard onPress={onPress} accessibilityLabel={`Cuidador ${caregiver.fullName}`}>
@@ -58,8 +58,8 @@ export function CaregiverCard({ caregiver, onPress }: CaregiverCardProps) {
                     <View style={styles.detailRow}>
                         <MaterialCommunityIcons name="account-group" size={14} color={theme.colors.onSurfaceVariant} />
                         <Text style={styles.detail}>
-                            {caregiver.cantidadPacientes} paciente{caregiver.cantidadPacientes !== 1 ? 's' : ''}
-                            {caregiver.pacientesConPlanActivo > 0 && ` · ${caregiver.pacientesConPlanActivo} con plan`}
+                            {caregiver.cantidadPacientes} adulto{caregiver.cantidadPacientes !== 1 ? 's' : ''} mayor{caregiver.cantidadPacientes !== 1 ? 'es' : ''}
+                            {caregiver.pacientesConPlanActivo > 0 && ` · ${caregiver.pacientesConPlanActivo} con plan activo`}
                         </Text>
                     </View>
                 </View>
