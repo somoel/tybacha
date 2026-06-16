@@ -308,7 +308,11 @@ async function fetchPlanWithExercises(idPlanEjercicio: number) {
     creadoPor: plan.creado_por,
     revisadoPor: plan.revisado_por,
     asignadoPor: plan.asignado_por,
-    datosPersonalizacion: plan.datos_personalizacion ? JSON.parse(plan.datos_personalizacion) : null,
+    datosPersonalizacion: plan.datos_personalizacion
+      ? typeof plan.datos_personalizacion === 'string'
+        ? JSON.parse(plan.datos_personalizacion)
+        : plan.datos_personalizacion
+      : null,
     creadoEn: plan.creado_en,
     ejercicios: exerciseRows.map((exercise) => ({
       idEjercicioPlan: exercise.id_ejercicio_plan,
