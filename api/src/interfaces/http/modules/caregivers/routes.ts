@@ -111,9 +111,11 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
       left join (
         select ac.id_cuidador, count(distinct ac.id_adulto_mayor) as pacientes_con_plan_activo
         from asignacion_cuidador_adulto_mayor ac
-        inner join plan_ejercicio pe
-          on pe.id_adulto_mayor = ac.id_adulto_mayor and pe.estado = 'activo'
         where ac.estado = 'activa'
+          and exists (
+            select 1 from plan_ejercicio pe
+            where pe.id_adulto_mayor = ac.id_adulto_mayor and pe.estado = 'activo'
+          )
         group by ac.id_cuidador
       ) plan_stats on plan_stats.id_cuidador = u.id_usuario
       left join (
