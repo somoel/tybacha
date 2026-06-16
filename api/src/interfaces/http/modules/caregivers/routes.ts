@@ -114,7 +114,7 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         where ac.estado = 'activa'
           and exists (
             select 1 from plan_ejercicio pe
-            where pe.id_adulto_mayor = ac.id_adulto_mayor and pe.estado = 'activo'
+            where pe.id_adulto_mayor = ac.id_adulto_mayor and pe.estado not in ('borrador', 'finalizado', 'cancelado')
           )
         group by ac.id_cuidador
       ) plan_stats on plan_stats.id_cuidador = u.id_usuario
@@ -194,7 +194,7 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
       from asignacion_cuidador_adulto_mayor ac
       inner join adulto_mayor am on am.id_adulto_mayor = ac.id_adulto_mayor
       left join plan_ejercicio pe
-        on pe.id_adulto_mayor = am.id_adulto_mayor and pe.estado = 'activo'
+        on pe.id_adulto_mayor = am.id_adulto_mayor and pe.estado not in ('borrador', 'finalizado', 'cancelado')
       where ac.id_cuidador = :id and ac.estado = 'activa'
       order by am.apellidos, am.nombres`,
       { id },
@@ -264,7 +264,7 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
       from asignacion_cuidador_adulto_mayor ac
       inner join adulto_mayor am on am.id_adulto_mayor = ac.id_adulto_mayor
       left join plan_ejercicio pe
-        on pe.id_adulto_mayor = am.id_adulto_mayor and pe.estado = 'activo'
+        on pe.id_adulto_mayor = am.id_adulto_mayor and pe.estado not in ('borrador', 'finalizado', 'cancelado')
       where ac.id_cuidador = :id and ac.estado = 'activa'
       order by am.apellidos, am.nombres`,
       { id },
