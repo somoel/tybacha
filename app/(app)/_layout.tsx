@@ -20,6 +20,7 @@ export default function AppLayout() {
     const isHome = pathname === '/home' || pathname === '/';
     const hideTabBar =
         /\/patients\/[^/]+/.test(pathname) ||
+        /\/caregivers\/[^/]+/.test(pathname) ||
         /\/tests\/[^/]+\/active/.test(pathname);
     const tabBarStyle = hideTabBar
         ? { display: 'none' as const }
