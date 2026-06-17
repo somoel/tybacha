@@ -2,6 +2,7 @@ import { PlanOverviewSection } from '@/src/components/exercises/PlanOverviewSect
 import { ComplianceTrendChart } from '@/src/components/exercises/ComplianceTrendChart';
 import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryItem';
 import { MetricDetailCard } from '@/src/components/exercises/MetricDetailCard';
+import { MonthlyCalendar, type DayState } from '@/src/components/exercises/MonthlyCalendar';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
@@ -10,16 +11,23 @@ import { fetchPatientById } from '@/src/services/patientService';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { ApiExerciseRecord, ApiProgressStats } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { format, subDays } from 'date-fns';
+import {
+    addDays,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isSameDay,
+    isSameMonth,
+    startOfDay,
+    startOfMonth,
+    startOfWeek,
+    subDays,
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
-
-const DAY_KEYS_WEEK = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] as const;
-const DAY_LABELS = ['L', 'M', 'X', 'J', 'V'];
-const DAY_OFFSETS: Record<string, number> = { lunes: 0, martes: 1, miercoles: 2, jueves: 3, viernes: 4 };
 
 function getWeekRange(): { from: string; to: string } {
     const now = new Date();
@@ -35,26 +43,130 @@ function getWeekRange(): { from: string; to: string } {
     };
 }
 
-function getWeekStart(): Date {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const d = new Date(now);
-    d.setDate(d.getDate() + mondayOffset);
-    return d;
+function normalizeDayKey(value: string): string {
+    return value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
 }
 
-function expectedDateForDay(dayKey: string, weekStart: Date): string {
-    const offset = DAY_OFFSETS[dayKey] ?? 0;
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + offset);
-    return format(d, 'yyyy-MM-dd');
+function getWeekRangeForDate(date: Date): { from: string; to: string } {
+    const monday = startOfWeek(date, { weekStartsOn: 1 });
+    const sunday = endOfWeek(date, { weekStartsOn: 1 });
+    return {
+        from: format(monday, 'yyyy-MM-dd'),
+        to: format(sunday, 'yyyy-MM-dd'),
+    };
 }
 
-function getTodayKey(): string {
-    const day = new Date().getDay();
-    const map = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    return map[day];
+function getTodayDateKey(): string {
+    return format(new Date(), 'yyyy-MM-dd');
+}
+
+function computeDayStates(
+    month: Date,
+    activePlan: ExercisePlan | null,
+    exerciseRecords: ApiExerciseRecord[],
+): Record<string, DayState> {
+    const states: Record<string, DayState> = {};
+    if (!activePlan) return states;
+
+    const today = startOfDay(new Date());
+    const monthStart = startOfMonth(month);
+    const monthEnd = endOfMonth(month);
+
+    const normalizedFrequencies = new Set(
+        activePlan.exercises.map((ex) => normalizeDayKey(ex.frequency)),
+    );
+
+    const dayKeyToWeekday: Record<string, number> = {
+        domingo: 0,
+        lunes: 1,
+        martes: 2,
+        miercoles: 3,
+        jueves: 4,
+        viernes: 5,
+        sabado: 6,
+    };
+
+    for (let d = new Date(monthStart); d <= monthEnd; d = addDays(d, 1)) {
+        const dayKey = format(d, 'yyyy-MM-dd');
+        const weekday = d.getDay();
+        const weekdayName = Object.entries(dayKeyToWeekday).find(([, v]) => v === weekday)?.[0];
+        const hasExerciseProgrammed = weekdayName
+            ? normalizedFrequencies.has(weekdayName)
+            : false;
+
+        if (!hasExerciseProgrammed) {
+            states[dayKey] = 'no-exercise';
+            continue;
+        }
+
+        if (d > today) {
+            states[dayKey] = 'future';
+            continue;
+        }
+
+        const dayRecords = exerciseRecords.filter(
+            (r) => r.fechaProgramada === dayKey && r.estado !== 'pendiente',
+        );
+
+        if (dayRecords.length === 0) {
+            states[dayKey] = isSameDay(d, today) ? 'pending' : 'empty';
+            continue;
+        }
+
+        const hasCompleted = dayRecords.some((r) => r.estado === 'completado');
+        states[dayKey] = hasCompleted ? 'completed' : 'omitted';
+    }
+
+    return states;
+}
+
+function computeWeekStatsFromRecords(
+    from: string,
+    to: string,
+    exerciseRecords: ApiExerciseRecord[],
+    activePlan: ExercisePlan | null,
+): { programmed: number; completed: number; omitted: number; compliance: number } | null {
+    if (!activePlan) return null;
+
+    const fromDate = new Date(from + 'T00:00:00');
+    const toDate = new Date(to + 'T00:00:00');
+
+    const dayKeyToWeekday: Record<string, number> = {
+        domingo: 0,
+        lunes: 1,
+        martes: 2,
+        miercoles: 3,
+        jueves: 4,
+        viernes: 5,
+        sabado: 6,
+    };
+
+    let programmed = 0;
+    const cursor = new Date(fromDate);
+    while (cursor <= toDate) {
+        const weekday = cursor.getDay();
+        const weekdayName = Object.entries(dayKeyToWeekday).find(([, v]) => v === weekday)?.[0];
+        if (weekdayName) {
+            const dayExercises = activePlan.exercises.filter(
+                (ex) => normalizeDayKey(ex.frequency) === weekdayName,
+            );
+            programmed += dayExercises.length;
+        }
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    const weekRecords = exerciseRecords.filter(
+        (r) => r.fechaProgramada >= from && r.fechaProgramada <= to,
+    );
+    const completed = weekRecords.filter((r) => r.estado === 'completado').length;
+    const omitted = weekRecords.filter((r) => r.estado === 'omitido').length;
+    const compliance = programmed > 0 ? Math.round((completed / programmed) * 100) : 0;
+
+    return { programmed, completed, omitted, compliance };
 }
 
 export default function ProgressScreen() {
@@ -65,6 +177,8 @@ export default function ProgressScreen() {
     const [progressStats, setProgressStats] = useState<ApiProgressStats[]>([]);
     const [exerciseRecords, setExerciseRecords] = useState<ApiExerciseRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [calendarMonth, setCalendarMonth] = useState<Date>(startOfMonth(new Date()));
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
     useFocusEffect(useCallback(() => {
         let isActive = true;
@@ -86,7 +200,7 @@ export default function ProgressScreen() {
                         fetchApiProgressStats(Number(id)),
                         fetchApiExerciseRecords(
                             Number(id),
-                            format(subDays(new Date(), 90), 'yyyy-MM-dd'),
+                            format(subDays(new Date(), 180), 'yyyy-MM-dd'),
                             format(new Date(), 'yyyy-MM-dd'),
                         ),
                     ]);
@@ -106,11 +220,36 @@ export default function ProgressScreen() {
         return () => { isActive = false; };
     }, [id]));
 
-    if (isLoading) return <ProgressSkeleton />;
+    const todayDateKey = getTodayDateKey();
+    const weekRange = selectedDate
+        ? getWeekRangeForDate(new Date(selectedDate + 'T00:00:00'))
+        : getWeekRange();
+    const currentWeekRange = getWeekRange();
 
-    const weekRange = getWeekRange();
-    const weekStart = getWeekStart();
-    const todayKey = getTodayKey();
+    // Day states for monthly calendar (hook must run unconditionally)
+    const dayStates = useMemo(
+        () => computeDayStates(calendarMonth, activePlan, exerciseRecords),
+        [calendarMonth, activePlan, exerciseRecords],
+    );
+
+    // Weekly stats computed from records as fallback (hook must run unconditionally)
+    const computedWeekStats = useMemo(
+        () => computeWeekStatsFromRecords(weekRange.from, weekRange.to, exerciseRecords, activePlan),
+        [weekRange.from, weekRange.to, exerciseRecords, activePlan],
+    );
+
+    // Recent records (hook must run unconditionally)
+    const recentRecords = useMemo(() => {
+        const filtered = exerciseRecords.filter(
+            (r) => r.estado === 'completado' || r.estado === 'omitido' || r.estado === 'parcial',
+        );
+        if (selectedDate) {
+            return filtered.filter((r) => r.fechaProgramada === selectedDate);
+        }
+        return filtered.slice(0, 10);
+    }, [exerciseRecords, selectedDate]);
+
+    if (isLoading) return <ProgressSkeleton />;
 
     // Find current week stats using robust comparison (handles both string formats)
     const currentWeekStats = progressStats.find((s) => {
@@ -132,38 +271,14 @@ export default function ProgressScreen() {
         ? Math.round((allTimeTotals.completed / allTimeTotals.programmed) * 100)
         : 0;
 
-    // Weekly compliance (from current week stats or calculate from records)
+    // Weekly compliance (from backend stats or calculate from records if not available)
     const weeklyCompliance = currentWeekStats
         ? Math.round(currentWeekStats.porcentaje_cumplimiento)
-        : 0;
-    const weeklyCompleted = currentWeekStats?.ejercicios_completados ?? 0;
-    const weeklyOmitted = currentWeekStats?.ejercicios_omitidos ?? 0;
+        : (computedWeekStats?.compliance ?? 0);
+    const weeklyCompleted = currentWeekStats?.ejercicios_completados ?? computedWeekStats?.completed ?? 0;
+    const weeklyOmitted = currentWeekStats?.ejercicios_omitidos ?? computedWeekStats?.omitted ?? 0;
 
-    // Day status for LMXJV strip (from exercise records)
-    const completedIndices = new Set<number>();
-    const skippedIndices = new Set<number>();
-    exerciseRecords.forEach((record) => {
-        if (record.estado !== 'completado' && record.estado !== 'omitido') return;
-        const exercise = activePlan?.exercises.find(
-            (ex) => expectedDateForDay(ex.frequency, weekStart) === record.fechaProgramada
-        );
-        if (!exercise) return;
-        if (record.estado === 'completado') completedIndices.add(exercise.index);
-        else skippedIndices.add(exercise.index);
-    });
-
-    const dayStatus = DAY_KEYS_WEEK.map((key) => {
-        const dayExercises = activePlan?.exercises.filter((ex) => ex.frequency === key) ?? [];
-        const allCompleted = dayExercises.length > 0 && dayExercises.every((ex) => completedIndices.has(ex.index));
-        const someCompleted = dayExercises.some((ex) => completedIndices.has(ex.index));
-        const isToday = key === todayKey;
-        return { key, allCompleted, someCompleted, isToday, hasExercises: dayExercises.length > 0 };
-    });
-
-    // Recent records (last 10, grouped by date)
-    const recentRecords = exerciseRecords
-        .filter((r) => r.estado === 'completado' || r.estado === 'omitido' || r.estado === 'parcial')
-        .slice(0, 10);
+    const isShowingCurrentWeek = !selectedDate || weekRange.from === currentWeekRange.from;
 
     return (
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
@@ -179,11 +294,12 @@ export default function ProgressScreen() {
             {/* Sección 2: Progreso */}
             <Text style={styles.sectionLabel}>Progreso</Text>
 
-            {/* Esta semana */}
+            {/* Esta semana / Semana seleccionada */}
             <AppCard style={styles.summaryCard}>
                 <View style={styles.summaryDateRow}>
                     <MaterialCommunityIcons name="calendar-week" size={16} color={theme.colors.primary} />
                     <Text style={styles.summaryDate}>
+                        {isShowingCurrentWeek ? 'Esta semana · ' : 'Semana del '}
                         {format(new Date(weekRange.from), 'dd MMM', { locale: es })} – {format(new Date(weekRange.to), 'dd MMM yyyy', { locale: es })}
                     </Text>
                 </View>
@@ -209,39 +325,20 @@ export default function ProgressScreen() {
                     />
                 </View>
 
-                {/* LMXJV strip */}
-                <View style={styles.weekDaysRow}>
-                    {dayStatus.map((day, i) => (
-                        <View
-                            key={day.key}
-                            style={[
-                                styles.dayBadge,
-                                day.isToday && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary },
-                                day.allCompleted && { backgroundColor: '#e8f5e9', borderColor: '#2e7d32' },
-                                !day.hasExercises && { opacity: 0.4 },
-                            ]}
-                        >
-                            <Text
-                                style={[
-                                    styles.dayLabel,
-                                    day.isToday && { color: theme.colors.primary },
-                                    day.allCompleted && { color: '#2e7d32' },
-                                ]}
-                            >
-                                {DAY_LABELS[i]}
-                            </Text>
-                            {day.allCompleted ? (
-                                <MaterialCommunityIcons name="check-circle" size={14} color="#2e7d32" />
-                            ) : day.someCompleted ? (
-                                <MaterialCommunityIcons name="minus-circle" size={14} color={theme.colors.primary} />
-                            ) : day.hasExercises ? (
-                                <MaterialCommunityIcons name="circle-outline" size={14} color="#94a3b8" />
-                            ) : (
-                                <MaterialCommunityIcons name="circle-outline" size={14} color="#d1d5db" />
-                            )}
-                        </View>
-                    ))}
-                </View>
+                {/* Monthly calendar (replaces LMXJV strip) */}
+                <MonthlyCalendar
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    dayStates={dayStates}
+                    selectedDate={selectedDate}
+                    onSelectDate={setSelectedDate}
+                    todayKey={todayDateKey}
+                    hasTodayButton={!isSameMonth(calendarMonth, new Date()) || selectedDate !== null}
+                    onTodayPress={() => {
+                        setCalendarMonth(startOfMonth(new Date()));
+                        setSelectedDate(null);
+                    }}
+                />
 
                 {/* Stats chips */}
                 <View style={styles.statsRow}>
@@ -314,25 +411,42 @@ export default function ProgressScreen() {
             <MetricDetailCard records={exerciseRecords} />
 
             {/* Recent history */}
-            {recentRecords.length > 0 && (
+            {(recentRecords.length > 0 || selectedDate) && (
                 <>
                     <Text style={styles.sectionLabel}>Historial reciente</Text>
-                    {recentRecords.map((record) => {
-                        const exercise = activePlan?.exercises.find(
-                            (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
-                        );
-                        if (!exercise) return null;
-                        return (
-                            <ExerciseHistoryItem
-                                key={record.idRegistroEjercicioPlan}
-                                exerciseName={exercise.name}
-                                completedAt={record.fechaRealizacion ?? record.fechaProgramada}
-                                status={record.estado === 'completado' ? 'completed' : record.estado === 'parcial' ? 'partial' : 'skipped'}
-                                reps={record.repeticionesRealizadas ?? undefined}
-                                duration={record.duracionRealSegundos ?? undefined}
-                            />
-                        );
-                    })}
+                    {selectedDate && (
+                        <View style={styles.filterChipRow}>
+                            <MaterialCommunityIcons name="filter" size={14} color={theme.colors.primary} />
+                            <Text style={styles.filterChipText}>
+                                {format(new Date(selectedDate + 'T00:00:00'), "EEEE dd 'de' MMMM", { locale: es })}
+                            </Text>
+                            <Pressable onPress={() => setSelectedDate(null)} hitSlop={8}>
+                                <Text style={[styles.filterChipText, styles.filterChipClear]}>Ver todo</Text>
+                            </Pressable>
+                        </View>
+                    )}
+                    {recentRecords.length === 0 && selectedDate ? (
+                        <Text style={styles.emptyHistoryText}>
+                            Sin registros para este día
+                        </Text>
+                    ) : (
+                        recentRecords.map((record) => {
+                            const exercise = activePlan?.exercises.find(
+                                (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
+                            );
+                            if (!exercise) return null;
+                            return (
+                                <ExerciseHistoryItem
+                                    key={record.idRegistroEjercicioPlan}
+                                    exerciseName={exercise.name}
+                                    completedAt={record.fechaRealizacion ?? record.fechaProgramada}
+                                    status={record.estado === 'completado' ? 'completed' : record.estado === 'parcial' ? 'partial' : 'skipped'}
+                                    reps={record.repeticionesRealizadas ?? undefined}
+                                    duration={record.duracionRealSegundos ?? undefined}
+                                />
+                            );
+                        })
+                    )}
                 </>
             )}
 
@@ -361,20 +475,12 @@ const styles = StyleSheet.create({
     complianceLabel: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', marginTop: -2 },
     progressTrack: { height: 8, backgroundColor: '#e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: 12 },
     progressFill: { height: '100%', borderRadius: 4 },
-    weekDaysRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-    dayBadge: {
-        flex: 1,
-        alignItems: 'center',
-        gap: 4,
-        paddingVertical: 6,
-        marginHorizontal: 3,
-        borderRadius: 10,
-        borderWidth: 1.5,
-        borderColor: '#e5e7eb',
-    },
-    dayLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 12, color: '#6b7280' },
-    statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 16 },
+    statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 8 },
     statChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     statText: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151' },
+    filterChipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 },
+    filterChipText: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', textTransform: 'capitalize' },
+    filterChipClear: { fontFamily: 'Montserrat_600SemiBold', color: '#2563eb' },
+    emptyHistoryText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#9ca3af', textAlign: 'center', paddingVertical: 16 },
     bottomPadding: { height: 32 },
 });
