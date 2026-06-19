@@ -10,8 +10,19 @@ import type { SFTTestType } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
+
+function renderRichText(text: string, color = '#4b5563'): ReactNode {
+    const parts = text.split(/\*\*(.+?)\*\*/g);
+    return parts.map((part, i) =>
+        <Text key={i} style={i % 2 === 1
+            ? { fontFamily: 'Montserrat_700Bold', color }
+            : { fontFamily: 'Montserrat_400Regular', color }
+        }>{part}</Text>
+    );
+}
 
 /**
  * Active test screen inside the dedicated SFT battery mode.
@@ -30,6 +41,7 @@ export default function ActiveTestScreen() {
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const [safetyExpanded, setSafetyExpanded] = useState(false);
+    const [procedureExpanded, setProcedureExpanded] = useState(false);
     const allowExitRef = useRef(false);
     const pendingNavigationActionRef = useRef<unknown>(null);
 
@@ -42,6 +54,7 @@ export default function ActiveTestScreen() {
     useEffect(() => {
         setTestNotes('');
         setSafetyExpanded(false);
+        setProcedureExpanded(false);
     }, [testType]);
 
     useEffect(() => {
@@ -159,12 +172,57 @@ export default function ActiveTestScreen() {
                 <View style={[styles.instructionCard, { backgroundColor: theme.colors.primaryContainer }]}>
                     <MaterialCommunityIcons
                         name={test.icon as keyof typeof MaterialCommunityIcons.glyphMap}
-                        size={36}
+                        size={24}
                         color={theme.colors.primary}
                     />
-                    <Text style={styles.testName}>{test.name}</Text>
-                    <Text style={styles.testDescription}>{test.description}</Text>
+                    <View style={styles.instructionText}>
+                        <Text style={styles.testName}>{test.name}</Text>
+                        <Text style={styles.testDescription}>{test.description}</Text>
+                    </View>
                 </View>
+
+                {test.procedure && test.procedure.length > 0 && (
+                    <Pressable
+                        style={[styles.safetyCard, { borderColor: theme.colors.outlineVariant }]}
+                        onPress={() => setProcedureExpanded((prev) => !prev)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Procedimiento"
+                    >
+                        <View style={styles.safetyHeader}>
+                            <View style={styles.safetyTitleRow}>
+                                <MaterialCommunityIcons name="clipboard-text-outline" size={18} color="#006d77" />
+                                <Text style={styles.safetyTitle}>Procedimiento</Text>
+                            </View>
+                            <MaterialCommunityIcons
+                                name={procedureExpanded ? 'chevron-up' : 'chevron-down'}
+                                size={20}
+                                color="#6b7280"
+                            />
+                        </View>
+                        {!procedureExpanded && (
+                            <Text style={styles.safetyPreview} numberOfLines={1}>
+                                {test.procedure[0].replace(/\*\*/g, '')}
+                            </Text>
+                        )}
+                        {procedureExpanded && (
+                            <View style={styles.stepContainer}>
+                                {test.procedure.map((step, i) => (
+                                    <View key={i} style={styles.stepRow}>
+                                        <View style={styles.stepColumn}>
+                                            <View style={[styles.stepCircle, { backgroundColor: theme.colors.outlineVariant }]}>
+                                                <Text style={[styles.stepNumber, { color: '#6b7280' }]}>{i + 1}</Text>
+                                            </View>
+                                            {i < test.procedure!.length - 1 && (
+                                                <View style={[styles.stepLine, { backgroundColor: theme.colors.outlineVariant }]} />
+                                            )}
+                                        </View>
+                                        <Text style={styles.stepText}>{renderRichText(step)}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </Pressable>
+                )}
 
                 {test.safetyTips && test.safetyTips.length > 0 && (
                     <Pressable
@@ -186,15 +244,22 @@ export default function ActiveTestScreen() {
                         </View>
                         {!safetyExpanded && test.safetyTips.length > 0 && (
                             <Text style={styles.safetyPreview} numberOfLines={1}>
-                                {test.safetyTips[0]}
+                                {test.safetyTips[0].replace(/\*\*/g, '')}
                             </Text>
                         )}
                         {safetyExpanded && (
-                            <View style={styles.safetyList}>
+                            <View style={styles.stepContainer}>
                                 {test.safetyTips.map((tip, i) => (
-                                    <View key={i} style={styles.safetyTipRow}>
-                                        <Text style={styles.safetyBullet}>•</Text>
-                                        <Text style={styles.safetyTip}>{tip}</Text>
+                                    <View key={i} style={styles.stepRow}>
+                                        <View style={styles.stepColumn}>
+                                            <View style={[styles.stepCircle, { backgroundColor: theme.colors.outlineVariant }]}>
+                                                <Text style={[styles.stepNumber, { color: '#6b7280' }]}>{i + 1}</Text>
+                                            </View>
+                                            {i < test.safetyTips.length - 1 && (
+                                                <View style={[styles.stepLine, { backgroundColor: theme.colors.outlineVariant }]} />
+                                            )}
+                                        </View>
+                                        <Text style={styles.stepText}>{renderRichText(tip)}</Text>
                                     </View>
                                 ))}
                             </View>
@@ -301,9 +366,10 @@ const styles = StyleSheet.create({
     progressFill: { height: 6 },
     content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 40 },
-    instructionCard: { borderRadius: 20, padding: 20, alignItems: 'center', gap: 8, marginBottom: 20 },
-    testName: { fontFamily: 'Montserrat_700Bold', fontSize: 20, color: '#004d40', textAlign: 'center' },
-    testDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#004d40', textAlign: 'center', lineHeight: 20 },
+    instructionCard: { borderRadius: 20, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 20 },
+    instructionText: { flex: 1 },
+    testName: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#004d40' },
+    testDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#004d40', lineHeight: 18, marginTop: 2 },
     timerResultContainer: { alignItems: 'center', paddingVertical: 16 },
     timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
@@ -318,4 +384,11 @@ const styles = StyleSheet.create({
     safetyTipRow: { flexDirection: 'row', gap: 8 },
     safetyBullet: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#4b5563', lineHeight: 18 },
     safetyTip: { flex: 1, fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#4b5563', lineHeight: 18 },
+    stepContainer: { marginTop: 10, gap: 8 },
+    stepRow: { flexDirection: 'row', gap: 10 },
+    stepColumn: { alignItems: 'center', width: 22 },
+    stepCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
+    stepNumber: { fontFamily: 'Montserrat_700Bold', fontSize: 11, color: '#ffffff' },
+    stepLine: { width: 1.5, flex: 1, marginTop: 4, marginBottom: 4 },
+    stepText: { flex: 1, fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#4b5563', lineHeight: 18 },
 });

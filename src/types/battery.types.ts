@@ -49,6 +49,7 @@ export interface SFTTestDefinition {
     lapLengthMeters?: number;
     /** @deprecated Use getNormativeRange() from @shared/constants/normativeRanges.ts instead */
     normativeRanges?: NormativeRanges;
+    procedure?: string[];
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;
     endSound?: SoundVariant;
