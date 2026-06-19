@@ -242,7 +242,6 @@ REGLAS OBLIGATORIAS:
 ${metrics.imc != null ? `- Considera el IMC (${metrics.imc}) para ajustar la intensidad. Si es >= 30, prioriza ejercicios de bajo impacto.` : ''}
 
 ADULTO MAYOR:
-- Nombre: ${adult.nombres} ${adult.apellidos}
 - Fecha de nacimiento: ${adult.fecha_nacimiento}
 - Genero: ${adult.genero}
 - Patologias: ${adult.patologias ?? 'No registradas'}
