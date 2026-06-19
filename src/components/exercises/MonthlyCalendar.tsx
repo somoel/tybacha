@@ -117,12 +117,14 @@ export function MonthlyCalendar({
                     const tints = getTintColors(state);
                     const isFuture = isAfter(startOfDay(day), todayDate);
                     const isSelectable = inMonth && !isFuture;
+                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
 
                     const circleStyle = [
                         styles.dayCircle,
                         tints && { backgroundColor: tints.bg },
                         isSelected && { backgroundColor: theme.colors.primaryContainer },
                         isToday && { borderWidth: 2, borderColor: theme.colors.primary },
+                        isWeekend && inMonth && { opacity: 0.4 },
                     ];
 
                     const numberStyle = [
