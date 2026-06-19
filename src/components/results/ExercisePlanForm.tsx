@@ -5,7 +5,7 @@ import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { createExercisePlan, updateExercisePlan } from '@/src/services/exercisePlanService';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { forwardRef, useImperativeHandle, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { SegmentedButtons, Text, useTheme } from 'react-native-paper';
@@ -103,10 +103,16 @@ export const ExercisePlanForm = forwardRef<ExercisePlanFormHandle, ExercisePlanF
     const [isSaving, setIsSaving] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
-    const { control, handleSubmit } = useForm<PlanFormValues>({
+    const { control, handleSubmit, reset } = useForm<PlanFormValues>({
         resolver: zodResolver(planFormSchema),
         defaultValues: makeDefaultValues(initialData),
     });
+
+    useEffect(() => {
+        if (initialData) {
+            reset(makeDefaultValues(initialData));
+        }
+    }, [initialData, reset]);
 
     useImperativeHandle(ref, () => ({
         submit: handleSubmit(onSubmit),
