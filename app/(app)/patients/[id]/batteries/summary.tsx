@@ -5,6 +5,7 @@ import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { createBattery, saveBatteryWithResults } from '@/src/services/batteryService';
+import { generateExercisePlan } from '@/src/services/exercisePlanService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useSyncStore } from '@/src/stores/syncStore';
@@ -49,7 +50,8 @@ export default function BatterySummaryScreen() {
             clearSession();
 
             if (action === 'plan') {
-                router.replace(`/(app)/patients/${id}/batteries/${savedBattery.batteryId}` as never);
+                await generateExercisePlan({ id } as any, [], '', savedBattery.batteryId);
+                router.replace(`/(app)/patients/${id}/progress/edit-plan` as never);
                 return;
             }
 

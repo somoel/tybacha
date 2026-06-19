@@ -8,7 +8,7 @@ import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchBatteries } from '@/src/services/batteryService';
-import { fetchExercisePlans } from '@/src/services/exercisePlanService';
+import { fetchExercisePlans, generateExercisePlan } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { SFTBattery } from '@/src/types/battery.types';
@@ -20,7 +20,7 @@ import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useFocusEffect, useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { IconButton, Menu, Text, useTheme } from 'react-native-paper';
 
 const DAY_KEYS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -59,6 +59,7 @@ export default function PatientDetailScreen() {
     const [startedExercises, setStartedExercises] = useState<Set<number>>(new Set());
     const [isLoading, setIsLoading] = useState(true);
     const [menuVisible, setMenuVisible] = useState(false);
+    const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
     const { width: screenWidth } = useWindowDimensions();
 
     const hasStaffAccess = isAdmin || isProfessional;
@@ -376,6 +377,20 @@ export default function PatientDetailScreen() {
     });
 
     const todayKey = getTodayKey();
+
+    const handleGeneratePlan = async () => {
+        if (!id || batteries.length === 0 || isGeneratingPlan) return;
+        setIsGeneratingPlan(true);
+        try {
+            await generateExercisePlan({ id } as any, [], '', batteries[0].id);
+            router.push(`/(app)/patients/${id}/progress/edit-plan` as never);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Error al generar el plan';
+            Alert.alert('Error', message);
+        } finally {
+            setIsGeneratingPlan(false);
+        }
+    };
 
     return (
         <>
@@ -717,13 +732,18 @@ export default function PatientDetailScreen() {
                 </Pressable>
             ) : batteries.length > 0 && !hasActivePlan ? (
                 <Pressable
-                    style={[styles.fab, { backgroundColor: '#006d77' }]}
-                    onPress={() => router.push(`/(app)/patients/${id}/batteries/${batteries[0].id}` as never)}
+                    style={[styles.fab, { backgroundColor: '#006d77' }, isGeneratingPlan && { opacity: 0.7 }]}
+                    onPress={handleGeneratePlan}
+                    disabled={isGeneratingPlan}
                     accessibilityLabel="Generar plan de ejercicios con IA"
                     accessibilityRole="button"
                 >
-                    <MaterialCommunityIcons name="robot" size={20} color="#FFFFFF" />
-                    <Text style={styles.fabText}>Generar plan IA</Text>
+                    {isGeneratingPlan ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                    ) : (
+                        <MaterialCommunityIcons name="robot" size={20} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.fabText}>{isGeneratingPlan ? 'Generando...' : 'Generar plan IA'}</Text>
                 </Pressable>
             ) : null}
         </>
