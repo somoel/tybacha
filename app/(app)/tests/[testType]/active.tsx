@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     safetyBullet: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#4b5563', lineHeight: 18 },
     safetyTip: { flex: 1, fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#4b5563', lineHeight: 18 },
     stepContainer: { marginTop: 10 },
-    stepRow: { flexDirection: 'row', gap: 10, minHeight: 44 },
+    stepRow: { flexDirection: 'row', gap: 10 },
     stepColumn: { alignItems: 'center', width: 22 },
     stepCircle: { width: 22, height: 22, borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
     stepNumber: { fontFamily: 'Montserrat_700Bold', fontSize: 11, color: '#ffffff' },
