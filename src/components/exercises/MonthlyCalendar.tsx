@@ -39,13 +39,13 @@ function getMonthGrid(month: Date): Date[] {
     return days;
 }
 
-function getDotColor(state: DayState): string | null {
+function getTintColors(state: DayState): { bg: string; fg: string } | null {
     switch (state) {
-        case 'completed': return '#2e7d32';
-        case 'omitted': return '#9ca3af';
-        case 'pending': return '#2563eb';
-        case 'empty': return '#dc2626';
-        default: return null;
+        case 'completed': return { bg: '#dcfce7', fg: '#2e7d32' };
+        case 'omitted':   return { bg: '#f3f4f6', fg: '#6b7280' };
+        case 'pending':   return { bg: '#dbeafe', fg: '#2563eb' };
+        case 'empty':     return { bg: '#fee2e2', fg: '#dc2626' };
+        default:          return null;
     }
 }
 
@@ -114,27 +114,24 @@ export function MonthlyCalendar({
                     const isToday = isSameDay(day, todayDate);
                     const isSelected = selectedDate === dayKey;
                     const state: DayState = inMonth ? (dayStates[dayKey] ?? 'no-exercise') : 'no-exercise';
-                    const dotColor = getDotColor(state);
+                    const tints = getTintColors(state);
                     const isFuture = isAfter(startOfDay(day), todayDate);
                     const isSelectable = inMonth && !isFuture;
 
-                    const cellStyle = [
-                        styles.dayCell,
+                    const circleStyle = [
+                        styles.dayCircle,
+                        tints && { backgroundColor: tints.bg },
                         isSelected && { backgroundColor: theme.colors.primaryContainer },
-                        isToday && !isSelected && { borderColor: theme.colors.primary, borderWidth: 1.5 },
+                        isToday && { borderWidth: 2, borderColor: theme.colors.primary },
                     ];
 
                     const numberStyle = [
                         styles.dayNumber,
                         !inMonth && styles.outOfMonthText,
                         isFuture && inMonth && styles.futureText,
+                        tints && { color: tints.fg },
                         isSelected && { color: theme.colors.primary, fontFamily: 'Montserrat_700Bold' },
-                        isToday && !isSelected && { color: theme.colors.primary },
-                    ];
-
-                    const dotStyle = [
-                        styles.dot,
-                        !inMonth && styles.hiddenDot,
+                        isToday && { color: theme.colors.primary },
                     ];
 
                     return (
@@ -146,16 +143,12 @@ export function MonthlyCalendar({
                                 else onSelectDate(dayKey);
                             }}
                             disabled={!isSelectable}
-                            style={cellStyle}
+                            style={styles.dayCell}
                             accessibilityLabel={`${format(day, 'EEEE dd MMMM', { locale: es })}${isToday ? ', hoy' : ''}${isSelected ? ', seleccionado' : ''}`}
                         >
-                            <Text style={numberStyle}>{format(day, 'd')}</Text>
-                            <View
-                                style={[
-                                    dotStyle,
-                                    dotColor ? { backgroundColor: dotColor } : null,
-                                ]}
-                            />
+                            <View style={circleStyle}>
+                                <Text style={numberStyle}>{format(day, 'd')}</Text>
+                            </View>
                         </Pressable>
                     );
                 })}
@@ -232,8 +225,13 @@ const styles = StyleSheet.create({
         aspectRatio: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 10,
-        paddingVertical: 4,
+    },
+    dayCircle: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     dayNumber: {
         fontFamily: 'Montserrat_500Medium',
@@ -245,15 +243,6 @@ const styles = StyleSheet.create({
     },
     futureText: {
         color: '#9ca3af',
-    },
-    dot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginTop: 3,
-    },
-    hiddenDot: {
-        opacity: 0,
     },
     legend: {
         flexDirection: 'row',
