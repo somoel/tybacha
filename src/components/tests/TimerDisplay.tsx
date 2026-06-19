@@ -38,6 +38,8 @@ export function TimerDisplay({
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const firedCuesRef = useRef<Set<number>>(new Set());
     const cueFadeAnim = useRef(new Animated.Value(0)).current;
+    const startTimestampRef = useRef<number>(0);
+    const pausedElapsedRef = useRef<number>(0);
 
     const clearTimer = useCallback(() => {
         if (intervalRef.current) {
@@ -65,18 +67,33 @@ export function TimerDisplay({
     }, [activeCue, cueFadeAnim]);
 
     useEffect(() => {
+        if (mode === 'stopwatch') {
+            if (isRunning) {
+                startTimestampRef.current = Date.now();
+                intervalRef.current = setInterval(() => {
+                    const elapsedMs = Date.now() - startTimestampRef.current + pausedElapsedRef.current;
+                    const elapsedSecs = Math.round(elapsedMs / 100) / 10;
+                    setSeconds(elapsedSecs);
+                    onTick?.(elapsedSecs);
+                }, 100);
+            } else if (hasStarted && startTimestampRef.current > 0) {
+                pausedElapsedRef.current += Date.now() - startTimestampRef.current;
+                startTimestampRef.current = 0;
+            }
+            return clearTimer;
+        }
+
         if (!isRunning) return;
 
         intervalRef.current = setInterval(() => {
             setSeconds((prev) => {
-                const next = mode === 'countdown' ? prev - 1 : prev + 1;
+                const next = prev - 1;
 
-                if (mode === 'countdown' && next <= 0) {
+                if (next <= 0) {
                     clearTimer();
                     if (soundCues && endSound) {
                         playCue(endSound).catch(() => {});
                     }
-                    // Use setTimeout to defer state updates and avoid setState during render
                     setTimeout(() => {
                         setIsRunning(false);
                         onComplete?.(initialSeconds);
@@ -85,7 +102,7 @@ export function TimerDisplay({
                     return 0;
                 }
 
-                if (mode === 'countdown' && encouragementCues) {
+                if (encouragementCues) {
                     const crossed = encouragementCues.find(
                         (cue) =>
                             prev > cue.atSecond &&
@@ -107,7 +124,7 @@ export function TimerDisplay({
         }, 1000);
 
         return clearTimer;
-    }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer, encouragementCues, soundCues, endSound]);
+    }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer, encouragementCues, soundCues, endSound, hasStarted]);
 
     const toggleTimer = () => {
         if (!hasStarted) setHasStarted(true);
@@ -121,11 +138,14 @@ export function TimerDisplay({
         setSeconds(mode === 'countdown' ? initialSeconds : 0);
         setActiveCue(null);
         firedCuesRef.current = new Set();
+        pausedElapsedRef.current = 0;
+        startTimestampRef.current = 0;
     };
 
     const stopAndReport = () => {
         clearTimer();
         setIsRunning(false);
+        startTimestampRef.current = 0;
         const elapsed = mode === 'countdown' ? initialSeconds - seconds : seconds;
         onComplete?.(mode === 'stopwatch' ? seconds : elapsed);
     };
@@ -140,7 +160,11 @@ export function TimerDisplay({
 
     const formatTime = (totalSeconds: number): string => {
         const mins = Math.floor(Math.abs(totalSeconds) / 60);
-        const secs = Math.abs(totalSeconds) % 60;
+        const secs = Math.floor(Math.abs(totalSeconds) % 60);
+        const dec = Math.round((Math.abs(totalSeconds) % 1) * 10);
+        if (mode === 'stopwatch') {
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${dec}`;
+        }
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
