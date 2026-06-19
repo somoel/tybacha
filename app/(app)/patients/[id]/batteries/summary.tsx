@@ -36,6 +36,15 @@ export default function BatterySummaryScreen() {
         router.replace(`/(app)/tests/${SFT_TESTS[SFT_TESTS.length - 1].type}/active` as never);
     };
 
+    const handleClose = () => {
+        if (isComplete) {
+            finalizeAndNavigate('patient');
+        } else {
+            clearSession();
+            router.replace(`/(app)/patients/${id}` as never);
+        }
+    };
+
     const finalizeAndNavigate = async (action: FinalAction) => {
         if (!user || !id || !activeBatteryId || !isComplete) {
             setSnackbar({ visible: true, message: 'Completa y guarda un valor para cada prueba antes de finalizar.', type: 'error' });
@@ -43,24 +52,37 @@ export default function BatterySummaryScreen() {
         }
 
         setSavingAction(action);
+        let batteryPersisted = false;
         try {
             const battery = await createBattery(id, user.id, generalNotes || undefined, isOnline);
             const savedBattery = await saveBatteryWithResults(battery.id, results, resultNotes, isOnline);
-
-            clearSession();
+            batteryPersisted = true;
 
             if (action === 'plan') {
                 await generateExercisePlan({ id } as any, [], '', savedBattery.batteryId);
-                router.replace(`/(app)/patients/${id}/progress/edit-plan` as never);
-                return;
             }
 
-            router.replace(`/(app)/patients/${id}` as never);
+            clearSession();
+            const destination = action === 'plan'
+                ? `/(app)/patients/${id}/progress/edit-plan`
+                : `/(app)/patients/${id}`;
+            router.replace(destination as never);
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Error al guardar la bateria.';
-            setSnackbar({ visible: true, message, type: 'error' });
-        } finally {
-            setSavingAction(null);
+            if (batteryPersisted) {
+                clearSession();
+                const message = error instanceof Error
+                    ? `Batería guardada. La generación del plan falló: ${error.message}. Reintenta desde el detalle.`
+                    : 'Batería guardada. La generación del plan falló. Reintenta desde el detalle.';
+                console.error('Error generando plan tras persistir batería:', error);
+                setSnackbar({ visible: true, message, type: 'error' });
+                setTimeout(() => {
+                    router.replace(`/(app)/patients/${id}` as never);
+                }, 2000);
+            } else {
+                const message = error instanceof Error ? error.message : 'Error al guardar la bateria.';
+                setSnackbar({ visible: true, message, type: 'error' });
+                setSavingAction(null);
+            }
         }
     };
 
@@ -73,7 +95,7 @@ export default function BatterySummaryScreen() {
                         <IconButton
                             icon="close"
                             size={24}
-                            onPress={() => finalizeAndNavigate('patient')}
+                            onPress={handleClose}
                             disabled={savingAction !== null}
                         />
                     ),
