@@ -60,6 +60,8 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             '**Puntuación:** número total de flexiones en **30s**. Si completa la **mitad o más**, cuenta. **Un solo intento**.',
         ],
         safetyTips: [
+            'Verificar que el **peso sea adecuado** (5 libras mujeres / 8 libras hombres).',
+            'Asegurar que el **codo permanezca pegado al cuerpo** durante todo el movimiento.',
             '**Parar el test** si el participante siente dolor.',
         ],
     },
@@ -91,7 +93,6 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         safetyTips: [
             'Si tiene **problemas de equilibrio**, colocarse cerca de una pared o silla.',
             '**Supervisar** signos de esfuerzo excesivo.',
-            'Al finalizar, **caminar despacio durante un minuto**.',
         ],
     },
     {
