@@ -30,6 +30,12 @@ function formatSeconds(totalSeconds: number): string {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
+function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = seconds / 60;
+    return Number.isInteger(mins) ? `${mins}m` : `${mins.toFixed(1)}m`;
+}
+
 export default function ActiveExerciseScreen() {
     const { id, exerciseId } = useLocalSearchParams<{ id: string; exerciseId: string }>();
     const navigation = useNavigation();
@@ -459,7 +465,7 @@ export default function ActiveExerciseScreen() {
                         {exercise.duration_seconds != null && exercise.duration_seconds > 0 && (
                             <View style={styles.prescriptionChip}>
                                 <MaterialCommunityIcons name="timer-outline" size={14} color={theme.colors.onPrimaryContainer} />
-                                <Text style={styles.prescriptionText}>{exercise.duration_seconds}s</Text>
+                                <Text style={styles.prescriptionText}>{formatDuration(exercise.duration_seconds)}</Text>
                             </View>
                         )}
                     </View>

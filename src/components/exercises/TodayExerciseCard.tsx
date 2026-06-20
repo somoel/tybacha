@@ -5,6 +5,12 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
+function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = seconds / 60;
+    return Number.isInteger(mins) ? `${mins}m` : `${mins.toFixed(1)}m`;
+}
+
 type ExerciseStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 
 interface TodayExerciseCardProps {
@@ -41,7 +47,7 @@ export function TodayExerciseCard({ exercise, status, resultValue, resultUnit, o
                     <Text style={styles.prescription}>
                         {exercise.sets > 0 && `${exercise.sets} series`}
                         {exercise.reps !== null && ` · ${exercise.reps} reps`}
-                        {exercise.duration_seconds !== null && ` · ${exercise.duration_seconds}s`}
+                        {exercise.duration_seconds !== null && ` · ${formatDuration(exercise.duration_seconds)}`}
                     </Text>
                 </View>
                 <MaterialCommunityIcons name={statusIcon} size={22} color={statusColor} />

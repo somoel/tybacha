@@ -10,6 +10,12 @@ import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { IconButton, Text, useTheme } from 'react-native-paper';
 
+function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = seconds / 60;
+    return Number.isInteger(mins) ? `${mins}m` : `${mins.toFixed(1)}m`;
+}
+
 const DAY_LABELS: Record<string, string> = {
     lunes: 'Lunes',
     martes: 'Martes',
@@ -120,7 +126,7 @@ export default function PlanDetailScreen() {
                                                         <Text style={styles.metaText}>{exercise.reps} reps</Text>
                                                     )}
                                                     {exercise.duration_seconds != null && (
-                                                        <Text style={styles.metaText}>{exercise.duration_seconds}s</Text>
+                                                        <Text style={styles.metaText}>{formatDuration(exercise.duration_seconds)}</Text>
                                                     )}
                                                 </View>
                                             </View>

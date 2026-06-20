@@ -5,6 +5,12 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Checkbox, Text, useTheme } from 'react-native-paper';
 
+function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = seconds / 60;
+    return Number.isInteger(mins) ? `${mins}m` : `${mins.toFixed(1)}m`;
+}
+
 interface ExercisePlanCardProps {
     exercise: Exercise;
     isCompleted?: boolean;
@@ -69,7 +75,7 @@ export function ExercisePlanCard({
                 {exercise.duration_seconds !== null && (
                     <View style={styles.detailChip}>
                         <MaterialCommunityIcons name="timer-outline" size={14} color={theme.colors.primary} />
-                        <Text style={styles.detailText}>{exercise.duration_seconds}s</Text>
+                        <Text style={styles.detailText}>{formatDuration(exercise.duration_seconds)}</Text>
                     </View>
                 )}
             </View>

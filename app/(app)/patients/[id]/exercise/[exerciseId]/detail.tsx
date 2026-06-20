@@ -9,6 +9,12 @@ import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 
+function formatDuration(seconds: number): string {
+    if (seconds < 60) return `${seconds}s`;
+    const mins = seconds / 60;
+    return Number.isInteger(mins) ? `${mins}m` : `${mins.toFixed(1)}m`;
+}
+
 export default function ExerciseDetailScreen() {
     const { id, exerciseId } = useLocalSearchParams<{ id: string; exerciseId: string }>();
     const router = useRouter();
@@ -117,7 +123,7 @@ export default function ExerciseDetailScreen() {
                         {exercise.duration_seconds !== null && (
                             <View style={styles.prescriptionChip}>
                                 <MaterialCommunityIcons name="timer-outline" size={14} color={theme.colors.primary} />
-                                <Text style={styles.prescriptionText}>{exercise.duration_seconds}s</Text>
+                                <Text style={styles.prescriptionText}>{formatDuration(exercise.duration_seconds)}</Text>
                             </View>
                         )}
                     </View>
