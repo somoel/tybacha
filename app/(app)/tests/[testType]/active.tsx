@@ -42,6 +42,7 @@ export default function ActiveTestScreen() {
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const [safetyExpanded, setSafetyExpanded] = useState(false);
     const [procedureExpanded, setProcedureExpanded] = useState(false);
+    const [notesExpanded, setNotesExpanded] = useState(false);
     const allowExitRef = useRef(false);
     const pendingNavigationActionRef = useRef<unknown>(null);
 
@@ -55,6 +56,7 @@ export default function ActiveTestScreen() {
         setTestNotes('');
         setSafetyExpanded(false);
         setProcedureExpanded(false);
+        setNotesExpanded(false);
     }, [testType]);
 
     useEffect(() => {
@@ -197,7 +199,7 @@ export default function ActiveTestScreen() {
                     >
                         <View style={styles.safetyHeader}>
                             <View style={styles.safetyTitleRow}>
-                                <MaterialCommunityIcons name="clipboard-text-outline" size={18} color="#006d77" />
+                                <MaterialCommunityIcons name="clipboard-text-outline" size={18} color={theme.colors.primary} />
                                 <Text style={styles.safetyTitle}>Procedimiento</Text>
                             </View>
                             <MaterialCommunityIcons
@@ -240,7 +242,7 @@ export default function ActiveTestScreen() {
                     >
                         <View style={styles.safetyHeader}>
                             <View style={styles.safetyTitleRow}>
-                                <MaterialCommunityIcons name="shield-check-outline" size={18} color="#006d77" />
+                                <MaterialCommunityIcons name="shield-check-outline" size={18} color={theme.colors.primary} />
                                 <Text style={styles.safetyTitle}>Normas de seguridad</Text>
                             </View>
                             <MaterialCommunityIcons
@@ -310,6 +312,15 @@ export default function ActiveTestScreen() {
                     />
                 )}
 
+                {test.type === 'up_and_go' && test.normativeRanges && (
+                    <View style={styles.normativeHint}>
+                        <MaterialCommunityIcons name="target" size={16} color={theme.colors.outline} />
+                        <Text style={[styles.normativeHintText, { color: theme.colors.outline }]}>
+                            Promedio: {test.normativeRanges.aboveAvg}–{test.normativeRanges.belowAvg} s
+                        </Text>
+                    </View>
+                )}
+
                 {test.counterMode === 'timer_result' && timerCompleted && (
                     <View style={styles.timerResultContainer}>
                         <Text style={styles.timerResultLabel}>Tiempo registrado:</Text>
@@ -319,17 +330,35 @@ export default function ActiveTestScreen() {
                     </View>
                 )}
 
-                <TextInput
-                    label="Observaciones (opcional)"
-                    value={testNotes}
-                    onChangeText={setTestNotes}
-                    mode="outlined"
-                    multiline
-                    numberOfLines={3}
-                    style={styles.notesInput}
-                    outlineStyle={styles.notesOutline}
-                    accessibilityLabel="Observaciones de la prueba"
-                />
+                <Pressable
+                    onPress={() => setNotesExpanded((prev) => !prev)}
+                    style={styles.notesToggle}
+                    accessibilityRole="button"
+                    accessibilityLabel={notesExpanded ? 'Ocultar observaciones' : 'Agregar observaciones'}
+                >
+                    <MaterialCommunityIcons name="note-text-outline" size={18} color={theme.colors.outline} />
+                    <Text style={[styles.notesToggleText, { color: theme.colors.outline }]}>
+                        {testNotes ? `Observaciones: ${testNotes.substring(0, 40)}${testNotes.length > 40 ? '…' : ''}` : (notesExpanded ? 'Ocultar observaciones' : 'Agregar observaciones')}
+                    </Text>
+                    <MaterialCommunityIcons
+                        name={notesExpanded ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={theme.colors.outline}
+                    />
+                </Pressable>
+                {notesExpanded && (
+                    <TextInput
+                        label="Observaciones (opcional)"
+                        value={testNotes}
+                        onChangeText={setTestNotes}
+                        mode="outlined"
+                        multiline
+                        numberOfLines={3}
+                        style={styles.notesInput}
+                        outlineStyle={styles.notesOutline}
+                        accessibilityLabel="Observaciones de la prueba"
+                    />
+                )}
 
             </ScrollView>
 
@@ -342,6 +371,9 @@ export default function ActiveTestScreen() {
                     disabled={!canSave}
                     accessibilityLabel="Guardar resultado de la prueba"
                 />
+                {!canSave && test.timerMode !== 'none' && (
+                    <Text style={styles.saveHint}>Inicia el cronómetro para poder guardar</Text>
+                )}
             </StickyBottomBar>
 
             <AppSnackbar
@@ -380,8 +412,13 @@ const styles = StyleSheet.create({
     timerResultContainer: { alignItems: 'center', paddingVertical: 16 },
     timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
-    notesInput: { marginTop: 20 },
+    notesInput: { marginTop: 8 },
     notesOutline: { borderRadius: 12 },
+    notesToggle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, marginTop: 16 },
+    notesToggleText: { fontFamily: 'Montserrat_500Medium', fontSize: 13, flex: 1 },
+    saveHint: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#94a3b8', textAlign: 'center', marginTop: 6 },
+    normativeHint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, marginTop: 8 },
+    normativeHintText: { fontFamily: 'Montserrat_500Medium', fontSize: 13 },
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: '#f8fafc' },
     emptyTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 18, color: '#374151', marginTop: 16 },
     emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', marginTop: 4, textAlign: 'center' },

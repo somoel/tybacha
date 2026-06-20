@@ -404,7 +404,7 @@ export default function PatientDetailScreen() {
                                 icon="clipboard-plus-outline"
                                 size={24}
                                 iconColor={theme.colors.primary}
-                                onPress={() => router.push(`/(app)/patients/${id}/batteries/new` as never)}
+                                onPress={() => router.push({ pathname: `/(app)/patients/${id}/batteries/new`, params: { patientName: fullName } } as never)}
                                 accessibilityLabel="Realizar batería SFT"
                             />
                             {screenWidth >= 360 ? (
@@ -722,30 +722,40 @@ export default function PatientDetailScreen() {
             {/* Contextual FAB */}
             {batteries.length === 0 ? (
                 <Pressable
-                    style={[styles.fab, { backgroundColor: '#006d77' }]}
-                    onPress={() => router.push(`/(app)/patients/${id}/batteries/new` as never)}
+                    style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+                    onPress={() => router.push({ pathname: `/(app)/patients/${id}/batteries/new`, params: { patientName: fullName } } as never)}
                     accessibilityLabel="Realizar batería SFT"
                     accessibilityRole="button"
                 >
-                    <MaterialCommunityIcons name="clipboard-plus" size={20} color="#FFFFFF" />
-                    <Text style={styles.fabText}>Realizar batería SFT</Text>
+                    <MaterialCommunityIcons name="clipboard-plus" size={20} color={theme.colors.onPrimary} />
+                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Realizar batería SFT</Text>
                 </Pressable>
-            ) : batteries.length > 0 && !hasActivePlan ? (
+            ) : !hasActivePlan ? (
                 <Pressable
-                    style={[styles.fab, { backgroundColor: '#006d77' }, isGeneratingPlan && { opacity: 0.7 }]}
+                    style={[styles.fab, { backgroundColor: theme.colors.primary }, isGeneratingPlan && { opacity: 0.7 }]}
                     onPress={handleGeneratePlan}
                     disabled={isGeneratingPlan}
                     accessibilityLabel="Generar plan de ejercicios con IA"
                     accessibilityRole="button"
                 >
                     {isGeneratingPlan ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <ActivityIndicator color={theme.colors.onPrimary} size="small" />
                     ) : (
-                        <MaterialCommunityIcons name="robot" size={20} color="#FFFFFF" />
+                        <MaterialCommunityIcons name="robot" size={20} color={theme.colors.onPrimary} />
                     )}
-                    <Text style={styles.fabText}>{isGeneratingPlan ? 'Generando...' : 'Generar plan IA'}</Text>
+                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>{isGeneratingPlan ? 'Generando...' : 'Generar plan IA'}</Text>
                 </Pressable>
-            ) : null}
+            ) : (
+                <Pressable
+                    style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+                    onPress={() => router.push({ pathname: `/(app)/patients/${id}/batteries/new`, params: { patientName: fullName } } as never)}
+                    accessibilityLabel="Nueva batería SFT"
+                    accessibilityRole="button"
+                >
+                    <MaterialCommunityIcons name="clipboard-plus" size={20} color={theme.colors.onPrimary} />
+                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Nueva batería</Text>
+                </Pressable>
+            )}
         </>
     );
 }
@@ -849,7 +859,6 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     fabText: {
-        color: '#FFFFFF',
         fontFamily: 'Montserrat_700Bold',
         fontSize: 14,
     },

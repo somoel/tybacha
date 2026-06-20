@@ -10,18 +10,21 @@ interface TestCardProps {
     onPress: () => void;
     isCompleted?: boolean;
     resultValue?: number;
+    index?: number;
+    total?: number;
 }
 
 /**
  * Card for an SFT test showing icon, name, description, and completion status.
  */
-export function TestCard({ test, onPress, isCompleted = false, resultValue }: TestCardProps) {
+export function TestCard({ test, onPress, isCompleted = false, resultValue, index, total }: TestCardProps) {
     const theme = useTheme();
 
     return (
         <AppCard
             onPress={onPress}
-            accessibilityLabel={`Prueba: ${test.name}${isCompleted ? ', completada' : ''}`}
+            accessibilityLabel={`Prueba ${index !== undefined ? `${index} de ${total}: ` : ''}${test.name}${isCompleted ? ', completada' : ''}`}
+            style={isCompleted ? styles.completedCard : undefined}
         >
             <View style={styles.row}>
                 <View style={[
@@ -35,6 +38,11 @@ export function TestCard({ test, onPress, isCompleted = false, resultValue }: Te
                     />
                 </View>
                 <View style={styles.content}>
+                    {index !== undefined && total !== undefined && (
+                        <Text style={[styles.stepNumber, { color: isCompleted ? '#2e7d32' : theme.colors.outline }]}>
+                            {index} / {total}
+                        </Text>
+                    )}
                     <Text style={[styles.shortName, { color: theme.colors.primary }]}>{test.shortName}</Text>
                     <Text style={styles.name} numberOfLines={1}>{test.name}</Text>
                     <Text style={styles.description} numberOfLines={2}>
@@ -65,6 +73,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
     },
+    completedCard: {
+        opacity: 0.6,
+    },
     iconContainer: {
         width: 52,
         height: 52,
@@ -75,6 +86,12 @@ const styles = StyleSheet.create({
     content: {
         flex: 1,
         gap: 1,
+    },
+    stepNumber: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 10,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     shortName: {
         fontFamily: 'Montserrat_600SemiBold',

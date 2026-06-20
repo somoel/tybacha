@@ -5,9 +5,11 @@ import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
+import { useSyncStore } from '@/src/stores/syncStore';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } from 'react-native-paper';
 
 /**
@@ -15,16 +17,18 @@ import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } fro
  * completes all tests, and must confirm before leaving an active session.
  */
 export default function NewBatteryScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id, patientName } = useLocalSearchParams<{ id: string; patientName?: string }>();
     const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
+    const isOnline = useSyncStore((s) => s.isOnline);
     const { startBattery, results, completedTests, activeBatteryId, resetBattery, setBodyMetrics, pesoKg } = useBatteryStore();
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const allowExitRef = useRef(false);
     const pendingNavigationActionRef = useRef<unknown>(null);
     const metricsConfirmed = pesoKg !== null;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         if (!activeBatteryId && id) {
@@ -35,6 +39,14 @@ export default function NewBatteryScreen() {
     const progress = completedTests.length / SFT_TESTS.length;
     const allComplete = completedTests.length === SFT_TESTS.length;
     const hasActiveSession = Boolean(activeBatteryId);
+
+    useEffect(() => {
+        if (allComplete) {
+            Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+        } else {
+            fadeAnim.setValue(0);
+        }
+    }, [allComplete, fadeAnim]);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -88,7 +100,7 @@ export default function NewBatteryScreen() {
         <View style={styles.container}>
             <Stack.Screen
                 options={{
-                    title: 'Realizar batería SFT',
+                    title: patientName ? `${patientName} — Batería SFT` : 'Realizar batería SFT',
                     headerRight: () => (
                         <IconButton icon="close" size={24} onPress={handleRequestExit} />
                     ),
@@ -96,6 +108,15 @@ export default function NewBatteryScreen() {
             />
 
             <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+                {!isOnline && (
+                    <View style={[styles.offlineBanner, { backgroundColor: theme.colors.errorContainer }]}>
+                        <MaterialCommunityIcons name="wifi-off" size={16} color={theme.colors.onErrorContainer} />
+                        <Text style={[styles.offlineText, { color: theme.colors.onErrorContainer }]}>
+                            Sin conexión — se guardará localmente
+                        </Text>
+                    </View>
+                )}
+
                 {!metricsConfirmed ? (
                     <BodyMetricsInput onConfirm={handleBodyMetricsConfirm} />
                 ) : (
@@ -110,7 +131,7 @@ export default function NewBatteryScreen() {
                         >
                             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
                         </View>
-                        {SFT_TESTS.map((test) => {
+                        {SFT_TESTS.map((test, index) => {
                             const isCompleted = completedTests.includes(test.type);
                             const resultValue = results[test.type];
                             return (
@@ -119,6 +140,8 @@ export default function NewBatteryScreen() {
                                     test={test}
                                     isCompleted={isCompleted}
                                     resultValue={resultValue}
+                                    index={index + 1}
+                                    total={SFT_TESTS.length}
                                     onPress={() => router.push(`/(app)/tests/${test.type}/active` as never)}
                                 />
                             );
@@ -132,15 +155,17 @@ export default function NewBatteryScreen() {
             </ScrollView>
 
             {allComplete && (
-                <StickyBottomBar>
-                    <AppButton
-                        label="Revisar resultados"
-                        variant="filled"
-                        icon="clipboard-check"
-                        onPress={handleReviewSummary}
-                        accessibilityLabel="Revisar resultados de la bateria"
-                    />
-                </StickyBottomBar>
+                <Animated.View style={{ opacity: fadeAnim }}>
+                    <StickyBottomBar>
+                        <AppButton
+                            label="Revisar resultados"
+                            variant="filled"
+                            icon="clipboard-check"
+                            onPress={handleReviewSummary}
+                            accessibilityLabel="Revisar resultados de la batería"
+                        />
+                    </StickyBottomBar>
+                </Animated.View>
             )}
 
             <AppSnackbar
@@ -167,6 +192,8 @@ export default function NewBatteryScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
+    offlineBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 12, borderRadius: 10 },
+    offlineText: { fontFamily: 'Montserrat_500Medium', fontSize: 12, flex: 1 },
     progressHeader: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151', marginBottom: 6 },
     progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 16 },
     progressFill: { height: 6 },

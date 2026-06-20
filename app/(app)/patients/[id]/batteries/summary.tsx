@@ -6,20 +6,24 @@ import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { createBattery, saveBatteryWithResults } from '@/src/services/batteryService';
 import { generateExercisePlan } from '@/src/services/exercisePlanService';
+import { fetchPatientById } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useSyncStore } from '@/src/stores/syncStore';
+import type { Patient } from '@/src/types/patient.types';
+import { calculateAgeBand, getNormativeRange, getPerformanceCategory } from '@/shared/constants/normativeRanges';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { IconButton, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 
 type FinalAction = 'patient' | 'plan';
 
 export default function BatterySummaryScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
+    const navigation = useNavigation();
     const theme = useTheme();
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
@@ -27,21 +31,56 @@ export default function BatterySummaryScreen() {
     const { activeBatteryId, clearSession, completedTests, notes: generalNotes, resultNotes, results, setNotes } = useBatteryStore();
     const [savingAction, setSavingAction] = useState<FinalAction | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const [patient, setPatient] = useState<Patient | null>(null);
+    const [exitDialogVisible, setExitDialogVisible] = useState(false);
+    const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
+    const [pendingAction, setPendingAction] = useState<FinalAction | null>(null);
+    const allowExitRef = useRef(false);
 
     const canCreatePlan = isAdmin || isProfessional;
     const hasAllResults = SFT_TESTS.every((test) => results[test.type] !== undefined);
     const isComplete = completedTests.length === SFT_TESTS.length && hasAllResults;
 
-    const handleBackToCorrect = () => {
-        router.replace(`/(app)/tests/${SFT_TESTS[SFT_TESTS.length - 1].type}/active` as never);
+    useEffect(() => {
+        if (id) {
+            fetchPatientById(id).then(setPatient).catch(() => {});
+        }
+    }, [id]);
+
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (event) => {
+            if (allowExitRef.current || !activeBatteryId) return;
+            event.preventDefault();
+            setExitDialogVisible(true);
+        });
+        return unsubscribe;
+    }, [navigation, activeBatteryId]);
+
+    const handleBackToCorrect = (testType?: string) => {
+        allowExitRef.current = true;
+        router.replace(`/(app)/tests/${testType ?? SFT_TESTS[SFT_TESTS.length - 1].type}/active` as never);
     };
 
     const handleClose = () => {
         if (isComplete) {
-            finalizeAndNavigate('patient');
+            handleConfirmFinalize('patient');
         } else {
+            allowExitRef.current = true;
             clearSession();
             router.replace(`/(app)/patients/${id}` as never);
+        }
+    };
+
+    const handleConfirmFinalize = (action: FinalAction) => {
+        setPendingAction(action);
+        setConfirmDialogVisible(true);
+    };
+
+    const handleConfirmDialogYes = () => {
+        setConfirmDialogVisible(false);
+        if (pendingAction) {
+            finalizeAndNavigate(pendingAction);
+            setPendingAction(null);
         }
     };
 
@@ -63,6 +102,7 @@ export default function BatterySummaryScreen() {
             }
 
             clearSession();
+            allowExitRef.current = true;
             const destination = action === 'plan'
                 ? `/(app)/patients/${id}/progress/edit-plan`
                 : `/(app)/patients/${id}`;
@@ -70,6 +110,7 @@ export default function BatterySummaryScreen() {
         } catch (error) {
             if (batteryPersisted) {
                 clearSession();
+                allowExitRef.current = true;
                 const message = error instanceof Error
                     ? `Batería guardada. La generación del plan falló: ${error.message}. Reintenta desde el detalle.`
                     : 'Batería guardada. La generación del plan falló. Reintenta desde el detalle.';
@@ -79,11 +120,30 @@ export default function BatterySummaryScreen() {
                     router.replace(`/(app)/patients/${id}` as never);
                 }, 2000);
             } else {
-                const message = error instanceof Error ? error.message : 'Error al guardar la bateria.';
+                const message = error instanceof Error ? error.message : 'Error al guardar la batería.';
                 setSnackbar({ visible: true, message, type: 'error' });
                 setSavingAction(null);
             }
         }
+    };
+
+    const ageBand = patient ? calculateAgeBand(patient.birth_date) : null;
+    const gender = patient?.gender === 'male' ? 'M' as const : patient?.gender === 'female' ? 'F' as const : null;
+
+    const getCategoryForTest = (testType: string, value: number) => {
+        if (!ageBand || !gender) return null;
+        const range = getNormativeRange(testType as any, gender, ageBand);
+        if (!range) return null;
+        const test = SFT_TESTS.find((t) => t.type === testType);
+        const higherIsBetter = test?.normativeRanges?.higherIsBetter ?? true;
+        return getPerformanceCategory(value, range, higherIsBetter);
+    };
+
+    const categoryColors: Record<string, string> = {
+        'Bajo promedio': '#ef4444',
+        'Promedio': '#6b7280',
+        'Por encima del promedio': '#2e7d32',
+        'Excelente': '#1565c0',
     };
 
     return (
@@ -112,19 +172,18 @@ export default function BatterySummaryScreen() {
                 >
                     <View style={[styles.progressFill, { backgroundColor: theme.colors.primary }]} />
                 </View>
-                <AppButton
-                    label="Corregir ultima prueba"
-                    variant="text"
-                    icon="pencil"
-                    onPress={handleBackToCorrect}
-                    style={styles.correctBtn}
-                />
+                <Text style={styles.correctHint}>Toca un resultado para corregirlo</Text>
                 {SFT_TESTS.map((test) => {
                     const value = results[test.type];
                     const missing = value === undefined;
+                    const category = !missing ? getCategoryForTest(test.type, value) : null;
 
                     return (
-                        <AppCard key={test.type} style={styles.resultCard}>
+                        <AppCard
+                            key={test.type}
+                            style={styles.resultCard}
+                            onPress={!missing ? () => handleBackToCorrect(test.type) : undefined}
+                        >
                             <View style={styles.resultRow}>
                                 <View style={[styles.iconContainer, { backgroundColor: missing ? '#eef2f7' : '#e8f5e9' }]}>
                                     <MaterialCommunityIcons
@@ -136,6 +195,11 @@ export default function BatterySummaryScreen() {
                                 <View style={styles.resultInfo}>
                                     <Text style={styles.testName}>{test.name}</Text>
                                     <Text style={styles.testShort}>{test.shortName}</Text>
+                                    {category && (
+                                        <Text style={[styles.categoryLabel, { color: categoryColors[category] ?? '#6b7280' }]}>
+                                            {category}
+                                        </Text>
+                                    )}
                                 </View>
                                 <View style={styles.valueContainer}>
                                     <Text style={[styles.value, { color: missing ? theme.colors.outline : theme.colors.primary }]}>
@@ -157,7 +221,7 @@ export default function BatterySummaryScreen() {
                     numberOfLines={3}
                     style={styles.notesInput}
                     outlineStyle={styles.notesOutline}
-                    accessibilityLabel="Observaciones generales de la bateria"
+                    accessibilityLabel="Observaciones generales de la batería"
                 />
             </ScrollView>
 
@@ -166,7 +230,7 @@ export default function BatterySummaryScreen() {
                     label={canCreatePlan ? 'Crear plan de ejercicios' : 'Volver al adulto mayor'}
                     icon={canCreatePlan ? 'robot' : 'account-arrow-left'}
                     variant="filled"
-                    onPress={() => finalizeAndNavigate(canCreatePlan ? 'plan' : 'patient')}
+                    onPress={() => handleConfirmFinalize(canCreatePlan ? 'plan' : 'patient')}
                     loading={savingAction !== null}
                     disabled={!isComplete}
                     accessibilityLabel={canCreatePlan ? 'Crear plan de ejercicios' : 'Volver al adulto mayor'}
@@ -179,6 +243,30 @@ export default function BatterySummaryScreen() {
                 type={snackbar.type}
                 onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
             />
+
+            <Portal>
+                <Dialog visible={exitDialogVisible} onDismiss={() => setExitDialogVisible(false)}>
+                    <Dialog.Title>Salir del resumen</Dialog.Title>
+                    <Dialog.Content>
+                        <Text>Si sales ahora, la batería no se guardará. ¿Desea salir?</Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <PaperButton onPress={() => setExitDialogVisible(false)}>Quedarse</PaperButton>
+                        <PaperButton onPress={() => { allowExitRef.current = true; setExitDialogVisible(false); clearSession(); router.replace(`/(app)/patients/${id}` as never); }}>Salir</PaperButton>
+                    </Dialog.Actions>
+                </Dialog>
+
+                <Dialog visible={confirmDialogVisible} onDismiss={() => setConfirmDialogVisible(false)}>
+                    <Dialog.Title>Guardar batería</Dialog.Title>
+                    <Dialog.Content>
+                        <Text>Se guardarán los {SFT_TESTS.length} resultados de la batería SFT. ¿Continuar?</Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <PaperButton onPress={() => setConfirmDialogVisible(false)}>Cancelar</PaperButton>
+                        <PaperButton onPress={handleConfirmDialogYes}>Guardar</PaperButton>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </View>
     );
 }
@@ -188,7 +276,7 @@ const styles = StyleSheet.create({
     progressHeader: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151', marginBottom: 6 },
     progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 8 },
     progressFill: { height: 6, width: '100%' },
-    correctBtn: { marginBottom: 16, alignSelf: 'flex-start' },
+    correctHint: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#94a3b8', marginBottom: 12 },
     content: { flex: 1 },
     scroll: { padding: 16, paddingBottom: 32 },
     resultCard: { marginBottom: 8 },
@@ -197,6 +285,7 @@ const styles = StyleSheet.create({
     resultInfo: { flex: 1 },
     testName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1f2937' },
     testShort: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
+    categoryLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 11, marginTop: 2 },
     valueContainer: { alignItems: 'flex-end', minWidth: 72 },
     value: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 22 },
     unit: { fontFamily: 'Montserrat_400Regular', fontSize: 11, color: '#6b7280' },
