@@ -46,8 +46,13 @@ export default function ActiveExerciseScreen() {
     const [testNotes, setTestNotes] = useState('');
     const [perceivedEffort, setPerceivedEffort] = useState(5);
     const [reportedPain, setReportedPain] = useState(0);
-    const [timerCompleted, setTimerCompleted] = useState(false);
-    const [phase, setPhase] = useState<Phase>('timer');
+    const [setTimerCompleted, setSetTimerCompleted] = useState(false);
+    const [setPhase, setSetPhase] = useState<Phase>('timer');
+    const [currentSet, setCurrentSet] = useState(1);
+    const [repsPerSet, setRepsPerSet] = useState<number[]>([]);
+    const [durationsPerSet, setDurationsPerSet] = useState<number[]>([]);
+    const [currentSetDuration, setCurrentSetDuration] = useState(0);
+    const [allSetsDone, setAllSetsDone] = useState(false);
     const [savedSummary, setSavedSummary] = useState<SaveResult | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
@@ -61,13 +66,30 @@ export default function ActiveExerciseScreen() {
     const hasReps = exercise != null && exercise.reps != null && exercise.reps > 0;
     const hasBoth = hasTimer && hasReps;
     const isAlreadyCompleted = existingRecord?.estado === 'completado';
+    const totalSets = exercise != null && exercise.sets > 0 ? exercise.sets : 1;
+    const hasSets = totalSets > 1;
+    const totalReps = hasReps
+        ? (hasSets ? repsPerSet.reduce((a, b) => a + b, 0) : value)
+        : 0;
+    const totalDuration = hasTimer && !hasReps
+        ? (hasSets ? durationsPerSet.reduce((a, b) => a + b, 0) : value)
+        : 0;
+    const setAdvanceReady = hasReps
+        ? (hasTimer ? setPhase === 'reps' : true)
+        : setTimerCompleted;
 
-    const canSave = isAlreadyCompleted || !hasTimer || timerCompleted;
-    const isDirty =
-        value !== (existingRecord?.repeticionesRealizadas ?? 0) ||
-        perceivedEffort !== (existingRecord?.esfuerzoPercibido ?? 5) ||
-        reportedPain !== (existingRecord?.dolorReportado ?? 0) ||
-        testNotes !== (existingRecord?.comentario ?? '');
+    const canSave = isAlreadyCompleted || (hasSets ? allSetsDone : (!hasTimer || setTimerCompleted));
+    const isDirty = isAlreadyCompleted
+        ? (value !== (existingRecord?.repeticionesRealizadas ?? 0) ||
+           perceivedEffort !== (existingRecord?.esfuerzoPercibido ?? 5) ||
+           reportedPain !== (existingRecord?.dolorReportado ?? 0) ||
+           testNotes !== (existingRecord?.comentario ?? ''))
+        : (value > 0 ||
+           repsPerSet.length > 0 ||
+           durationsPerSet.length > 0 ||
+           testNotes !== '' ||
+           perceivedEffort !== 5 ||
+           reportedPain !== 0);
 
     const loadExercise = useCallback(async () => {
         if (!id || !exerciseId) return;
@@ -100,18 +122,28 @@ export default function ActiveExerciseScreen() {
                 setPerceivedEffort(existing?.esfuerzoPercibido ?? 5);
                 setReportedPain(existing?.dolorReportado ?? 0);
                 setTestNotes(existing?.comentario ?? '');
-                setTimerCompleted(
+                setSetTimerCompleted(
                     existing?.duracionRealSegundos != null && (foundExercise.duration_seconds ?? 0) > 0
                 );
-                setPhase(existing ? 'reps' : (foundExercise.duration_seconds ? 'timer' : 'reps'));
+                setSetPhase(existing ? 'reps' : (foundExercise.duration_seconds ? 'timer' : 'reps'));
+                setCurrentSet(1);
+                setRepsPerSet([]);
+                setDurationsPerSet([]);
+                setCurrentSetDuration(0);
+                setAllSetsDone(false);
             } catch {
                 setExistingRecord(null);
                 setValue(0);
                 setPerceivedEffort(5);
                 setReportedPain(0);
                 setTestNotes('');
-                setTimerCompleted(false);
-                setPhase(foundExercise.duration_seconds ? 'timer' : 'reps');
+                setSetTimerCompleted(false);
+                setSetPhase(foundExercise.duration_seconds ? 'timer' : 'reps');
+                setCurrentSet(1);
+                setRepsPerSet([]);
+                setDurationsPerSet([]);
+                setCurrentSetDuration(0);
+                setAllSetsDone(false);
             }
         } catch (error) {
             setLoadError(
@@ -174,13 +206,34 @@ export default function ActiveExerciseScreen() {
     };
 
     const handleTimerComplete = useCallback((elapsed: number) => {
-        setTimerCompleted(true);
+        setSetTimerCompleted(true);
+        setCurrentSetDuration(elapsed);
         if (hasBoth) {
-            setPhase('reps');
-        } else if (hasTimer && !hasReps) {
+            setSetPhase('reps');
+        } else if (hasTimer && !hasReps && !hasSets) {
             setValue(parseFloat(elapsed.toFixed(1)));
         }
-    }, [hasTimer, hasReps, hasBoth]);
+    }, [hasTimer, hasReps, hasBoth, hasSets]);
+
+    const handleAdvanceSet = useCallback(() => {
+        Haptics.selectionAsync().catch(() => {});
+        if (hasReps) {
+            setRepsPerSet(prev => [...prev, value]);
+        }
+        if (hasTimer && !hasReps) {
+            setDurationsPerSet(prev => [...prev, currentSetDuration]);
+        }
+        if (currentSet < totalSets) {
+            setCurrentSet(prev => prev + 1);
+            setValue(0);
+            setCurrentSetDuration(0);
+            setSetTimerCompleted(false);
+            setSetPhase(hasTimer ? 'timer' : 'reps');
+        } else {
+            setAllSetsDone(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        }
+    }, [hasReps, hasTimer, value, currentSetDuration, currentSet, totalSets]);
 
     const handleValueChange = useCallback((newValue: number) => {
         setValue(newValue);
@@ -198,8 +251,10 @@ export default function ActiveExerciseScreen() {
                 fechaProgramada: today,
                 fechaRealizacion: new Date().toISOString(),
                 estado: mode === 'completed' ? 'completado' as const : 'omitido' as const,
-                repeticionesRealizadas: hasReps ? value : undefined,
-                duracionRealSegundos: hasTimer ? (timerCompleted ? (hasBoth ? undefined : value) : undefined) : undefined,
+                repeticionesRealizadas: hasReps ? totalReps : undefined,
+                duracionRealSegundos: hasTimer && !hasReps
+                    ? (hasSets ? (allSetsDone ? totalDuration : undefined) : (setTimerCompleted ? value : undefined))
+                    : undefined,
                 esfuerzoPercibido: mode === 'completed' ? perceivedEffort : undefined,
                 dolorReportado: mode === 'completed' ? reportedPain : undefined,
                 comentario: testNotes || undefined,
@@ -297,18 +352,21 @@ export default function ActiveExerciseScreen() {
                         <View style={[styles.summaryCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
                             <SummaryRow
                                 icon="counter"
-                                label="Repeticiones"
-                                value={hasReps ? String(value) : '—'}
+                                label={`Repeticiones${hasSets ? ` (${totalSets} series)` : ''}`}
+                                value={hasReps ? String(totalReps) : '—'}
                             />
+                            {hasSets && hasReps && repsPerSet.length > 0 && (
+                                <Text style={styles.summaryBreakdown}>
+                                    {repsPerSet.join(' + ')} = {totalReps}
+                                </Text>
+                            )}
                             <SummaryDivider />
                             <SummaryRow
                                 icon="timer-outline"
                                 label="Duración"
-                                value={hasTimer
-                                    ? (hasBoth
-                                        ? formatSeconds(exercise.duration_seconds ?? 0)
-                                        : formatSeconds(value))
-                                    : '—'}
+                                value={hasTimer && !hasReps
+                                    ? formatSeconds(totalDuration)
+                                    : (hasTimer && hasReps ? formatSeconds(exercise.duration_seconds ?? 0) : '—')}
                             />
                             <SummaryDivider />
                             <SummaryRow
@@ -421,8 +479,35 @@ export default function ActiveExerciseScreen() {
                     <Text style={styles.description}>{exercise.description}</Text>
                 ) : null}
 
-                {hasTimer && phase === 'timer' && (
+                {hasSets && !isAlreadyCompleted && (
+                    <View style={styles.setTracker}>
+                        <Text style={styles.setTrackerLabel}>Serie {currentSet} de {totalSets}</Text>
+                        <View style={styles.setTrackerDots}>
+                            {Array.from({ length: totalSets }, (_, i) => {
+                                const isCompleted = i < currentSet - 1;
+                                const isCurrent = i === currentSet - 1;
+                                return (
+                                    <View
+                                        key={i}
+                                        style={[
+                                            styles.setTrackerDot,
+                                            {
+                                                backgroundColor: isCompleted || isCurrent
+                                                    ? theme.colors.primary
+                                                    : theme.colors.surfaceVariant,
+                                                opacity: isCurrent && !isCompleted ? 0.4 : 1,
+                                            },
+                                        ]}
+                                    />
+                                );
+                            })}
+                        </View>
+                    </View>
+                )}
+
+                {hasTimer && setPhase === 'timer' && (
                     <TimerDisplay
+                        key={`timer-${currentSet}`}
                         mode="countdown"
                         initialSeconds={exercise.duration_seconds ?? 0}
                         onComplete={handleTimerComplete}
@@ -430,30 +515,31 @@ export default function ActiveExerciseScreen() {
                     />
                 )}
 
-                {hasTimer && phase === 'reps' && (
+                {hasTimer && setPhase === 'reps' && (
                     <View style={styles.timerSummary}>
                         <View style={styles.timerSummaryIcon}>
                             <MaterialCommunityIcons name="check" size={16} color={theme.colors.primary} />
                         </View>
-                        <Text style={styles.timerSummaryLabel}>Cronómetro</Text>
+                        <Text style={styles.timerSummaryLabel}>Cronómetro{hasSets ? ` · serie ${currentSet}` : ''}</Text>
                         <Text style={styles.timerSummaryValue}>
                             {hasBoth
                                 ? formatSeconds(exercise.duration_seconds ?? 0)
-                                : formatSeconds(value)}
+                                : formatSeconds(hasSets ? currentSetDuration : value)}
                         </Text>
                     </View>
                 )}
 
-                {hasReps && phase === 'reps' && (
+                {hasReps && setPhase === 'reps' && (
                     <View style={styles.repsBlock}>
                         <Text style={styles.phaseLabel}>
                             {hasBoth ? 'Ahora cuenta las repeticiones' : 'Repeticiones'}
                         </Text>
                         <RepCounter
+                            key={`reps-${currentSet}`}
                             mode="increment"
                             allowNegative={false}
                             onValueChange={handleValueChange}
-                            label="Repeticiones"
+                            label={`Repeticiones${hasSets ? ` · serie ${currentSet}` : ''}`}
                             disabled={isAlreadyCompleted}
                         />
                     </View>
@@ -461,20 +547,33 @@ export default function ActiveExerciseScreen() {
 
                 {!hasTimer && hasReps && (
                     <RepCounter
+                        key={hasSets ? `reps-${currentSet}` : 'reps'}
                         mode="increment"
                         allowNegative={false}
                         onValueChange={handleValueChange}
-                        label="Repeticiones"
+                        label={`Repeticiones${hasSets ? ` · serie ${currentSet}` : ''}`}
                         disabled={isAlreadyCompleted}
                     />
                 )}
 
-                {hasTimer && !hasReps && timerCompleted && (
+                {hasTimer && !hasReps && setTimerCompleted && !hasSets && (
                     <View style={styles.timerResultContainer}>
                         <Text style={styles.timerResultLabel}>Tiempo registrado:</Text>
                         <Text style={[styles.timerResultValue, { color: theme.colors.primary }]}>
                             {value.toFixed(1)} segundos
                         </Text>
+                    </View>
+                )}
+
+                {hasSets && !isAlreadyCompleted && !allSetsDone && setAdvanceReady && (
+                    <View style={styles.advanceButton}>
+                        <AppButton
+                            label={currentSet < totalSets ? 'Siguiente serie' : 'Finalizar serie'}
+                            variant="outlined"
+                            icon={currentSet < totalSets ? 'arrow-right' : 'check'}
+                            onPress={handleAdvanceSet}
+                            accessibilityLabel={currentSet < totalSets ? 'Avanzar a la siguiente serie' : 'Finalizar la última serie'}
+                        />
                     </View>
                 )}
 
@@ -526,9 +625,13 @@ export default function ActiveExerciseScreen() {
                         loading={saveMode === 'completed'}
                         accessibilityLabel={isAlreadyCompleted ? "Actualizar registro del ejercicio" : "Marcar ejercicio como completado"}
                     />
-                    {hasTimer && !timerCompleted && (
+                    {hasSets && !allSetsDone ? (
+                        <Text style={styles.saveHint}>
+                            Completa las {totalSets} series para guardar (van {repsPerSet.length})
+                        </Text>
+                    ) : hasTimer && !setTimerCompleted ? (
                         <Text style={styles.saveHint}>Completa el cronómetro para habilitar guardar</Text>
-                    )}
+                    ) : null}
                     <View style={styles.skipRow}>
                         <AppButton
                             label="Marcar como omitido"
@@ -803,6 +906,30 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         marginBottom: 4,
     },
+    setTracker: {
+        alignItems: 'center',
+        marginTop: spacing.sm,
+        marginBottom: spacing.xs,
+        gap: 8,
+    },
+    setTrackerLabel: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 13,
+        color: '#006d77',
+        letterSpacing: 0.5,
+    },
+    setTrackerDots: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    setTrackerDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    advanceButton: {
+        marginTop: spacing.md,
+    },
     timerResultContainer: { alignItems: 'center', paddingVertical: spacing.md },
     timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
@@ -891,6 +1018,13 @@ const styles = StyleSheet.create({
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 15,
         color: '#1f2937',
+    },
+    summaryBreakdown: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 12,
+        color: '#6b7280',
+        marginTop: 2,
+        paddingLeft: 30,
     },
     summaryDivider: {
         height: 1,
