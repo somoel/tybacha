@@ -136,8 +136,10 @@ export default function ActiveTestScreen() {
 
     if (!test) {
         return (
-            <View style={styles.container}>
-                <Text>Prueba no encontrada</Text>
+            <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.outline} />
+                <Text style={styles.emptyTitle}>Prueba no encontrada</Text>
+                <Text style={styles.emptyText}>El tipo de prueba no es válido.</Text>
             </View>
         );
     }
@@ -148,7 +150,8 @@ export default function ActiveTestScreen() {
         <View style={styles.container}>
             <Stack.Screen
                 options={{
-                    title: 'Realizar bateria SFT',
+                    title: 'Realizar batería SFT',
+                    animation: 'slide_from_right',
                     headerRight: () => (
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <IconButton
@@ -166,7 +169,11 @@ export default function ActiveTestScreen() {
                 <Text style={styles.progressHeader}>
                     Prueba {currentIndex + 1} de {totalTests}
                 </Text>
-                <View style={styles.progressTrack}>
+                <View
+                    style={styles.progressTrack}
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{ min: 0, max: totalTests, now: completedTests.length + (currentIsAlreadyComplete ? 0 : 1) }}
+                >
                     <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
                 </View>
                 <View style={[styles.instructionCard, { backgroundColor: theme.colors.primaryContainer }]}>
@@ -176,8 +183,8 @@ export default function ActiveTestScreen() {
                         color={theme.colors.primary}
                     />
                     <View style={styles.instructionText}>
-                        <Text style={styles.testName}>{test.name}</Text>
-                        <Text style={styles.testDescription}>{test.description}</Text>
+                        <Text style={[styles.testName, { color: theme.colors.onPrimaryContainer }]}>{test.name}</Text>
+                        <Text style={[styles.testDescription, { color: theme.colors.onPrimaryContainer }]}>{test.description}</Text>
                     </View>
                 </View>
 
@@ -345,12 +352,12 @@ export default function ActiveTestScreen() {
             />
             <Portal>
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
-                    <Dialog.Title>Salir de la bateria</Dialog.Title>
+                    <Dialog.Title>Salir de la batería</Dialog.Title>
                     <Dialog.Content>
-                        <Text>Si sales ahora se perderan los resultados no guardados. Deseas salir?</Text>
+                        <Text>Si sales ahora se perderán los resultados no guardados. ¿Desea salir?</Text>
                     </Dialog.Content>
                     <Dialog.Actions>
-                        <PaperButton onPress={handleCancelExit}>Continuar bateria</PaperButton>
+                        <PaperButton onPress={handleCancelExit}>Continuar batería</PaperButton>
                         <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
                     </Dialog.Actions>
                 </Dialog>
@@ -368,22 +375,21 @@ const styles = StyleSheet.create({
     scroll: { padding: 16, paddingBottom: 40 },
     instructionCard: { borderRadius: 20, padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 20 },
     instructionText: { flex: 1 },
-    testName: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#004d40' },
-    testDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#004d40', lineHeight: 18, marginTop: 2 },
+    testName: { fontFamily: 'Montserrat_700Bold', fontSize: 16 },
+    testDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 },
     timerResultContainer: { alignItems: 'center', paddingVertical: 16 },
     timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
     timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
     notesInput: { marginTop: 20 },
     notesOutline: { borderRadius: 12 },
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, backgroundColor: '#f8fafc' },
+    emptyTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 18, color: '#374151', marginTop: 16 },
+    emptyText: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#6b7280', marginTop: 4, textAlign: 'center' },
     safetyCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 16 },
     safetyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     safetyTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     safetyTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
     safetyPreview: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', marginTop: 4 },
-    safetyList: { marginTop: 8, gap: 6 },
-    safetyTipRow: { flexDirection: 'row', gap: 8 },
-    safetyBullet: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#4b5563', lineHeight: 18 },
-    safetyTip: { flex: 1, fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#4b5563', lineHeight: 18 },
     stepContainer: { marginTop: 10 },
     stepRow: { flexDirection: 'row', gap: 10 },
     stepColumn: { alignItems: 'center', width: 22 },

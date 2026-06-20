@@ -35,7 +35,7 @@ export function BodyMetricsInput({ onConfirm }: BodyMetricsInputProps) {
 
     const handleConfirm = () => {
         if (!isValid) {
-            setError('Ingresa peso y estatura validos para continuar.');
+            setError('Ingresa peso y estatura válidos para continuar.');
             return;
         }
         setError('');

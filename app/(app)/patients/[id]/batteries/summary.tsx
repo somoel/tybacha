@@ -90,7 +90,8 @@ export default function BatterySummaryScreen() {
         <View style={styles.container}>
             <Stack.Screen
                 options={{
-                    title: 'Resumen bateria SFT',
+                    title: 'Resumen batería SFT',
+                    animation: 'fade',
                     headerRight: () => (
                         <IconButton
                             icon="close"
@@ -104,7 +105,11 @@ export default function BatterySummaryScreen() {
 
             <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scroll}>
                 <Text style={styles.progressHeader}>{completedTests.length} de {SFT_TESTS.length} pruebas completadas</Text>
-                <View style={styles.progressTrack}>
+                <View
+                    style={styles.progressTrack}
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{ min: 0, max: SFT_TESTS.length, now: completedTests.length, text: `${completedTests.length} de ${SFT_TESTS.length} pruebas completadas` }}
+                >
                     <View style={[styles.progressFill, { backgroundColor: theme.colors.primary }]} />
                 </View>
                 <AppButton

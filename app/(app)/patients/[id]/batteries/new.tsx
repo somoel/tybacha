@@ -88,7 +88,7 @@ export default function NewBatteryScreen() {
         <View style={styles.container}>
             <Stack.Screen
                 options={{
-                    title: 'Realizar bateria SFT',
+                    title: 'Realizar batería SFT',
                     headerRight: () => (
                         <IconButton icon="close" size={24} onPress={handleRequestExit} />
                     ),
@@ -103,7 +103,11 @@ export default function NewBatteryScreen() {
                         <Text style={styles.progressHeader}>
                             {completedTests.length} de {SFT_TESTS.length} pruebas completadas
                         </Text>
-                        <View style={styles.progressTrack}>
+                        <View
+                            style={styles.progressTrack}
+                            accessibilityRole="progressbar"
+                            accessibilityValue={{ min: 0, max: SFT_TESTS.length, now: completedTests.length, text: `${completedTests.length} de ${SFT_TESTS.length} pruebas completadas` }}
+                        >
                             <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
                         </View>
                         {SFT_TESTS.map((test) => {
@@ -147,12 +151,12 @@ export default function NewBatteryScreen() {
             />
             <Portal>
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
-                    <Dialog.Title>Salir de la bateria</Dialog.Title>
+                    <Dialog.Title>Salir de la batería</Dialog.Title>
                     <Dialog.Content>
-                        <Text>Si sales ahora se perderan los resultados no guardados. Deseas salir?</Text>
+                        <Text>Si sales ahora se perderán los resultados no guardados. ¿Desea salir?</Text>
                     </Dialog.Content>
                     <Dialog.Actions>
-                        <PaperButton onPress={handleCancelExit}>Continuar bateria</PaperButton>
+                        <PaperButton onPress={handleCancelExit}>Continuar batería</PaperButton>
                         <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
                     </Dialog.Actions>
                 </Dialog>

@@ -35,7 +35,7 @@ export function TestCard({ test, onPress, isCompleted = false, resultValue }: Te
                     />
                 </View>
                 <View style={styles.content}>
-                    <Text style={styles.shortName}>{test.shortName}</Text>
+                    <Text style={[styles.shortName, { color: theme.colors.primary }]}>{test.shortName}</Text>
                     <Text style={styles.name} numberOfLines={1}>{test.name}</Text>
                     <Text style={styles.description} numberOfLines={2}>
                         {test.description}
@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     shortName: {
         fontFamily: 'Montserrat_600SemiBold',
         fontSize: 11,
-        color: '#006d77',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
