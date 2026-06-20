@@ -19,19 +19,19 @@ export function LapDistanceCalculator({
     const theme = useTheme();
     const [laps, setLaps] = useState(0);
 
-    const totalMeters = laps * lapLengthMeters;
+    const totalMeters = Math.round(laps * lapLengthMeters * 10) / 10;
 
     const handleIncrement = () => {
         const next = laps + 1;
         setLaps(next);
-        onValueChange(next * lapLengthMeters);
+        onValueChange(Math.round(next * lapLengthMeters * 10) / 10);
     };
 
     const handleDecrement = () => {
         if (laps <= 0) return;
         const next = laps - 1;
         setLaps(next);
-        onValueChange(next * lapLengthMeters);
+        onValueChange(Math.round(next * lapLengthMeters * 10) / 10);
     };
 
     return (
@@ -69,7 +69,7 @@ export function LapDistanceCalculator({
             <View style={styles.distanceContainer}>
                 <Text style={styles.distanceLabel}>Distancia recorrida</Text>
                 <Text style={[styles.distanceValue, { color: theme.colors.primary }]}>
-                    {totalMeters.toFixed(2)} m
+                    {totalMeters.toFixed(1)} m
                 </Text>
                 <Text style={styles.distanceDetail}>
                     ({laps} × {lapLengthMeters} m)
