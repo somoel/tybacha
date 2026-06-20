@@ -104,7 +104,7 @@ export default function BatterySummaryScreen() {
             clearSession();
             allowExitRef.current = true;
             const destination = action === 'plan'
-                ? `/(app)/patients/${id}/progress/edit-plan`
+                ? `/(app)/patients/${id}/progress/edit-plan?from=battery`
                 : `/(app)/patients/${id}`;
             router.replace(destination as never);
         } catch (error) {

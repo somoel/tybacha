@@ -12,7 +12,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import { Text } from 'react-native-paper';
 
 export default function EditPlanSheet() {
-    const { id: patientId } = useLocalSearchParams<{ id: string }>();
+    const { id: patientId, from } = useLocalSearchParams<{ id: string; from?: string }>();
     const router = useRouter();
     const [planId, setPlanId] = useState<string | null>(null);
     const [initialData, setInitialData] = useState<ExercisePlanFormData | null>(null);
@@ -163,7 +163,11 @@ export default function EditPlanSheet() {
                         planId={planId}
                         hideActions
                         onSuccess={() => {
-                            router.back();
+                            if (from === 'battery') {
+                                router.replace(`/(app)/patients/${patientId}/progress` as never);
+                            } else {
+                                router.back();
+                            }
                         }}
                     />
                 </Animated.View>
