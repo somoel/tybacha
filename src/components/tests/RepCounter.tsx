@@ -1,3 +1,5 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
@@ -8,21 +10,18 @@ interface RepCounterProps {
     onValueChange: (value: number) => void;
     label?: string;
     mode: 'increment' | 'manual_input';
+    disabled?: boolean;
 }
 
-/**
- * Counter with +/- buttons for test repetitions, or manual text input
- * for distance/time measurements. In increment mode the numeric display
- * is tappable – it switches to an inline TextInput for direct entry.
- * When allowNegative is true in manual_input mode, a stepper with
- * ±1 and ±0.1 steps is shown instead of a text input.
- */
+const LONG_PRESS_DELTA = 5;
+
 export function RepCounter({
     initialValue = 0,
     allowNegative = false,
     onValueChange,
     label = 'Valor',
     mode,
+    disabled = false,
 }: RepCounterProps) {
     const theme = useTheme();
     const [value, setValue] = useState(initialValue);
@@ -30,20 +29,49 @@ export function RepCounter({
     const [editText, setEditText] = useState(String(initialValue));
     const [textValue, setTextValue] = useState(Math.abs(initialValue).toString());
 
+    const triggerHaptic = (style: 'selection' | 'medium' = 'selection') => {
+        if (disabled) return;
+        if (style === 'medium') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        } else {
+            Haptics.selectionAsync().catch(() => {});
+        }
+    };
+
     const applyValue = (newValue: number) => {
         const rounded = Math.round(newValue * 10) / 10;
         setValue(rounded);
         onValueChange(rounded);
     };
 
-    const handleIncrement = () => applyValue(value + 1);
+    const handleIncrement = () => {
+        if (disabled) return;
+        triggerHaptic('selection');
+        applyValue(value + 1);
+    };
+
+    const handleIncrementLong = () => {
+        if (disabled) return;
+        triggerHaptic('medium');
+        applyValue(value + LONG_PRESS_DELTA);
+    };
 
     const handleDecrement = () => {
+        if (disabled) return;
         if (!allowNegative && value <= 0) return;
+        triggerHaptic('selection');
         applyValue(value - 1);
     };
 
+    const handleDecrementLong = () => {
+        if (disabled) return;
+        if (!allowNegative && value - LONG_PRESS_DELTA < 0) return;
+        triggerHaptic('medium');
+        applyValue(value - LONG_PRESS_DELTA);
+    };
+
     const startEditing = () => {
+        if (disabled) return;
         setEditText(String(value));
         setEditing(true);
     };
@@ -58,6 +86,7 @@ export function RepCounter({
     };
 
     const handleTextChange = (text: string) => {
+        if (disabled) return;
         setTextValue(text);
         const parsed = parseFloat(text);
         if (!isNaN(parsed)) {
@@ -66,6 +95,7 @@ export function RepCounter({
     };
 
     const step = (amount: number) => {
+        if (disabled) return;
         applyValue(value + amount);
     };
 
@@ -73,11 +103,12 @@ export function RepCounter({
         if (allowNegative) {
             return (
                 <View style={styles.stepperContainer}>
-                    <Text style={styles.label}>{label}</Text>
+                    <Text style={[styles.label, disabled && { color: theme.colors.outline }]}>{label}</Text>
                     <View style={styles.stepperRow}>
                         <Pressable
                             onPress={() => step(-1)}
-                            style={[styles.stepperBtn, { backgroundColor: theme.colors.errorContainer }]}
+                            disabled={disabled}
+                            style={[styles.stepperBtn, { backgroundColor: theme.colors.errorContainer, opacity: disabled ? 0.5 : 1 }]}
                             accessibilityLabel="Restar 1"
                             accessibilityRole="button"
                         >
@@ -85,7 +116,8 @@ export function RepCounter({
                         </Pressable>
                         <Pressable
                             onPress={() => step(-0.1)}
-                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant }]}
+                            disabled={disabled}
+                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant, opacity: disabled ? 0.5 : 1 }]}
                             accessibilityLabel="Restar 0.1"
                             accessibilityRole="button"
                         >
@@ -104,7 +136,8 @@ export function RepCounter({
                         </View>
                         <Pressable
                             onPress={() => step(0.1)}
-                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant }]}
+                            disabled={disabled}
+                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant, opacity: disabled ? 0.5 : 1 }]}
                             accessibilityLabel="Sumar 0.1"
                             accessibilityRole="button"
                         >
@@ -112,7 +145,8 @@ export function RepCounter({
                         </Pressable>
                         <Pressable
                             onPress={() => step(1)}
-                            style={[styles.stepperBtn, { backgroundColor: theme.colors.primaryContainer }]}
+                            disabled={disabled}
+                            style={[styles.stepperBtn, { backgroundColor: theme.colors.primaryContainer, opacity: disabled ? 0.5 : 1 }]}
                             accessibilityLabel="Sumar 1"
                             accessibilityRole="button"
                         >
@@ -125,12 +159,13 @@ export function RepCounter({
 
         return (
             <View style={styles.manualContainer}>
-                <Text style={styles.label}>{label}</Text>
+                <Text style={[styles.label, disabled && { color: theme.colors.outline }]}>{label}</Text>
                 <PaperTextInput
                     mode="outlined"
                     value={textValue}
                     onChangeText={handleTextChange}
                     keyboardType="decimal-pad"
+                    editable={!disabled}
                     style={styles.manualInput}
                     outlineStyle={styles.inputOutline}
                     accessibilityLabel={label}
@@ -140,17 +175,23 @@ export function RepCounter({
     }
 
     return (
-        <View style={styles.container} accessibilityRole="adjustable">
-            <Text style={styles.label}>{label}</Text>
+        <View style={styles.container} accessibilityRole="adjustable" accessibilityState={{ disabled }}>
+            <Text style={[styles.label, disabled && { color: theme.colors.outline }]}>{label}</Text>
             <View style={styles.counterRow}>
                 <Pressable
                     onPress={handleDecrement}
-                    disabled={!allowNegative && value <= 0}
-                    style={[styles.counterBtn, { backgroundColor: theme.colors.surfaceVariant }]}
-                    accessibilityLabel="Disminuir"
+                    onLongPress={handleDecrementLong}
+                    disabled={disabled || (!allowNegative && value <= 0)}
+                    delayLongPress={350}
+                    style={[
+                        styles.counterBtn,
+                        { backgroundColor: theme.colors.surfaceVariant },
+                        (disabled || (!allowNegative && value <= 0)) && { opacity: 0.4 },
+                    ]}
+                    accessibilityLabel="Disminuir (mantener para -5)"
                     accessibilityRole="button"
                 >
-                    <Text style={[styles.counterBtnText, { color: (!allowNegative && value <= 0) ? theme.colors.outline : theme.colors.onSurfaceVariant }]}>-1</Text>
+                    <Text style={[styles.counterBtnText, { color: theme.colors.onSurfaceVariant }]}>-1</Text>
                 </Pressable>
                 <View style={styles.valueContainer}>
                     {editing ? (
@@ -166,8 +207,14 @@ export function RepCounter({
                             accessibilityLabel="Editar valor"
                         />
                     ) : (
-                        <TouchableOpacity onPress={startEditing} accessibilityLabel={`${value}. Toca para editar`}>
-                            <Text style={[styles.value, { color: theme.colors.primary }]}>
+                        <TouchableOpacity
+                            onPress={startEditing}
+                            disabled={disabled}
+                            accessibilityRole="button"
+                            accessibilityLabel={`${value}. Toca para editar`}
+                            style={styles.valueTap}
+                        >
+                            <Text style={[styles.value, { color: disabled ? theme.colors.outline : theme.colors.primary }]}>
                                 {value}
                             </Text>
                         </TouchableOpacity>
@@ -175,13 +222,26 @@ export function RepCounter({
                 </View>
                 <Pressable
                     onPress={handleIncrement}
-                    style={[styles.counterBtn, { backgroundColor: theme.colors.primaryContainer }]}
-                    accessibilityLabel="Incrementar"
+                    onLongPress={handleIncrementLong}
+                    disabled={disabled}
+                    delayLongPress={350}
+                    style={[
+                        styles.counterBtn,
+                        { backgroundColor: theme.colors.primaryContainer },
+                        disabled && { opacity: 0.4 },
+                    ]}
+                    accessibilityLabel="Incrementar (mantener para +5)"
                     accessibilityRole="button"
                 >
                     <Text style={[styles.counterBtnText, { color: theme.colors.onPrimaryContainer }]}>+1</Text>
                 </Pressable>
             </View>
+            {!disabled && (
+                <View style={styles.editHint}>
+                    <MaterialCommunityIcons name="pencil-outline" size={11} color={theme.colors.outline} />
+                    <Text style={styles.editHintText}>Toca el número para editarlo</Text>
+                </View>
+            )}
         </View>
     );
 }
@@ -222,6 +282,9 @@ const styles = StyleSheet.create({
         minWidth: 80,
         alignItems: 'center',
     },
+    valueTap: {
+        paddingVertical: 4,
+    },
     value: {
         fontFamily: 'Montserrat_800ExtraBold',
         fontSize: 48,
@@ -237,6 +300,17 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 8,
         paddingVertical: 0,
+    },
+    editHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+    },
+    editHintText: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 11,
+        color: '#94a3b8',
     },
     manualInput: {
         fontFamily: 'Montserrat_600SemiBold',

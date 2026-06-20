@@ -1,5 +1,6 @@
 import type { EncouragementCue, SoundVariant, TimerMode } from '@/src/types/battery.types';
 import { playCue, preloadCue, setMuted } from '@/src/services/soundService';
+import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { IconButton, Text, useTheme } from 'react-native-paper';
@@ -12,6 +13,7 @@ interface TimerDisplayProps {
     encouragementCues?: EncouragementCue[];
     soundCues?: boolean;
     endSound?: SoundVariant;
+    disabled?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ export function TimerDisplay({
     encouragementCues,
     soundCues = false,
     endSound,
+    disabled = false,
 }: TimerDisplayProps) {
     const theme = useTheme();
     const [seconds, setSeconds] = useState(mode === 'countdown' ? initialSeconds : 0);
@@ -91,6 +94,7 @@ export function TimerDisplay({
 
                 if (next <= 0) {
                     clearTimer();
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
                     if (soundCues && endSound) {
                         playCue(endSound).catch(() => {});
                     }
@@ -127,11 +131,13 @@ export function TimerDisplay({
     }, [isRunning, mode, initialSeconds, onComplete, onTick, clearTimer, encouragementCues, soundCues, endSound, hasStarted]);
 
     const toggleTimer = () => {
+        if (disabled) return;
         if (!hasStarted) setHasStarted(true);
         setIsRunning((prev) => !prev);
     };
 
     const resetTimer = () => {
+        if (disabled) return;
         clearTimer();
         setIsRunning(false);
         setHasStarted(false);
@@ -143,6 +149,7 @@ export function TimerDisplay({
     };
 
     const stopAndReport = () => {
+        if (disabled) return;
         clearTimer();
         setIsRunning(false);
         startTimestampRef.current = 0;
@@ -171,7 +178,7 @@ export function TimerDisplay({
     if (mode === 'none') return null;
 
     return (
-        <View style={styles.container} accessibilityRole="timer">
+        <View style={styles.container} accessibilityRole="timer" accessibilityState={{ disabled }}>
             {activeCue?.message && (
                 <Animated.View
                     style={[
@@ -189,7 +196,7 @@ export function TimerDisplay({
                 </Animated.View>
             )}
 
-            <Text style={[styles.timer, { color: theme.colors.primary }]}>
+            <Text style={[styles.timer, { color: disabled ? theme.colors.outline : theme.colors.primary }]}>
                 {formatTime(seconds)}
             </Text>
 
@@ -201,6 +208,7 @@ export function TimerDisplay({
                         size={28}
                         onPress={toggleMute}
                         accessibilityLabel={muted ? 'Activar sonido de avisos' : 'Silenciar avisos'}
+                        disabled={disabled}
                     />
                 )}
                 <IconButton
@@ -209,7 +217,7 @@ export function TimerDisplay({
                     size={28}
                     onPress={resetTimer}
                     accessibilityLabel="Reiniciar cronómetro"
-                    disabled={!hasStarted}
+                    disabled={disabled || !hasStarted}
                 />
                 <IconButton
                     icon={isRunning ? 'pause' : 'play'}
@@ -220,6 +228,7 @@ export function TimerDisplay({
                     onPress={toggleTimer}
                     accessibilityLabel={isRunning ? 'Pausar' : 'Iniciar'}
                     style={styles.playButton}
+                    disabled={disabled}
                 />
                 <IconButton
                     icon="stop"
@@ -227,7 +236,7 @@ export function TimerDisplay({
                     size={28}
                     onPress={stopAndReport}
                     accessibilityLabel="Detener y guardar"
-                    disabled={!hasStarted}
+                    disabled={disabled || !hasStarted}
                 />
             </View>
         </View>
@@ -269,3 +278,4 @@ const styles = StyleSheet.create({
         borderRadius: 32,
     },
 });
+

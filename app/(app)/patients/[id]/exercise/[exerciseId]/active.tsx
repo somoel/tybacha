@@ -1,21 +1,33 @@
+import { ExerciseActiveSkeleton } from '@/src/components/exercises/ExerciseActiveSkeleton';
 import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { EffortPainScale } from '@/src/components/ui/EffortPainScale';
+import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
+import { borderRadius, spacing } from '@/src/constants/theme';
 import { createApiExerciseRecord, fetchApiExerciseRecords } from '@/src/api/trackingApi';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
+import { useSyncStore } from '@/src/stores/syncStore';
 import type { Exercise } from '@/src/types/exercise.types';
-import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
+import type { ApiExerciseRecord, ApiExerciseRecordStatus } from '@/src/types/apiTracking.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { Stack, useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 
-function getTodayKey(): string {
-    const map = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    return map[new Date().getDay()];
+type Phase = 'timer' | 'reps';
+type SaveMode = 'completed' | 'skipped';
+type SaveResult = { mode: SaveMode; status: ApiExerciseRecordStatus };
+
+function formatSeconds(totalSeconds: number): string {
+    const safe = Math.max(0, totalSeconds);
+    const mins = Math.floor(safe / 60);
+    const secs = Math.floor(safe % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 export default function ActiveExerciseScreen() {
@@ -23,103 +35,123 @@ export default function ActiveExerciseScreen() {
     const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
+    const isOnline = useSyncStore((s) => s.isOnline);
 
     const [exercise, setExercise] = useState<Exercise | null>(null);
-    const [todayExercises, setTodayExercises] = useState<Exercise[]>([]);
     const [existingRecord, setExistingRecord] = useState<ApiExerciseRecord | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const [value, setValue] = useState(0);
     const [testNotes, setTestNotes] = useState('');
     const [perceivedEffort, setPerceivedEffort] = useState(5);
     const [reportedPain, setReportedPain] = useState(0);
     const [timerCompleted, setTimerCompleted] = useState(false);
+    const [phase, setPhase] = useState<Phase>('timer');
+    const [savedSummary, setSavedSummary] = useState<SaveResult | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
-    const [saveMode, setSaveMode] = useState<'completed' | 'skipped' | null>(null);
+    const [skipDialogVisible, setSkipDialogVisible] = useState(false);
+    const [saveMode, setSaveMode] = useState<SaveMode | null>(null);
+
     const allowExitRef = useRef(false);
     const pendingNavigationActionRef = useRef<unknown>(null);
 
     const hasTimer = exercise != null && exercise.duration_seconds != null && exercise.duration_seconds > 0;
     const hasReps = exercise != null && exercise.reps != null && exercise.reps > 0;
     const hasBoth = hasTimer && hasReps;
+    const isAlreadyCompleted = existingRecord?.estado === 'completado';
 
-    const currentTodayIndex = todayExercises.findIndex((ex) => ex.id_ejercicio_plan === Number(exerciseId));
-    const progress = todayExercises.length > 0 ? (currentTodayIndex + 1) / todayExercises.length : 0;
+    const canSave = isAlreadyCompleted || !hasTimer || timerCompleted;
+    const isDirty =
+        value !== (existingRecord?.repeticionesRealizadas ?? 0) ||
+        perceivedEffort !== (existingRecord?.esfuerzoPercibido ?? 5) ||
+        reportedPain !== (existingRecord?.dolorReportado ?? 0) ||
+        testNotes !== (existingRecord?.comentario ?? '');
+
+    const loadExercise = useCallback(async () => {
+        if (!id || !exerciseId) return;
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const plans = await fetchExercisePlans(id);
+            const activePlan = plans[0] ?? null;
+            if (!activePlan) {
+                setLoadError('No se encontró un plan activo para este paciente.');
+                return;
+            }
+
+            const foundExercise = activePlan.exercises.find(
+                (ex) => ex.id_ejercicio_plan === Number(exerciseId)
+            );
+            if (!foundExercise) {
+                setLoadError('El ejercicio ya no está disponible en el plan.');
+                return;
+            }
+
+            setExercise(foundExercise);
+
+            try {
+                const today = new Date().toISOString().slice(0, 10);
+                const records = await fetchApiExerciseRecords(Number(id), today, today);
+                const existing = records.find((r) => r.idEjercicioPlan === Number(exerciseId)) ?? null;
+                setExistingRecord(existing);
+                setValue(existing?.repeticionesRealizadas ?? 0);
+                setPerceivedEffort(existing?.esfuerzoPercibido ?? 5);
+                setReportedPain(existing?.dolorReportado ?? 0);
+                setTestNotes(existing?.comentario ?? '');
+                setTimerCompleted(
+                    existing?.duracionRealSegundos != null && (foundExercise.duration_seconds ?? 0) > 0
+                );
+                setPhase(existing ? 'reps' : (foundExercise.duration_seconds ? 'timer' : 'reps'));
+            } catch {
+                setExistingRecord(null);
+                setValue(0);
+                setPerceivedEffort(5);
+                setReportedPain(0);
+                setTestNotes('');
+                setTimerCompleted(false);
+                setPhase(foundExercise.duration_seconds ? 'timer' : 'reps');
+            }
+        } catch (error) {
+            setLoadError(
+                error instanceof Error ? error.message : 'No se pudo cargar el ejercicio.'
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }, [id, exerciseId]);
 
     useFocusEffect(useCallback(() => {
-        let isActive = true;
-        const load = async () => {
-            if (!id || !exerciseId) return;
-            setIsLoading(true);
-            try {
-                const plans = await fetchExercisePlans(id);
-                const activePlan = plans[0] ?? null;
-                if (!isActive || !activePlan) return;
-
-                const foundExercise = activePlan.exercises.find(
-                    (ex) => ex.id_ejercicio_plan === Number(exerciseId)
-                );
-                if (!isActive || !foundExercise) return;
-
-                setExercise(foundExercise);
-
-                const todayKey = getTodayKey();
-                const todayExs = activePlan.exercises.filter((ex) => ex.frequency === todayKey);
-                setTodayExercises(todayExs);
-
-                try {
-                    const today = new Date().toISOString().slice(0, 10);
-                    const records = await fetchApiExerciseRecords(Number(id), today, today);
-                    if (!isActive) return;
-                    const existing = records.find(
-                        (r) => r.idEjercicioPlan === Number(exerciseId)
-                    );
-                    if (existing) {
-                        setExistingRecord(existing);
-                        if (existing.repeticionesRealizadas != null) {
-                            setValue(existing.repeticionesRealizadas);
-                        }
-                        if (existing.esfuerzoPercibido != null) {
-                            setPerceivedEffort(existing.esfuerzoPercibido);
-                        }
-                        if (existing.dolorReportado != null) {
-                            setReportedPain(existing.dolorReportado);
-                        }
-                        if (existing.comentario) {
-                            setTestNotes(existing.comentario);
-                        }
-                    }
-                } catch {
-                    // silent - records are optional
-                }
-            } catch (error) {
-                console.error('Error cargando ejercicio:', error);
-            } finally {
-                if (isActive) setIsLoading(false);
-            }
-        };
-        load();
-        return () => { isActive = false; };
-    }, [id, exerciseId]));
-
-    useEffect(() => {
-        setTestNotes('');
-        setPerceivedEffort(5);
-        setReportedPain(0);
-    }, [exerciseId]);
+        loadExercise();
+    }, [loadExercise]));
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (event) => {
             if (allowExitRef.current) return;
+            if (savedSummary != null) return;
+            if (isAlreadyCompleted && !isDirty) return;
+            if (!isDirty) return;
             event.preventDefault();
             pendingNavigationActionRef.current = event.data.action;
             setExitDialogVisible(true);
         });
         return unsubscribe;
-    }, [navigation]);
+    }, [navigation, savedSummary, isAlreadyCompleted, isDirty]);
 
     const handleRequestExit = () => {
+        if (savedSummary != null) {
+            confirmExit();
+            return;
+        }
+        if (isAlreadyCompleted && !isDirty) {
+            confirmExit();
+            return;
+        }
+        if (!isDirty) {
+            confirmExit();
+            return;
+        }
         pendingNavigationActionRef.current = null;
         setExitDialogVisible(true);
     };
@@ -129,7 +161,7 @@ export default function ActiveExerciseScreen() {
         setExitDialogVisible(false);
     };
 
-    const handleConfirmExit = () => {
+    const confirmExit = () => {
         allowExitRef.current = true;
         setExitDialogVisible(false);
         if (pendingNavigationActionRef.current) {
@@ -144,7 +176,7 @@ export default function ActiveExerciseScreen() {
     const handleTimerComplete = useCallback((elapsed: number) => {
         setTimerCompleted(true);
         if (hasBoth) {
-            // Timer completed, user can now input reps
+            setPhase('reps');
         } else if (hasTimer && !hasReps) {
             setValue(parseFloat(elapsed.toFixed(1)));
         }
@@ -154,9 +186,7 @@ export default function ActiveExerciseScreen() {
         setValue(newValue);
     }, []);
 
-    const canSave = !hasTimer || timerCompleted;
-
-    const handleSave = async (mode: 'completed' | 'skipped') => {
+    const handleSave = async (mode: SaveMode) => {
         if (!exercise || !id) return;
         setSaveMode(mode);
 
@@ -177,22 +207,12 @@ export default function ActiveExerciseScreen() {
 
             await createApiExerciseRecord(payload);
 
-            setSnackbar({
-                visible: true,
-                message: mode === 'completed' ? 'Ejercicio completado' : 'Ejercicio omitido',
-                type: 'success',
-            });
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
 
-            allowExitRef.current = true;
-            setTimeout(() => {
-                const nextIdx = currentTodayIndex + 1;
-                const nextExercise = nextIdx < todayExercises.length ? todayExercises[nextIdx] : null;
-                if (nextExercise) {
-                    router.replace(`/(app)/patients/${id}/exercise/${nextExercise.id_ejercicio_plan}/active` as never);
-                } else {
-                    router.replace(`/(app)/patients/${id}` as never);
-                }
-            }, 1000);
+            setSavedSummary({
+                mode,
+                status: mode === 'completed' ? 'completado' : 'omitido',
+            });
         } catch (error) {
             setSnackbar({
                 visible: true,
@@ -204,67 +224,183 @@ export default function ActiveExerciseScreen() {
         }
     };
 
+    const handleReturnToPatient = () => {
+        allowExitRef.current = true;
+        const destination = id ? `/(app)/patients/${id}` : '/(app)/patients';
+        router.replace(destination as never);
+    };
+
     if (isLoading) {
         return (
-            <View style={styles.centered}>
-                <Text style={styles.loadingText}>Cargando ejercicio...</Text>
+            <View style={styles.container}>
+                <Stack.Screen options={{ title: 'Ejercicio de hoy', headerRight: undefined }} />
+                <ExerciseActiveSkeleton />
             </View>
         );
     }
 
-    if (!exercise) {
+    if (loadError || !exercise) {
         return (
-            <View style={styles.centered}>
-                <Text style={styles.errorText}>Ejercicio no encontrado</Text>
+            <View style={styles.container}>
+                <Stack.Screen options={{ title: 'Ejercicio de hoy', headerRight: undefined }} />
+                <View style={styles.centered}>
+                    <View style={[styles.errorIconWrap, { backgroundColor: theme.colors.errorContainer }]}>
+                        <MaterialCommunityIcons name="alert-circle-outline" size={36} color={theme.colors.error} />
+                    </View>
+                    <Text style={styles.errorTitle}>No se pudo cargar el ejercicio</Text>
+                    <Text style={styles.errorBody}>{loadError ?? 'Inténtalo de nuevo.'}</Text>
+                    <AppButton
+                        label="Reintentar"
+                        variant="filled"
+                        icon="refresh"
+                        onPress={loadExercise}
+                        style={styles.retryButton}
+                        accessibilityLabel="Reintentar carga del ejercicio"
+                    />
+                </View>
             </View>
         );
     }
 
-    const isAlreadyCompleted = existingRecord?.estado === 'completado';
+    if (savedSummary) {
+        return (
+            <View style={styles.container}>
+                <Stack.Screen
+                    options={{
+                        title: 'Listo',
+                        headerRight: undefined,
+                    }}
+                />
+                <ScrollView contentContainerStyle={styles.successContent}>
+                    <View
+                        style={[styles.successIconWrap, { backgroundColor: theme.colors.primaryContainer }]}
+                    >
+                        <MaterialCommunityIcons
+                            name={savedSummary.mode === 'completed' ? 'check-circle' : 'minus-circle'}
+                            size={48}
+                            color={theme.colors.primary}
+                        />
+                    </View>
+
+                    <Text style={styles.successTitle}>
+                        {savedSummary.mode === 'completed'
+                            ? 'Ejercicio registrado'
+                            : 'Ejercicio marcado como omitido'}
+                    </Text>
+                    <Text style={styles.successSubtitle}>
+                        {savedSummary.mode === 'completed'
+                            ? 'Guardamos el resultado de la sesión de hoy.'
+                            : 'Lo registramos como no realizado. No afecta los próximos ejercicios.'}
+                    </Text>
+
+                    {savedSummary.mode === 'completed' && (
+                        <View style={[styles.summaryCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                            <SummaryRow
+                                icon="counter"
+                                label="Repeticiones"
+                                value={hasReps ? String(value) : '—'}
+                            />
+                            <SummaryDivider />
+                            <SummaryRow
+                                icon="timer-outline"
+                                label="Duración"
+                                value={hasTimer
+                                    ? (hasBoth
+                                        ? formatSeconds(exercise.duration_seconds ?? 0)
+                                        : formatSeconds(value))
+                                    : '—'}
+                            />
+                            <SummaryDivider />
+                            <SummaryRow
+                                icon="arm-flex"
+                                label="Esfuerzo percibido"
+                                value={`${perceivedEffort}/10`}
+                            />
+                            <SummaryDivider />
+                            <SummaryRow
+                                icon="heart-pulse"
+                                label="Dolor reportado"
+                                value={`${reportedPain}/10`}
+                            />
+                            {testNotes.trim().length > 0 && (
+                                <>
+                                    <SummaryDivider />
+                                    <SummaryRow icon="note-text-outline" label="Observaciones" value={testNotes} multiline />
+                                </>
+                            )}
+                        </View>
+                    )}
+                </ScrollView>
+                <StickyBottomBar>
+                    <AppButton
+                        label="Volver al paciente"
+                        variant="filled"
+                        icon="arrow-left"
+                        onPress={handleReturnToPatient}
+                        accessibilityLabel="Volver a la ficha del paciente"
+                    />
+                </StickyBottomBar>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
             <Stack.Screen
                 options={{
-                    title: 'Ejercicio de hoy',
+                    title: exercise.name,
                     headerRight: () => (
                         <IconButton icon="close" size={24} onPress={handleRequestExit} />
                     ),
                 }}
             />
 
-            <ScrollView style={styles.content} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.scroll}>
-                <Text style={styles.progressHeader}>
-                    Ejercicio {currentTodayIndex + 1} de {todayExercises.length}
-                </Text>
-                <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.primary }]} />
-                </View>
+            <ScrollView
+                style={styles.content}
+                contentInsetAdjustmentBehavior="automatic"
+                contentContainerStyle={styles.scroll}
+                keyboardShouldPersistTaps="handled"
+            >
+                {!isOnline && <OfflineBanner visible />}
+
+                {isAlreadyCompleted && (
+                    <View style={[styles.completedBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+                        <MaterialCommunityIcons name="check-circle" size={18} color={theme.colors.primary} />
+                        <Text style={[styles.completedBadgeText, { color: theme.colors.onPrimaryContainer }]}>
+                            Completado hoy · puedes actualizar el registro
+                        </Text>
+                    </View>
+                )}
+
                 <View style={[styles.instructionCard, { backgroundColor: theme.colors.primaryContainer }]}>
-                    <MaterialCommunityIcons
-                        name="dumbbell"
-                        size={36}
-                        color={theme.colors.primary}
-                    />
+                    <View style={styles.objectiveHeader}>
+                        <View style={styles.objectiveIconWrap}>
+                            <MaterialCommunityIcons
+                                name="dumbbell"
+                                size={24}
+                                color={theme.colors.onPrimaryContainer}
+                            />
+                        </View>
+                        <Text style={styles.objectiveLabel}>OBJETIVO</Text>
+                    </View>
                     <Text style={styles.testName}>{exercise.name}</Text>
-                    <Text style={styles.testDescription}>{exercise.description}</Text>
 
                     <View style={styles.prescriptionRow}>
                         {exercise.sets > 0 && (
                             <View style={styles.prescriptionChip}>
-                                <MaterialCommunityIcons name="repeat" size={14} color={theme.colors.primary} />
+                                <MaterialCommunityIcons name="repeat" size={14} color={theme.colors.onPrimaryContainer} />
                                 <Text style={styles.prescriptionText}>{exercise.sets} series</Text>
                             </View>
                         )}
-                        {exercise.reps !== null && (
+                        {exercise.reps != null && exercise.reps > 0 && (
                             <View style={styles.prescriptionChip}>
-                                <MaterialCommunityIcons name="counter" size={14} color={theme.colors.primary} />
+                                <MaterialCommunityIcons name="counter" size={14} color={theme.colors.onPrimaryContainer} />
                                 <Text style={styles.prescriptionText}>{exercise.reps} reps</Text>
                             </View>
                         )}
-                        {exercise.duration_seconds !== null && (
+                        {exercise.duration_seconds != null && exercise.duration_seconds > 0 && (
                             <View style={styles.prescriptionChip}>
-                                <MaterialCommunityIcons name="timer-outline" size={14} color={theme.colors.primary} />
+                                <MaterialCommunityIcons name="timer-outline" size={14} color={theme.colors.onPrimaryContainer} />
                                 <Text style={styles.prescriptionText}>{exercise.duration_seconds}s</Text>
                             </View>
                         )}
@@ -272,26 +408,64 @@ export default function ActiveExerciseScreen() {
 
                     {exercise.rationale ? (
                         <View style={styles.rationaleContainer}>
-                            <MaterialCommunityIcons name="lightbulb-outline" size={14} color={theme.colors.secondary} />
+                            <View style={styles.rationaleHeader}>
+                                <MaterialCommunityIcons name="lightbulb-outline" size={14} color={theme.colors.onPrimaryContainer} />
+                                <Text style={styles.rationaleLabel}>POR QUÉ</Text>
+                            </View>
                             <Text style={styles.rationale}>{exercise.rationale}</Text>
                         </View>
                     ) : null}
                 </View>
 
-                {hasTimer && (
+                {exercise.description ? (
+                    <Text style={styles.description}>{exercise.description}</Text>
+                ) : null}
+
+                {hasTimer && phase === 'timer' && (
                     <TimerDisplay
                         mode="countdown"
                         initialSeconds={exercise.duration_seconds ?? 0}
                         onComplete={handleTimerComplete}
+                        disabled={isAlreadyCompleted}
                     />
                 )}
 
-                {hasReps && (
+                {hasTimer && phase === 'reps' && (
+                    <View style={styles.timerSummary}>
+                        <View style={styles.timerSummaryIcon}>
+                            <MaterialCommunityIcons name="check" size={16} color={theme.colors.primary} />
+                        </View>
+                        <Text style={styles.timerSummaryLabel}>Cronómetro</Text>
+                        <Text style={styles.timerSummaryValue}>
+                            {hasBoth
+                                ? formatSeconds(exercise.duration_seconds ?? 0)
+                                : formatSeconds(value)}
+                        </Text>
+                    </View>
+                )}
+
+                {hasReps && phase === 'reps' && (
+                    <View style={styles.repsBlock}>
+                        <Text style={styles.phaseLabel}>
+                            {hasBoth ? 'Ahora cuenta las repeticiones' : 'Repeticiones'}
+                        </Text>
+                        <RepCounter
+                            mode="increment"
+                            allowNegative={false}
+                            onValueChange={handleValueChange}
+                            label="Repeticiones"
+                            disabled={isAlreadyCompleted}
+                        />
+                    </View>
+                )}
+
+                {!hasTimer && hasReps && (
                     <RepCounter
                         mode="increment"
                         allowNegative={false}
                         onValueChange={handleValueChange}
                         label="Repeticiones"
+                        disabled={isAlreadyCompleted}
                     />
                 )}
 
@@ -316,66 +490,29 @@ export default function ActiveExerciseScreen() {
                     accessibilityLabel="Observaciones del ejercicio"
                 />
 
-                {!isAlreadyCompleted && (
-                    <View style={styles.metricsContainer}>
-                        <Text style={styles.metricsTitle}>Cómo se sintió</Text>
+                <View style={[styles.metricsContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                    <Text style={styles.metricsTitle}>Cómo se sintió</Text>
 
-                        <View style={styles.metricRow}>
-                            <View style={styles.metricLabelRow}>
-                                <MaterialCommunityIcons name="arm-flex" size={18} color={theme.colors.primary} />
-                                <Text style={styles.metricLabel}>Esfuerzo percibido</Text>
-                                <Text style={[styles.metricValue, { color: theme.colors.primary }]}>{perceivedEffort}/10</Text>
-                            </View>
-                            <View style={styles.sliderRow}>
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                    <TouchableOpacity
-                                        key={n}
-                                        style={[
-                                            styles.sliderDot,
-                                            n <= perceivedEffort && { backgroundColor: theme.colors.primary },
-                                        ]}
-                                        onPress={() => setPerceivedEffort(n)}
-                                    />
-                                ))}
-                            </View>
-                            <View style={styles.sliderLabels}>
-                                <Text style={styles.sliderLabelText}>Nada</Text>
-                                <Text style={styles.sliderLabelText}>Máximo</Text>
-                            </View>
-                        </View>
+                    <EffortPainScale
+                        value={perceivedEffort}
+                        onChange={setPerceivedEffort}
+                        label="Esfuerzo percibido"
+                        icon="arm-flex"
+                        color={theme.colors.primary}
+                        leftLabel="Nada"
+                        rightLabel="Máximo"
+                    />
 
-                        <View style={styles.metricRow}>
-                            <View style={styles.metricLabelRow}>
-                                <MaterialCommunityIcons name="heart-pulse" size={18} color="#c62828" />
-                                <Text style={styles.metricLabel}>Dolor reportado</Text>
-                                <Text style={[styles.metricValue, { color: '#c62828' }]}>{reportedPain}/10</Text>
-                            </View>
-                            <View style={styles.sliderRow}>
-                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                                    <TouchableOpacity
-                                        key={n}
-                                        style={[
-                                            styles.sliderDot,
-                                            n <= reportedPain && { backgroundColor: '#c62828' },
-                                        ]}
-                                        onPress={() => setReportedPain(n)}
-                                    />
-                                ))}
-                            </View>
-                            <View style={styles.sliderLabels}>
-                                <Text style={styles.sliderLabelText}>Ninguno</Text>
-                                <Text style={styles.sliderLabelText}>Intenso</Text>
-                            </View>
-                        </View>
-                    </View>
-                )}
-
-                {isAlreadyCompleted ? (
-                    <View style={styles.completedBanner}>
-                        <MaterialCommunityIcons name="check-circle" size={20} color="#2e7d32" />
-                        <Text style={styles.completedText}>Ejercicio completado hoy</Text>
-                    </View>
-                ) : null}
+                    <EffortPainScale
+                        value={reportedPain}
+                        onChange={setReportedPain}
+                        label="Dolor reportado"
+                        icon="heart-pulse"
+                        color={theme.colors.error}
+                        leftLabel="Ninguno"
+                        rightLabel="Intenso"
+                    />
+                </View>
             </ScrollView>
 
             <StickyBottomBar>
@@ -387,18 +524,23 @@ export default function ActiveExerciseScreen() {
                         onPress={() => handleSave('completed')}
                         disabled={!canSave || saveMode !== null}
                         loading={saveMode === 'completed'}
-                        style={styles.completeButton}
                         accessibilityLabel={isAlreadyCompleted ? "Actualizar registro del ejercicio" : "Marcar ejercicio como completado"}
                     />
-                    <AppButton
-                        label="Marcar como omitido"
-                        variant="outlined-error"
-                        icon="close"
-                        onPress={() => handleSave('skipped')}
-                        disabled={saveMode !== null}
-                        loading={saveMode === 'skipped'}
-                        accessibilityLabel="Marcar ejercicio como omitido"
-                    />
+                    {hasTimer && !timerCompleted && (
+                        <Text style={styles.saveHint}>Completa el cronómetro para habilitar guardar</Text>
+                    )}
+                    <View style={styles.skipRow}>
+                        <AppButton
+                            label="Marcar como omitido"
+                            variant="text"
+                            icon="close"
+                            onPress={() => setSkipDialogVisible(true)}
+                            disabled={saveMode !== null}
+                            textColor={theme.colors.error}
+                            accessibilityLabel="Marcar ejercicio como omitido"
+                            style={styles.skipButton}
+                        />
+                    </View>
                 </View>
             </StickyBottomBar>
 
@@ -413,11 +555,33 @@ export default function ActiveExerciseScreen() {
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
                     <Dialog.Title>Salir del ejercicio</Dialog.Title>
                     <Dialog.Content>
-                        <Text>Si sales ahora se perderán los datos no guardados. ¿Deseas salir?</Text>
+                        <Text>Tienes cambios sin guardar. ¿Deseas salir de todos modos?</Text>
                     </Dialog.Content>
                     <Dialog.Actions>
-                        <PaperButton onPress={handleCancelExit}>Continuar</PaperButton>
-                        <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
+                        <PaperButton onPress={handleCancelExit}>Continuar aquí</PaperButton>
+                        <PaperButton onPress={confirmExit} textColor={theme.colors.error}>Salir</PaperButton>
+                    </Dialog.Actions>
+                </Dialog>
+
+                <Dialog visible={skipDialogVisible} onDismiss={() => setSkipDialogVisible(false)}>
+                    <Dialog.Title>¿Marcar como omitido?</Dialog.Title>
+                    <Dialog.Content>
+                        <Text>
+                            Este ejercicio no se contará como realizado y no se guardarán repeticiones,
+                            tiempo ni métricas. ¿Confirmas?
+                        </Text>
+                    </Dialog.Content>
+                    <Dialog.Actions>
+                        <PaperButton onPress={() => setSkipDialogVisible(false)}>Cancelar</PaperButton>
+                        <PaperButton
+                            onPress={() => {
+                                setSkipDialogVisible(false);
+                                handleSave('skipped');
+                            }}
+                            textColor={theme.colors.error}
+                        >
+                            Sí, omitir
+                        </PaperButton>
                     </Dialog.Actions>
                 </Dialog>
             </Portal>
@@ -425,95 +589,311 @@ export default function ActiveExerciseScreen() {
     );
 }
 
+function SummaryRow({
+    icon,
+    label,
+    value,
+    multiline = false,
+}: {
+    icon: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+    label: string;
+    value: string;
+    multiline?: boolean;
+}) {
+    return (
+        <View style={styles.summaryRow}>
+            <MaterialCommunityIcons
+                name={icon}
+                size={18}
+                color="#006d77"
+                style={styles.summaryIcon}
+            />
+            <View style={styles.summaryText}>
+                <Text style={styles.summaryLabel}>{label}</Text>
+                <Text
+                    style={styles.summaryValue}
+                    numberOfLines={multiline ? undefined : 1}
+                >
+                    {value}
+                </Text>
+            </View>
+        </View>
+    );
+}
+
+function SummaryDivider() {
+    return <View style={styles.summaryDivider} />;
+}
+
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc' },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#6b7280' },
-    errorText: { fontFamily: 'Montserrat_500Medium', fontSize: 14, color: '#c62828' },
-    progressHeader: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151', marginBottom: 6 },
-    progressTrack: { height: 6, backgroundColor: '#e5e7eb', overflow: 'hidden', marginBottom: 16 },
-    progressFill: { height: 6 },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+    errorIconWrap: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    errorTitle: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 18,
+        color: '#1f2937',
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    errorBody: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 14,
+        color: '#6b7280',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    retryButton: {
+        minWidth: 180,
+    },
     content: { flex: 1 },
-    scroll: { padding: 16, paddingBottom: 40 },
-    instructionCard: { borderRadius: 20, padding: 20, alignItems: 'center', gap: 8, marginBottom: 20 },
-    testName: { fontFamily: 'Montserrat_700Bold', fontSize: 20, color: '#004d40', textAlign: 'center' },
-    testDescription: { fontFamily: 'Montserrat_400Regular', fontSize: 14, color: '#004d40', textAlign: 'center', lineHeight: 20 },
-    prescriptionRow: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap', justifyContent: 'center' },
+    scroll: { padding: spacing.md, paddingBottom: 40 },
+    completedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 10,
+        borderRadius: borderRadius.md,
+        marginBottom: spacing.md,
+    },
+    completedBadgeText: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 13,
+        flex: 1,
+    },
+    instructionCard: {
+        borderRadius: borderRadius.xl,
+        padding: spacing.lg,
+        marginBottom: spacing.md,
+    },
+    objectiveHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        alignSelf: 'center',
+        marginBottom: 8,
+    },
+    objectiveIconWrap: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    objectiveLabel: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 11,
+        color: '#004d40',
+        letterSpacing: 1.5,
+    },
+    testName: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 20,
+        color: '#004d40',
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    prescriptionRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: 12,
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+    },
     prescriptionChip: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
-        backgroundColor: 'rgba(255,255,255,0.6)',
-        borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        backgroundColor: 'rgba(255,255,255,0.7)',
+        borderRadius: borderRadius.sm,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
     },
-    prescriptionText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 12, color: '#004d40' },
+    prescriptionText: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 12,
+        color: '#004d40',
+    },
     rationaleContainer: {
-        flexDirection: 'row',
-        gap: 6,
-        backgroundColor: 'rgba(255,255,255,0.4)',
-        borderRadius: 8,
-        padding: 10,
-        marginTop: 8,
+        marginTop: spacing.md,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,77,64,0.15)',
     },
-    rationale: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#004d40', lineHeight: 16, flex: 1, fontStyle: 'italic' },
-    timerResultContainer: { alignItems: 'center', paddingVertical: 16 },
-    timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
-    timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
-    notesInput: { marginTop: 20 },
-    notesOutline: { borderRadius: 12 },
-    metricsContainer: {
-        marginTop: 20,
+    rationaleHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
+        justifyContent: 'center',
+    },
+    rationaleLabel: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 10,
+        color: '#004d40',
+        letterSpacing: 1.2,
+    },
+    rationale: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 13,
+        color: '#004d40',
+        lineHeight: 18,
+        fontStyle: 'italic',
+        opacity: 0.85,
+        textAlign: 'center',
+        paddingHorizontal: spacing.xs,
+    },
+    description: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 14,
+        color: '#374151',
+        lineHeight: 20,
+        textAlign: 'center',
+        marginBottom: spacing.lg,
+        paddingHorizontal: spacing.xs,
+    },
+    timerSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
         backgroundColor: '#ffffff',
-        borderRadius: 16,
-        padding: 16,
         borderWidth: 1,
         borderColor: '#e5e7eb',
+        borderRadius: borderRadius.md,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 10,
+        marginTop: spacing.sm,
+        alignSelf: 'center',
+    },
+    timerSummaryIcon: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#b2dfdb',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    timerSummaryLabel: {
+        fontFamily: 'Montserrat_500Medium',
+        fontSize: 13,
+        color: '#6b7280',
+    },
+    timerSummaryValue: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 16,
+        color: '#006d77',
+    },
+    repsBlock: {
+        marginTop: spacing.xs,
+    },
+    phaseLabel: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 14,
+        color: '#374151',
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    timerResultContainer: { alignItems: 'center', paddingVertical: spacing.md },
+    timerResultLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#374151' },
+    timerResultValue: { fontFamily: 'Montserrat_800ExtraBold', fontSize: 36, marginTop: 4 },
+    notesInput: { marginTop: spacing.lg },
+    notesOutline: { borderRadius: borderRadius.md },
+    metricsContainer: {
+        marginTop: spacing.lg,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
+        borderWidth: 1,
     },
     metricsTitle: {
         fontFamily: 'Montserrat_700Bold',
         fontSize: 15,
         color: '#1f2937',
-        marginBottom: 16,
+        marginBottom: spacing.md,
     },
-    metricRow: { marginBottom: 16 },
-    metricLabelRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 8,
-    },
-    metricLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151', flex: 1 },
-    metricValue: { fontFamily: 'Montserrat_700Bold', fontSize: 14 },
-    sliderRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 4,
-    },
-    sliderDot: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: '#e5e7eb',
-    },
-    sliderLabels: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    actionButtons: { gap: 6 },
+    saveHint: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 12,
+        color: '#94a3b8',
+        textAlign: 'center',
         marginTop: 4,
     },
-    sliderLabelText: { fontFamily: 'Montserrat_400Regular', fontSize: 10, color: '#94a3b8' },
-    actionButtons: { gap: 10 },
-    completeButton: { marginBottom: 4 },
-    completedBanner: {
-        flexDirection: 'row',
+    skipRow: {
+        alignItems: 'center',
+    },
+    skipButton: {
+        minWidth: 0,
+    },
+    successContent: {
+        flexGrow: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 8,
-        backgroundColor: '#e8f5e9',
-        borderRadius: 12,
-        paddingVertical: 14,
-        marginTop: 24,
+        padding: spacing.xl,
     },
-    completedText: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#2e7d32' },
+    successIconWrap: {
+        width: 96,
+        height: 96,
+        borderRadius: 48,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: spacing.lg,
+    },
+    successTitle: {
+        fontFamily: 'Montserrat_700Bold',
+        fontSize: 22,
+        color: '#1f2937',
+        textAlign: 'center',
+        marginBottom: 6,
+    },
+    successSubtitle: {
+        fontFamily: 'Montserrat_400Regular',
+        fontSize: 14,
+        color: '#6b7280',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: spacing.lg,
+    },
+    summaryCard: {
+        width: '100%',
+        borderRadius: borderRadius.lg,
+        borderWidth: 1,
+        padding: spacing.md,
+    },
+    summaryRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        paddingVertical: 8,
+    },
+    summaryIcon: {
+        marginTop: 2,
+    },
+    summaryText: {
+        flex: 1,
+    },
+    summaryLabel: {
+        fontFamily: 'Montserrat_500Medium',
+        fontSize: 12,
+        color: '#6b7280',
+        marginBottom: 2,
+    },
+    summaryValue: {
+        fontFamily: 'Montserrat_600SemiBold',
+        fontSize: 15,
+        color: '#1f2937',
+    },
+    summaryDivider: {
+        height: 1,
+        backgroundColor: '#e5e7eb',
+    },
 });

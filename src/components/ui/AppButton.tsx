@@ -14,6 +14,7 @@ interface AppButtonProps {
     icon?: string;
     accessibilityLabel?: string;
     style?: object;
+    textColor?: string;
 }
 
 /**
@@ -29,6 +30,7 @@ export function AppButton({
     icon,
     accessibilityLabel,
     style,
+    textColor,
 }: AppButtonProps) {
     const getMode = (): 'contained' | 'outlined' | 'text' => {
         switch (variant) {
@@ -65,7 +67,7 @@ export function AppButton({
             ]}
             contentStyle={styles.content}
             buttonColor={isError ? 'transparent' : undefined}
-            textColor={isError ? '#c62828' : undefined}
+            textColor={textColor ?? (isError ? '#c62828' : undefined)}
         >
             {label}
         </Button>
