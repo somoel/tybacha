@@ -149,11 +149,7 @@ export default function NewPatientScreen() {
             await waitForMinimumSubmitLoading(startedAt);
             setSnackbar({ visible: true, message: 'Adulto mayor registrado exitosamente ✓', type: 'success' });
             setTimeout(() => {
-                if (isOnline) {
-                    router.replace(`/(app)/patients/${patient.id}` as never);
-                } else {
-                    router.back();
-                }
+                router.replace(`/(app)/patients/${patient.id}` as never);
             }, 1500);
         } catch (error) {
             await waitForMinimumSubmitLoading(startedAt);

@@ -3,7 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable } from 'react-native';
 import { useTheme } from 'react-native-paper';
 
-type NavLike = { canGoBack: () => boolean; goBack: () => void };
+type NavLike = { canGoBack: () => boolean; goBack: () => void; getState: () => { index: number } };
 
 /**
  * Adultos mayores stack navigator for nested routes.
@@ -18,7 +18,7 @@ export default function PatientsLayout() {
         function BackLeft({ tintColor }: { tintColor?: string }) {
             return (
                 <Pressable
-                    onPress={() => (navigation.canGoBack() ? navigation.goBack() : router.replace(fallback as never))}
+                    onPress={() => (navigation.getState().index > 0 ? navigation.goBack() : router.replace(fallback as never))}
                     hitSlop={8}
                     style={{ paddingHorizontal: 12 }}
                 >
