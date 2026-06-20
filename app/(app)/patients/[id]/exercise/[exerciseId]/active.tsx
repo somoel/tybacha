@@ -484,8 +484,8 @@ export default function ActiveExerciseScreen() {
                         <Text style={styles.setTrackerLabel}>Serie {currentSet} de {totalSets}</Text>
                         <View style={styles.setTrackerDots}>
                             {Array.from({ length: totalSets }, (_, i) => {
-                                const isCompleted = i < currentSet - 1;
-                                const isCurrent = i === currentSet - 1;
+                                const isCompleted = allSetsDone || i < currentSet - 1;
+                                const isCurrent = !allSetsDone && i === currentSet - 1;
                                 return (
                                     <View
                                         key={i}
@@ -627,7 +627,7 @@ export default function ActiveExerciseScreen() {
                     />
                     {hasSets && !allSetsDone ? (
                         <Text style={styles.saveHint}>
-                            Completa las {totalSets} series para guardar (van {repsPerSet.length})
+                            Completa las {totalSets} series para guardar{currentSet > 1 ? ` (van ${currentSet - 1})` : ''}
                         </Text>
                     ) : hasTimer && !setTimerCompleted ? (
                         <Text style={styles.saveHint}>Completa el cronómetro para habilitar guardar</Text>
