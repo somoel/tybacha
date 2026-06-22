@@ -31,6 +31,7 @@
     "date-fns": "^4.1.0",
     "eventemitter3": "^5.0.4",
     "expo": "~54.0.33",
+    "expo-audio": "~1.1.1",
     "expo-constants": "~18.0.13",
     "expo-device": "~8.0.10",
     "expo-font": "~14.0.11",
