@@ -163,6 +163,16 @@ async function upsertDailyActivity(
   return insertResult.insertId;
 }
 
+// ponytail: MySQL DATETIME has no timezone marker, and the driver returns it
+// as a naive string (dateStrings: true). Treat it as UTC (the MySQL session
+// timezone on TiDB/Vercel) and emit a proper ISO string so clients can parse
+// it with `new Date(...)` without shifting to the device's local timezone.
+function toUtcIso(value: string | null): string | null {
+  if (!value) return null;
+  if (value.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(value)) return value;
+  return `${value.replace(' ', 'T')}Z`;
+}
+
 function mapExerciseRecord(row: ExerciseRecordRow) {
   return {
     idRegistroEjercicioPlan: row.id_registro_ejercicio_plan,
@@ -170,7 +180,7 @@ function mapExerciseRecord(row: ExerciseRecordRow) {
     idAdultoMayor: row.id_adulto_mayor,
     idRegistroActividadDiaria: row.id_registro_actividad_diaria,
     fechaProgramada: row.fecha_programada,
-    fechaRealizacion: row.fecha_realizacion,
+    fechaRealizacion: toUtcIso(row.fecha_realizacion),
     estado: row.estado,
     duracionRealSegundos: row.duracion_real_segundos,
     repeticionesRealizadas: row.repeticiones_realizadas,
