@@ -535,14 +535,12 @@ export default function ActiveExerciseScreen() {
                     </View>
                 )}
 
-                {hasReps && setPhase === 'reps' && (
+                {hasReps && hasTimer && setPhase === 'reps' && (
                     <View style={styles.repsBlock}>
-                        <Text style={styles.phaseLabel}>
-                            {hasBoth ? 'Ahora cuenta las repeticiones' : 'Repeticiones'}
-                        </Text>
                         <RepCounter
                             key={`reps-${currentSet}`}
                             mode="increment"
+                            value={value}
                             allowNegative={false}
                             onValueChange={handleValueChange}
                             label={`Repeticiones${hasSets ? ` · serie ${currentSet}` : ''}`}
@@ -551,10 +549,11 @@ export default function ActiveExerciseScreen() {
                     </View>
                 )}
 
-                {!hasTimer && hasReps && (
+                {hasReps && !hasTimer && (
                     <RepCounter
                         key={hasSets ? `reps-${currentSet}` : 'reps'}
                         mode="increment"
+                        value={value}
                         allowNegative={false}
                         onValueChange={handleValueChange}
                         label={`Repeticiones${hasSets ? ` · serie ${currentSet}` : ''}`}
@@ -904,13 +903,6 @@ const styles = StyleSheet.create({
     },
     repsBlock: {
         marginTop: spacing.xs,
-    },
-    phaseLabel: {
-        fontFamily: 'Montserrat_600SemiBold',
-        fontSize: 14,
-        color: '#374151',
-        textAlign: 'center',
-        marginBottom: 4,
     },
     setTracker: {
         alignItems: 'center',

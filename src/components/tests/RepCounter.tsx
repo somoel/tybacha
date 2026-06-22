@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-
 import { Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
 
 interface RepCounterProps {
+    value?: number;
     initialValue?: number;
     allowNegative?: boolean;
     onValueChange: (value: number) => void;
@@ -16,6 +17,7 @@ interface RepCounterProps {
 const LONG_PRESS_DELTA = 5;
 
 export function RepCounter({
+    value,
     initialValue = 0,
     allowNegative = false,
     onValueChange,
@@ -24,7 +26,9 @@ export function RepCounter({
     disabled = false,
 }: RepCounterProps) {
     const theme = useTheme();
-    const [value, setValue] = useState(initialValue);
+    const isControlled = value !== undefined;
+    const [internalValue, setInternalValue] = useState(initialValue);
+    const currentValue = isControlled ? value : internalValue;
     const [editing, setEditing] = useState(false);
     const [editText, setEditText] = useState(String(initialValue));
     const [textValue, setTextValue] = useState(Math.abs(initialValue).toString());
@@ -40,39 +44,39 @@ export function RepCounter({
 
     const applyValue = (newValue: number) => {
         const rounded = Math.round(newValue * 10) / 10;
-        setValue(rounded);
+        if (!isControlled) setInternalValue(rounded);
         onValueChange(rounded);
     };
 
     const handleIncrement = () => {
         if (disabled) return;
         triggerHaptic('selection');
-        applyValue(value + 1);
+        applyValue(currentValue + 1);
     };
 
     const handleIncrementLong = () => {
         if (disabled) return;
         triggerHaptic('medium');
-        applyValue(value + LONG_PRESS_DELTA);
+        applyValue(currentValue + LONG_PRESS_DELTA);
     };
 
     const handleDecrement = () => {
         if (disabled) return;
-        if (!allowNegative && value <= 0) return;
+        if (!allowNegative && currentValue <= 0) return;
         triggerHaptic('selection');
-        applyValue(value - 1);
+        applyValue(currentValue - 1);
     };
 
     const handleDecrementLong = () => {
         if (disabled) return;
-        if (!allowNegative && value - LONG_PRESS_DELTA < 0) return;
+        if (!allowNegative && currentValue - LONG_PRESS_DELTA < 0) return;
         triggerHaptic('medium');
-        applyValue(value - LONG_PRESS_DELTA);
+        applyValue(currentValue - LONG_PRESS_DELTA);
     };
 
     const startEditing = () => {
         if (disabled) return;
-        setEditText(String(value));
+        setEditText(String(currentValue));
         setEditing(true);
     };
 
@@ -96,7 +100,7 @@ export function RepCounter({
 
     const step = (amount: number) => {
         if (disabled) return;
-        applyValue(value + amount);
+        applyValue(currentValue + amount);
     };
 
     if (mode === 'manual_input') {
@@ -127,10 +131,10 @@ export function RepCounter({
                             <Text
                                 style={[
                                     styles.stepperValue,
-                                    { color: value < 0 ? theme.colors.error : theme.colors.primary },
+                                    { color: currentValue < 0 ? theme.colors.error : theme.colors.primary },
                                 ]}
                             >
-                                {value < 0 ? '\u2212' : value > 0 ? '+' : ''}{Math.abs(value).toFixed(1)}
+                                {currentValue < 0 ? '\u2212' : currentValue > 0 ? '+' : ''}{Math.abs(currentValue).toFixed(1)}
                             </Text>
                             <Text style={[styles.stepperUnit, { color: theme.colors.outline }]}> cm</Text>
                         </View>
@@ -181,12 +185,12 @@ export function RepCounter({
                 <Pressable
                     onPress={handleDecrement}
                     onLongPress={handleDecrementLong}
-                    disabled={disabled || (!allowNegative && value <= 0)}
+                    disabled={disabled || (!allowNegative && currentValue <= 0)}
                     delayLongPress={350}
                     style={[
                         styles.counterBtn,
                         { backgroundColor: theme.colors.surfaceVariant },
-                        (disabled || (!allowNegative && value <= 0)) && { opacity: 0.4 },
+                        (disabled || (!allowNegative && currentValue <= 0)) && { opacity: 0.4 },
                     ]}
                     accessibilityLabel="Disminuir (mantener para -5)"
                     accessibilityRole="button"
@@ -211,11 +215,11 @@ export function RepCounter({
                             onPress={startEditing}
                             disabled={disabled}
                             accessibilityRole="button"
-                            accessibilityLabel={`${value}. Toca para editar`}
+                            accessibilityLabel={`${currentValue}. Toca para editar`}
                             style={styles.valueTap}
                         >
                             <Text style={[styles.value, { color: disabled ? theme.colors.outline : theme.colors.primary }]}>
-                                {value}
+                                {currentValue}
                             </Text>
                         </TouchableOpacity>
                     )}
