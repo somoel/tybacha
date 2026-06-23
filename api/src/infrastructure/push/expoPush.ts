@@ -29,6 +29,8 @@ export async function sendPushToUser(input: {
       body: input.body,
       data: input.data,
       sound: 'default',
+      channelId: 'default',
+      priority: 'high',
     }));
 
   if (messages.length === 0) return;
