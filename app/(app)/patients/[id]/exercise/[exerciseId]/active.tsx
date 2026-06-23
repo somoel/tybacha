@@ -81,10 +81,16 @@ export default function ActiveExerciseScreen() {
         ? (hasSets ? durationsPerSet.reduce((a, b) => a + b, 0) : value)
         : 0;
     const setAdvanceReady = hasReps
-        ? (hasTimer ? setPhase === 'reps' : true)
+        ? (hasTimer ? (setPhase === 'reps' && value > 0) : (value > 0))
         : setTimerCompleted;
 
-    const canSave = isAlreadyCompleted || (hasSets ? allSetsDone : (!hasTimer || setTimerCompleted));
+    const canSave = isAlreadyCompleted || (
+        hasReps
+            ? (hasSets
+                ? (allSetsDone && repsPerSet.some((r) => r > 0))
+                : (value > 0))
+            : (hasSets ? allSetsDone : (!hasTimer || setTimerCompleted))
+    );
     const isDirty = isAlreadyCompleted
         ? (value !== (existingRecord?.repeticionesRealizadas ?? 0) ||
            perceivedEffort !== (existingRecord?.esfuerzoPercibido ?? 5) ||
@@ -124,7 +130,6 @@ export default function ActiveExerciseScreen() {
                 const records = await fetchApiExerciseRecords(Number(id), today, today);
                 const existing = records.find((r) => r.idEjercicioPlan === Number(exerciseId)) ?? null;
                 setExistingRecord(existing);
-                setValue(existing?.repeticionesRealizadas ?? 0);
                 setPerceivedEffort(existing?.esfuerzoPercibido ?? 5);
                 setReportedPain(existing?.dolorReportado ?? 0);
                 setTestNotes(existing?.comentario ?? '');
@@ -133,10 +138,22 @@ export default function ActiveExerciseScreen() {
                 );
                 setSetPhase(existing ? 'reps' : (foundExercise.duration_seconds ? 'timer' : 'reps'));
                 setCurrentSet(1);
-                setRepsPerSet([]);
                 setDurationsPerSet([]);
                 setCurrentSetDuration(0);
                 setAllSetsDone(false);
+                if (existing?.repeticionesRealizadas != null && hasReps && hasSets) {
+                    const total = existing.repeticionesRealizadas;
+                    const base = Math.floor(total / totalSets);
+                    const remainder = total - base * totalSets;
+                    const distribution = Array.from({ length: totalSets }, (_, i) =>
+                        i === totalSets - 1 ? base + remainder : base
+                    );
+                    setRepsPerSet(distribution);
+                    setValue(distribution[0]);
+                } else {
+                    setRepsPerSet([]);
+                    setValue(existing?.repeticionesRealizadas ?? 0);
+                }
             } catch {
                 setExistingRecord(null);
                 setValue(0);
@@ -158,11 +175,21 @@ export default function ActiveExerciseScreen() {
         } finally {
             setIsLoading(false);
         }
-    }, [id, exerciseId]);
+    }, [id, exerciseId, hasReps, hasSets, totalSets]);
+
+    const lastLoadedKeyRef = useRef<string | null>(null);
 
     useFocusEffect(useCallback(() => {
-        loadExercise();
-    }, [loadExercise]));
+        const key = `${id}-${exerciseId}`;
+        if (lastLoadedKeyRef.current === key) return;
+        loadExercise()
+            .then(() => {
+                lastLoadedKeyRef.current = key;
+            })
+            .catch(() => {
+                // leave ref null so next focus can retry
+            });
+    }, [id, exerciseId, loadExercise]));
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -626,7 +653,7 @@ export default function ActiveExerciseScreen() {
                         variant="filled"
                         icon="check"
                         onPress={() => handleSave('completed')}
-                        disabled={!canSave || saveMode !== null}
+                        disabled={!canSave || (isAlreadyCompleted && !isDirty) || saveMode !== null}
                         loading={saveMode === 'completed'}
                         accessibilityLabel={isAlreadyCompleted ? "Actualizar registro del ejercicio" : "Marcar ejercicio como completado"}
                     />
@@ -636,6 +663,8 @@ export default function ActiveExerciseScreen() {
                         </Text>
                     ) : hasTimer && !setTimerCompleted ? (
                         <Text style={styles.saveHint}>Completa el cronómetro para habilitar guardar</Text>
+                    ) : hasReps && value === 0 && !hasSets ? (
+                        <Text style={styles.saveHint}>Ingresa al menos una repetición para guardar</Text>
                     ) : null}
                     <View style={styles.skipRow}>
                         <AppButton
