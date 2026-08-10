@@ -70,7 +70,7 @@ export const SFT_TESTS: SFTTestDefinition[] = [
         type: 'two_min_step',
         name: 'Marcha de dos minutos',
         shortName: 'Resistencia (alternativa)',
-        description: 'Evaluar la resistencia aeróbica marchando en el sitio. Alternativa al test de caminar 6 minutos.',
+        description: 'Evaluar la resistencia aeróbica marchando en el sitio.',
         icon: 'shoe-sneaker',
         unit: 'steps',
         timerMode: 'countdown',
