@@ -6,7 +6,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 /**
- * List of all 7 SFT tests available.
+ * List of all 6 SFT tests available.
  */
 export default function TestsListScreen() {
     const router = useRouter();
@@ -15,7 +15,7 @@ export default function TestsListScreen() {
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" showsVerticalScrollIndicator={false}>
             <View style={styles.infoCard}>
                 <Text style={styles.infoText}>
-                    Batería de 7 pruebas diseñadas por Rikli & Jones (2001) para evaluar la capacidad funcional en adultos mayores.
+                    Batería de 6 pruebas diseñadas por Rikli & Jones (2001) para evaluar la capacidad funcional en adultos mayores.
                 </Text>
             </View>
 

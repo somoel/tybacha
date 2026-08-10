@@ -15,14 +15,13 @@ const PERF_BELOW_BELOW = 'FFFFCDD2';
 export interface BulkBatteryRow {
   paciente: { nombres: string; apellidos: string; fechaNacimiento: string; genero: string };
   bateria: { fechaAplicacion: string; pesoKg: number | null; estaturaCm: number | null; imc: number | null };
-  valores: (number | null)[];       // 7 valores, índice 0 = orden 1
-  porcentajes: (number | null)[];   // 7 porcentajes para calcular color
+  valores: (number | null)[];       // 6 valores, índice 0 = orden 1 (se omite orden 3)
+  porcentajes: (number | null)[];   // 6 porcentajes para calcular color
 }
 
 const TEST_HEADERS = [
   'Sentarse y levantarse de una silla (reps)',
   'Flexiones del brazo (reps)',
-  'Caminar 6 minutos (m)',
   'Marcha de dos minutos (pasos)',
   'Flexión del tronco en silla (cm)',
   'Juntar las manos tras la espalda (cm)',
@@ -83,7 +82,7 @@ export async function renderBulkBatteryXlsx(
     properties: { defaultColWidth: 14 },
   });
 
-  const COL_COUNT = 14;
+  const COL_COUNT = 13;
 
   ws.getColumn(1).width = 32;  // Paciente
   ws.getColumn(2).width = 14;  // Fecha nac.
@@ -92,7 +91,7 @@ export async function renderBulkBatteryXlsx(
   ws.getColumn(5).width = 10;  // Peso
   ws.getColumn(6).width = 12;  // Estatura
   ws.getColumn(7).width = 10;  // IMC
-  for (let i = 8; i <= 14; i++) ws.getColumn(i).width = 18;
+  for (let i = 8; i <= 13; i++) ws.getColumn(i).width = 18;
 
   // Row 1: título
   setMergedTitle(ws, 1, 'Exportación masiva — Resultados SFT', COL_COUNT);
@@ -144,7 +143,7 @@ export async function renderBulkBatteryXlsx(
     ws.getCell(r, 6).value = row.bateria.estaturaCm ?? '—';
     ws.getCell(r, 7).value = row.bateria.imc ?? '—';
 
-    for (let t = 0; t < 7; t++) {
+    for (let t = 0; t < 6; t++) {
       const cell = ws.getCell(r, 8 + t);
       const val = row.valores[t];
       const pct = row.porcentajes[t];

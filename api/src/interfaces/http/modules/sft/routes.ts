@@ -627,7 +627,9 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       const gender = adult?.genero === 'masculino' ? 'M' : 'F' as PatientGender;
       const birthDate = adult?.fecha_nacimiento ? String(adult.fecha_nacimiento) : null;
 
+      // ponytail: la caminata de 6 minutos (orden 3) se omite del export masivo
       for (let orden = 1; orden <= 7; orden++) {
+        if (orden === 3) continue;
         const valor = results.get(orden) ?? null;
         valores.push(valor);
         const testType = ORDER_TO_TEST_TYPE[orden];

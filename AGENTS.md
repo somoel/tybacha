@@ -100,6 +100,7 @@ No CI workflows exist. Two manual Vercel deployments:
 ## Gotchas
 
 - The `reset-project` script in `package.json` is destructive and will delete `app/`, `components/`, `hooks/`, `constants/`, and `scripts/`.
+- The **caminata de 6 minutos** (`six_min_walk`) está oculta de la batería activa (no aparece en `SFT_TESTS`). No re-agregarla al flujo salvo petición explícita. Conservar `six_min_walk` en `shared/constants/normativeRanges.ts`, los mapas de `src/services/batteryService.ts`, el seed y los `ORDER_TO_TEST_TYPE` del API: las baterías históricas dependen de ellos. El export masivo XLSX omite el orden 3 (`sft/routes.ts`).
 - MySQL-specific files (`*MySQL.ts`, `database.ts`, `mysql.ts`) are excluded from compilation—do not reference them.
 - The `api/` directory is a completely separate Node.js project with its own `node_modules`, `package.json`, and TypeScript config. Run commands from within `api/`, not the root.
 - `metro.config.js` adds `.wasm` asset extension and custom condition names for module resolution.

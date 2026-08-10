@@ -1,6 +1,7 @@
 import type { SFTTestDefinition } from '@/src/types/battery.types';
 
-/** Static definitions for the 7 Senior Fitness Test (Rikli & Jones, 2001) */
+/** Static definitions for the 6 Senior Fitness Test (Rikli & Jones, 2001). */
+// La caminata de 6 minutos se ocultó de la batería; la marcha de dos minutos cubre la resistencia aeróbica.
 export const SFT_TESTS: SFTTestDefinition[] = [
     {
         type: 'chair_stand',
@@ -187,56 +188,8 @@ export const SFT_TESTS: SFTTestDefinition[] = [
             'Valorar que el participante **se levante y siente de forma segura**.',
         ],
     },
-    {
-        type: 'six_min_walk',
-        name: 'Caminar 6 minutos',
-        shortName: 'Resistencia aeróbica',
-        description: 'Evaluar la resistencia aeróbica caminando la mayor distancia posible en 6 minutos.',
-        icon: 'walk',
-        unit: 'meters',
-        timerMode: 'countdown',
-        timerSeconds: 360,
-        counterMode: 'manual_input',
-        allowNegative: false,
-        inputLabel: 'Metros recorridos',
-        lapTracking: true,
-        lapLengthMeters: 45.72,
-        encouragementCues: [
-            { atSecond: 180, message: 'Quedan 3 minutos. Acelera el paso si puedes.', sound: 'bell' },
-            { atSecond: 60,  message: 'Queda 1 minuto. ¡Casi terminamos!',             sound: 'bell' },
-            { atSecond: 10,  sound: 'chime' },
-            { atSecond: 9,   sound: 'chime' },
-            { atSecond: 8,   sound: 'chime' },
-            { atSecond: 7,   sound: 'chime' },
-            { atSecond: 6,   sound: 'chime' },
-            { atSecond: 5,   sound: 'chime' },
-            { atSecond: 4,   sound: 'chime' },
-            { atSecond: 3,   sound: 'chime' },
-            { atSecond: 2,   sound: 'chime' },
-            { atSecond: 1,   sound: 'chime' },
-        ],
-        soundCues: true,
-        endSound: 'end',
-        normativeRanges: {
-            belowBelowAvg: 350,
-            belowAvg: 450,
-            avg: 550,
-            aboveAvg: 650,
-            excellent: 750,
-            higherIsBetter: true,
-        },
-        procedure: [
-            'Circuito rectangular de 18,8 m × 4,57 m (**perímetro 45,72 m**) con conos en cada extremo y líneas cada 4,57 m. Se realiza **al final de la batería**.',
-            'A la señal de "ya", caminar lo más rápido posible durante **6 minutos** siguiendo el circuito. Contar vueltas (**cada una = 45,72 m**).',
-            'Avisar a los **3 y 2 minutos** para ajustar el ritmo. Al terminar, **apartarse a la derecha** y caminar en el sitio elevando las piernas.',
-            '**Un solo intento**. Practicar el **día anterior** para obtener el ritmo.',
-        ],
-        safetyTips: [
-            'Seleccionar una **superficie lisa que no deslice**.',
-            'Colocar **sillas a lo largo del circuito**, fuera del área de circulación.',
-            '**Interrumpir el test** ante signos de esfuerzo excesivo.',
-        ],
-    },
+    // ponytail: la caminata de 6 minutos está oculta de la batería activa.
+    // Se conserva el tipo six_min_walk en maps/types para leer datos históricos.
 ];
 
 /** Get a specific SFT test definition by type */

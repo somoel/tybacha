@@ -6,7 +6,7 @@ Aplicación móvil para profesionales en educación física y cuidadores que eva
 
 - **Autenticación** con JWT (profesional y cuidador)
 - **Registro y gestión de pacientes** con datos demográficos y patologías
-- **Batería completa SFT** (7 pruebas) con cronómetros y contadores interactivos
+- **Batería completa SFT** (6 pruebas) con cronómetros y contadores interactivos
 - **Resultados gráficos** con comparativas usando react-native-gifted-charts
 - **Plan de ejercicios con IA** generado por Gemini 2.0 Flash
 - **Modo offline** con SQLite local y sincronización automática
@@ -96,11 +96,12 @@ tybacha/
 |---|--------|--------|------|
 | 1 | Sentarse/levantarse silla | Repeticiones (30s) | Countdown + Counter |
 | 2 | Flexión de codo | Repeticiones (30s) | Countdown + Counter |
-| 3 | Caminata 6 minutos | Metros | Countdown + Input |
-| 4 | Marcha estacionaria | Pasos (2 min) | Countdown + Counter |
-| 5 | Sentado y extenderse | cm (±) | Input manual |
-| 6 | Rascarse la espalda | cm (±) | Input manual |
-| 7 | 8-Foot Up-and-Go | Segundos | Stopwatch |
+| 3 | Marcha estacionaria | Pasos (2 min) | Countdown + Counter |
+| 4 | Sentado y extenderse | cm (±) | Input manual |
+| 5 | Rascarse la espalda | cm (±) | Input manual |
+| 6 | 8-Foot Up-and-Go | Segundos | Stopwatch |
+
+> La **caminata de 6 minutos** se ocultó del flujo de la batería en la app; la resistencia aeróbica se cubre con la marcha de dos minutos (alternativa oficial del SFT). El tipo `six_min_walk` y su fila en el seed se conservan en el backend para no romper el historial de baterías ya registradas.
 
 ## 🔒 Roles y Permisos
 
