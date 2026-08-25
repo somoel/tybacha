@@ -497,20 +497,10 @@ export default function ActiveExerciseScreen() {
                         )}
                     </View>
 
-                    {exercise.rationale ? (
-                        <View style={styles.rationaleContainer}>
-                            <View style={styles.rationaleHeader}>
-                                <MaterialCommunityIcons name="lightbulb-outline" size={14} color={theme.colors.onPrimaryContainer} />
-                                <Text style={styles.rationaleLabel}>POR QUÉ</Text>
-                            </View>
-                            <Text style={styles.rationale}>{exercise.rationale}</Text>
-                        </View>
+                    {exercise.description ? (
+                        <Text style={[styles.description, { color: theme.colors.onPrimaryContainer }]}>{exercise.description}</Text>
                     ) : null}
                 </View>
-
-                {exercise.description ? (
-                    <Text style={styles.description}>{exercise.description}</Text>
-                ) : null}
 
                 {hasSets && !isAlreadyCompleted && (
                     <View style={styles.setTracker}>
