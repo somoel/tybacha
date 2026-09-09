@@ -16,7 +16,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text } from 'react-native-paper';
+import { Searchbar, SegmentedButtons, Text } from 'react-native-paper';
 import { z } from 'zod';
 
 const editSchema = z.object({
@@ -53,6 +53,8 @@ export default function AdminUserDetailScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isSavingCaregivers, setIsSavingCaregivers] = useState(false);
+    const [showAvailableCaregivers, setShowAvailableCaregivers] = useState(false);
+    const [caregiverSearchQuery, setCaregiverSearchQuery] = useState('');
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const { control, handleSubmit, reset } = useForm<EditForm>({
@@ -94,11 +96,30 @@ export default function AdminUserDetailScreen() {
 
     useEffect(() => { void load(); }, [load]);
 
-    const availableCaregivers = useMemo(
-        () => allUsers.filter((candidate) => candidate.rol === 'cuidador'
-            && (candidate.estado !== 'inactivo' || selectedCaregiverIds.includes(candidate.idUsuario))),
-        [allUsers, selectedCaregiverIds],
+    const assignedCaregivers = useMemo(
+        () => selectedCaregiverIds
+            .map((caregiverId) => allUsers.find((candidate) => candidate.idUsuario === caregiverId)
+                ?? user?.cuidadores.find((candidate) => candidate.idUsuario === caregiverId))
+            .filter((caregiver): caregiver is ApiUserSummary => caregiver !== undefined),
+        [allUsers, selectedCaregiverIds, user?.cuidadores],
     );
+
+    const availableCaregivers = useMemo(() => {
+        const normalizedQuery = caregiverSearchQuery.trim().toLocaleLowerCase();
+
+        return allUsers.filter((candidate) => {
+            if (candidate.rol !== 'cuidador' || candidate.estado === 'inactivo' || selectedCaregiverIds.includes(candidate.idUsuario)) {
+                return false;
+            }
+            if (!normalizedQuery) return true;
+
+            return [candidate.nombres, candidate.apellidos, candidate.correo]
+                .filter(Boolean)
+                .join(' ')
+                .toLocaleLowerCase()
+                .includes(normalizedQuery);
+        });
+    }, [allUsers, caregiverSearchQuery, selectedCaregiverIds]);
 
     const onSubmit = async (data: EditForm) => {
         if (!user) return;
@@ -206,17 +227,17 @@ export default function AdminUserDetailScreen() {
                     <View style={styles.sectionHeader}>
                         <View style={styles.titleInfo}>
                             <Text style={styles.sectionTitle}>Cuidadores asignados</Text>
-                            <Text style={styles.helper}>{selectedCaregiverIds.length} seleccionados</Text>
+                            <Text style={styles.helper}>{assignedCaregivers.length} asignados</Text>
                         </View>
                         <MaterialCommunityIcons name="account-heart" size={24} color="#006d77" />
                     </View>
-                    {availableCaregivers.length === 0 && <Text style={styles.empty}>No hay cuidadores disponibles.</Text>}
-                    {availableCaregivers.map((caregiver) => {
-                        const selected = selectedCaregiverIds.includes(caregiver.idUsuario);
+
+                    {assignedCaregivers.length === 0 && <Text style={styles.empty}>No hay cuidadores asignados.</Text>}
+                    {assignedCaregivers.map((caregiver) => {
                         return (
                             <View key={caregiver.idUsuario} style={styles.caregiverRow}>
-                                <Pressable onPress={() => toggleCaregiver(caregiver.idUsuario)} style={styles.caregiverSelect} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}>
-                                    <MaterialCommunityIcons name={selected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={24} color={selected ? '#006d77' : '#94a3b8'} />
+                                <Pressable onPress={() => toggleCaregiver(caregiver.idUsuario)} style={styles.caregiverSelect} accessibilityRole="checkbox" accessibilityState={{ checked: true }}>
+                                    <MaterialCommunityIcons name="checkbox-marked" size={24} color="#006d77" />
                                     <View style={styles.titleInfo}>
                                         <Text style={styles.caregiverName}>{userName(caregiver)}</Text>
                                         <Text style={styles.caregiverMeta}>{caregiver.correo} · {caregiver.estado}</Text>
@@ -228,6 +249,50 @@ export default function AdminUserDetailScreen() {
                             </View>
                         );
                     })}
+
+                    <AppButton
+                        label={showAvailableCaregivers ? 'Ocultar cuidadores disponibles' : 'Agregar cuidador'}
+                        icon={showAvailableCaregivers ? 'chevron-up' : 'account-plus'}
+                        variant="outlined"
+                        onPress={() => {
+                            setShowAvailableCaregivers((current) => !current);
+                            if (showAvailableCaregivers) setCaregiverSearchQuery('');
+                        }}
+                        style={styles.addCaregiverButton}
+                    />
+
+                    {showAvailableCaregivers && (
+                        <View style={styles.availableSection}>
+                            <Text style={styles.availableTitle}>Cuidadores disponibles</Text>
+                            <Searchbar
+                                value={caregiverSearchQuery}
+                                onChangeText={setCaregiverSearchQuery}
+                                placeholder="Buscar por nombre o correo"
+                                accessibilityLabel="Buscar cuidadores disponibles"
+                                style={styles.searchbar}
+                                inputStyle={styles.searchInput}
+                            />
+                            {availableCaregivers.length === 0 && (
+                                <Text style={styles.empty}>
+                                    {caregiverSearchQuery.trim() ? 'No se encontraron cuidadores.' : 'No hay cuidadores disponibles.'}
+                                </Text>
+                            )}
+                            {availableCaregivers.map((caregiver) => (
+                                <View key={caregiver.idUsuario} style={styles.caregiverRow}>
+                                    <Pressable onPress={() => toggleCaregiver(caregiver.idUsuario)} style={styles.caregiverSelect} accessibilityRole="checkbox" accessibilityState={{ checked: false }}>
+                                        <MaterialCommunityIcons name="checkbox-blank-outline" size={24} color="#94a3b8" />
+                                        <View style={styles.titleInfo}>
+                                            <Text style={styles.caregiverName}>{userName(caregiver)}</Text>
+                                            <Text style={styles.caregiverMeta}>{caregiver.correo} · {caregiver.estado}</Text>
+                                        </View>
+                                    </Pressable>
+                                    <Pressable onPress={() => router.push(`/(app)/admin/${caregiver.idUsuario}` as never)} hitSlop={8} accessibilityLabel={`Editar ${userName(caregiver)}`}>
+                                        <MaterialCommunityIcons name="pencil-outline" size={21} color="#006d77" />
+                                    </Pressable>
+                                </View>
+                            ))}
+                        </View>
+                    )}
                     <AppButton label="Guardar asignaciones" icon="account-check" loading={isSavingCaregivers} onPress={() => void saveCaregivers()} style={styles.button} />
                 </AppCard>
             )}
@@ -253,6 +318,11 @@ const styles = StyleSheet.create({
     button: { marginTop: 16 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center' },
     helper: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280', marginTop: -8, marginBottom: 10 },
+    addCaregiverButton: { marginTop: 8 },
+    availableSection: { marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#eef2f5' },
+    availableTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 14, color: '#374151', marginBottom: 10 },
+    searchbar: { marginBottom: 4, backgroundColor: '#f8fafc' },
+    searchInput: { fontFamily: 'Montserrat_400Regular', fontSize: 13 },
     caregiverRow: { flexDirection: 'row', alignItems: 'center', borderTopWidth: 1, borderTopColor: '#eef2f5', paddingVertical: 12, gap: 8 },
     caregiverSelect: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
     caregiverName: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#1f2937' },
