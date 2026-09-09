@@ -10,6 +10,10 @@ export function fetchApiUsers(): Promise<ApiUserSummary[]> {
     return apiRequest<ApiUserSummary[]>('/users');
 }
 
+export function fetchApiProfessionals(): Promise<ApiUserSummary[]> {
+    return apiRequest<ApiUserSummary[]>('/users/professionals');
+}
+
 export function createApiUser(input: ApiCreateUserInput): Promise<ApiUserSummary> {
     return apiRequest<ApiUserSummary>('/users', {
         method: 'POST',

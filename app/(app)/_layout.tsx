@@ -160,12 +160,12 @@ export default function AppLayout() {
                 <Tabs.Screen
                     name="admin/index"
                     options={{
-                        title: 'Admin',
-                        headerTitle: 'Administracion',
+                        title: 'Administración',
+                        headerTitle: 'Administración',
                         href: isCaregiver || isProfessional ? null : undefined,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
-                                name={focused ? 'shield-account' : 'shield-account-outline'}
+                                name={focused ? 'account-cog' : 'account-cog-outline'}
                                 size={24}
                                 color={color}
                             />

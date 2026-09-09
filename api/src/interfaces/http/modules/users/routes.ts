@@ -275,6 +275,28 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
     }
   });
 
+  app.get('/users/professionals', { preHandler: requireRoles(app, ['administrador']) }, async () => {
+    const [rows] = await pool.query<MeRow[]>(
+      `select u.id_usuario, u.correo, u.rol, u.estado,
+              u.id_profesional_supervisor, p.nombres, p.apellidos, p.telefono, p.ciudad
+       from usuario u
+       left join perfil_usuario p on p.id_usuario = u.id_usuario
+       where u.rol = 'profesional'
+       order by p.apellidos, p.nombres, u.correo`,
+    );
+
+    return rows.map((row) => ({
+      idUsuario: row.id_usuario,
+      correo: row.correo,
+      rol: row.rol,
+      estado: row.estado,
+      nombres: row.nombres,
+      apellidos: row.apellidos,
+      telefono: row.telefono,
+      ciudad: row.ciudad,
+    }));
+  });
+
   app.get('/users/:id', { preHandler: requireRoles(app, ['administrador']) }, async (request) => {
     const id = z.coerce.number().int().positive().parse((request.params as { id: string }).id);
     return getAdminUserDetail(id);

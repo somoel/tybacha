@@ -9,7 +9,7 @@ export default function AdminLayout() {
                 headerShadowVisible: false,
             }}
         >
-            <Stack.Screen name="index" options={{ title: 'Administracion' }} />
+            <Stack.Screen name="index" options={{ title: 'Administración' }} />
             <Stack.Screen name="[id]" options={{ title: 'Editar usuario' }} />
         </Stack>
     );

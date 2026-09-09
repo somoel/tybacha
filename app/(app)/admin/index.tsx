@@ -1,4 +1,4 @@
-import { createApiUser, fetchApiUsers } from '@/src/api/usersApi';
+import { createApiUser, fetchApiProfessionals } from '@/src/api/usersApi';
 import { fetchApiAuditChanges, fetchApiAuditDataAccess } from '@/src/api/auditApi';
 import { testExercisePlanAiApi } from '@/src/api/exercisePlansApi';
 import { AppButton } from '@/src/components/ui/AppButton';
@@ -11,10 +11,10 @@ import type { ApiAiTestResult } from '@/src/types/apiExercisePlan.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SegmentedButtons, Text } from 'react-native-paper';
+import { Searchbar, SegmentedButtons, Text } from 'react-native-paper';
 import { z } from 'zod';
 
 const userSchema = z.object({
@@ -30,6 +30,7 @@ type UserForm = z.infer<typeof userSchema>;
 export default function AdminScreen() {
     const router = useRouter();
     const [users, setUsers] = useState<ApiUserSummary[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [auditCount, setAuditCount] = useState(0);
     const [accessCount, setAccessCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +54,7 @@ export default function AdminScreen() {
         setIsLoading(true);
         try {
             const [userRows, changes, access] = await Promise.all([
-                fetchApiUsers(),
+                fetchApiProfessionals(),
                 fetchApiAuditChanges(undefined, 20),
                 fetchApiAuditDataAccess(undefined, 20),
             ]);
@@ -74,6 +75,17 @@ export default function AdminScreen() {
     useEffect(() => {
         void load();
     }, [load]);
+
+    const filteredUsers = useMemo(() => {
+        const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+        if (!normalizedQuery) return users;
+
+        return users.filter((user) => [user.nombres, user.apellidos, user.correo, user.ciudad]
+            .filter(Boolean)
+            .join(' ')
+            .toLocaleLowerCase()
+            .includes(normalizedQuery));
+    }, [searchQuery, users]);
 
     const onSubmit = async (data: UserForm) => {
         setIsLoading(true);
@@ -227,8 +239,16 @@ export default function AdminScreen() {
                 </AppCard>
             )}
 
-            <Text style={styles.sectionTitle}>Usuarios del equipo ({users.length})</Text>
-            {users.map((user) => (
+            <Text style={styles.sectionTitle}>Profesionales ({filteredUsers.length})</Text>
+            <Searchbar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Buscar profesionales"
+                accessibilityLabel="Buscar profesionales"
+                style={styles.searchbar}
+                inputStyle={styles.searchInput}
+            />
+            {filteredUsers.map((user) => (
                 <AppCard
                     key={user.idUsuario}
                     onPress={user.rol === 'profesional' || user.rol === 'cuidador'
@@ -242,14 +262,15 @@ export default function AdminScreen() {
                         </View>
                         <View style={styles.userInfo}>
                             <Text style={styles.userName}>{user.nombres} {user.apellidos}</Text>
-                            <Text style={styles.userMeta}>{user.correo} · {user.rol} · {user.estado}</Text>
+                            <Text style={styles.userMeta}>{user.correo} · {user.estado}</Text>
                         </View>
-                        {(user.rol === 'profesional' || user.rol === 'cuidador') && (
-                            <MaterialCommunityIcons name="chevron-right" size={22} color="#6b7280" />
-                        )}
+                        <MaterialCommunityIcons name="chevron-right" size={22} color="#6b7280" />
                     </View>
                 </AppCard>
             ))}
+            {filteredUsers.length === 0 && (
+                <Text style={styles.empty}>No se encontraron profesionales.</Text>
+            )}
 
             <AppSnackbar
                 visible={snackbar.visible}
@@ -275,6 +296,8 @@ const styles = StyleSheet.create({
     linkSubtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
     showFormButton: { marginBottom: 8 },
     sectionTitle: { fontFamily: 'Montserrat_700Bold', fontSize: 16, color: '#1f2937', marginBottom: 12, marginTop: 8 },
+    searchbar: { marginBottom: 8, backgroundColor: '#ffffff' },
+    searchInput: { fontFamily: 'Montserrat_400Regular', fontSize: 14 },
     fieldLabel: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#374151', marginBottom: 8 },
     formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 16 },
     userRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -283,6 +306,7 @@ const styles = StyleSheet.create({
     userInfo: { flex: 1 },
     userName: { fontFamily: 'Montserrat_700Bold', fontSize: 14, color: '#1f2937' },
     userMeta: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
+    empty: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', paddingVertical: 12 },
     testAiButton: { marginTop: 12 },
     aiResult: { marginTop: 12, padding: 12, backgroundColor: '#f0fdf4', borderRadius: 8 },
     aiResultHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
