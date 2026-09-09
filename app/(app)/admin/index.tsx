@@ -137,7 +137,7 @@ export default function AdminScreen() {
                     <AppInput control={control} name="nombres" label="Nombres" />
                     <AppInput control={control} name="apellidos" label="Apellidos" />
                     <AppInput control={control} name="correo" label="Correo" keyboardType="email-address" autoCapitalize="none" />
-                    <AppInput control={control} name="contrasena" label="Contrasena" secureTextEntry />
+                    <AppInput control={control} name="contrasena" label="Contraseña" secureTextEntry />
                     <Text style={styles.fieldLabel}>Rol</Text>
                     <Controller
                         control={control}

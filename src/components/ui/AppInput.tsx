@@ -1,5 +1,5 @@
 import { borderRadius } from '@/src/constants/theme';
-import React from 'react';
+import React, { useState } from 'react';
 import { Controller, type Control, type FieldValues, type Path } from 'react-hook-form';
 import { StyleSheet, View } from 'react-native';
 import { HelperText, TextInput } from 'react-native-paper';
@@ -39,6 +39,14 @@ export function AppInput<T extends FieldValues>({
     right,
     autoCapitalize = 'sentences',
 }: AppInputProps<T>) {
+    const [secureVisible, setSecureVisible] = useState(!secureTextEntry);
+    const resolvedRight = secureTextEntry && !right ? (
+        <TextInput.Icon
+            icon={secureVisible ? 'eye-off' : 'eye'}
+            onPress={() => setSecureVisible((v) => !v)}
+        />
+    ) : right;
+
     return (
         <Controller
             control={control}
@@ -52,7 +60,7 @@ export function AppInput<T extends FieldValues>({
                         value={typeof value === 'string' ? value : String(value ?? '')}
                         onChangeText={onChange}
                         onBlur={onBlur}
-                        secureTextEntry={secureTextEntry}
+                        secureTextEntry={secureTextEntry ? !secureVisible : false}
                         keyboardType={keyboardType}
                         multiline={multiline}
                         numberOfLines={numberOfLines}
@@ -62,7 +70,7 @@ export function AppInput<T extends FieldValues>({
                         style={styles.input}
                         outlineStyle={styles.outline}
                         left={left}
-                        right={right}
+                        right={resolvedRight}
                         autoCapitalize={autoCapitalize}
                     />
                     {error && (

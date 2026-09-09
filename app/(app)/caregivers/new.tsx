@@ -92,7 +92,7 @@ export default function NewCaregiverScreen() {
                 <AppInput control={control} name="nombres" label="Nombres" />
                 <AppInput control={control} name="apellidos" label="Apellidos" />
                 <AppInput control={control} name="correo" label="Correo" keyboardType="email-address" autoCapitalize="none" />
-                <AppInput control={control} name="contrasena" label="Contrasena" secureTextEntry />
+                <AppInput control={control} name="contrasena" label="Contraseña" secureTextEntry />
 
                 <View style={styles.optionalToggle}>
                     <MaterialCommunityIcons

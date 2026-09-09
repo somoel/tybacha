@@ -515,6 +515,12 @@ export default function ProfileScreen() {
                                     secureTextEntry={!showPassword}
                                     textContentType="newPassword"
                                     style={styles.input}
+                                    right={
+                                        <TextInput.Icon
+                                            icon={showPassword ? 'eye-off' : 'eye'}
+                                            onPress={() => setShowPassword(!showPassword)}
+                                        />
+                                    }
                                 />
                                 <TextInput
                                     label="Confirmar nueva contraseña"
@@ -524,6 +530,12 @@ export default function ProfileScreen() {
                                     secureTextEntry={!showPassword}
                                     textContentType="newPassword"
                                     style={styles.input}
+                                    right={
+                                        <TextInput.Icon
+                                            icon={showPassword ? 'eye-off' : 'eye'}
+                                            onPress={() => setShowPassword(!showPassword)}
+                                        />
+                                    }
                                 />
                                 <View style={styles.editActions}>
                                     <AppButton label="Cancelar" variant="outlined" onPress={cancelEditingPassword} style={styles.editBtn} />
