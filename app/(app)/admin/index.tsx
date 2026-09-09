@@ -1,11 +1,13 @@
 import { createApiUser, fetchApiUsers } from '@/src/api/usersApi';
 import { fetchApiAuditChanges, fetchApiAuditDataAccess } from '@/src/api/auditApi';
+import { testExercisePlanAiApi } from '@/src/api/exercisePlansApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import type { ApiUserRole } from '@/src/types/apiAuth.types';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
+import type { ApiAiTestResult } from '@/src/types/apiExercisePlan.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
@@ -33,6 +35,8 @@ export default function AdminScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
+    const [isTestingAi, setIsTestingAi] = useState(false);
+    const [aiTestResult, setAiTestResult] = useState<ApiAiTestResult | null>(null);
 
     const { control, handleSubmit, reset } = useForm<UserForm>({
         resolver: zodResolver(userSchema),
@@ -90,6 +94,24 @@ export default function AdminScreen() {
         }
     };
 
+    const handleTestAi = async () => {
+        setIsTestingAi(true);
+        setAiTestResult(null);
+        try {
+            const result = await testExercisePlanAiApi();
+            setAiTestResult(result);
+            setSnackbar({ visible: true, message: `API respondio en ${result.durationMs}ms`, type: 'success' });
+        } catch (error) {
+            setSnackbar({
+                visible: true,
+                message: error instanceof Error ? error.message : 'Error probando la API de IA',
+                type: 'error',
+            });
+        } finally {
+            setIsTestingAi(false);
+        }
+    };
+
     return (
         <ScrollView style={styles.container} contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
             <View style={styles.metrics}>
@@ -121,6 +143,41 @@ export default function AdminScreen() {
                         onPress={() => router.push('/(app)/caregivers' as never)}
                     />
                 </View>
+            </AppCard>
+
+            <AppCard style={styles.linkCard}>
+                <View style={styles.linkRow}>
+                    <MaterialCommunityIcons name="robot" size={24} color="#7c3aed" />
+                    <View style={styles.linkInfo}>
+                        <Text style={styles.linkTitle}>Probar API de IA</Text>
+                        <Text style={styles.linkSubtitle}>Verificar que Cerebras genera planes correctamente</Text>
+                    </View>
+                </View>
+                <AppButton
+                    label={isTestingAi ? 'Probando...' : 'Probar generacion de plan'}
+                    icon="brain"
+                    variant="outlined"
+                    loading={isTestingAi}
+                    onPress={handleTestAi}
+                    style={styles.testAiButton}
+                />
+                {aiTestResult && (
+                    <View style={styles.aiResult}>
+                        <View style={styles.aiResultHeader}>
+                            <MaterialCommunityIcons name="check-circle" size={18} color="#059669" />
+                            <Text style={styles.aiResultTitle}>Respuesta exitosa ({aiTestResult.durationMs}ms)</Text>
+                        </View>
+                        <Text style={styles.aiResultSummary}>{aiTestResult.resumen}</Text>
+                        <Text style={styles.aiResultMeta}>
+                            Nivel: {aiTestResult.nivelDificultad} | Ejercicios: {aiTestResult.ejercicios.length}
+                        </Text>
+                        {aiTestResult.ejercicios.map((ex, i) => (
+                            <Text key={i} style={styles.aiResultExercise}>
+                                {ex.diaSemana}: {ex.nombre}
+                            </Text>
+                        ))}
+                    </View>
+                )}
             </AppCard>
 
             {!showCreateForm ? (
@@ -217,4 +274,11 @@ const styles = StyleSheet.create({
     userInfo: { flex: 1 },
     userName: { fontFamily: 'Montserrat_700Bold', fontSize: 14, color: '#1f2937' },
     userMeta: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
+    testAiButton: { marginTop: 12 },
+    aiResult: { marginTop: 12, padding: 12, backgroundColor: '#f0fdf4', borderRadius: 8 },
+    aiResultHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+    aiResultTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#059669' },
+    aiResultSummary: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#374151', marginBottom: 4 },
+    aiResultMeta: { fontFamily: 'Montserrat_500Medium', fontSize: 12, color: '#6b7280', marginBottom: 8 },
+    aiResultExercise: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#4b5563', marginLeft: 8, marginBottom: 2 },
 });

@@ -1,5 +1,6 @@
 import { apiRequest } from '@/src/api/httpClient';
 import type {
+    ApiAiTestResult,
     ApiCreateExercisePlanInput,
     ApiExercisePlan,
     ApiExercisePlanSummary,
@@ -47,6 +48,12 @@ export function updateApiExercisePlanStatus(
     return apiRequest<ApiExercisePlan>(`/exercise-plans/${idPlanEjercicio}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ estado, motivo }),
+    });
+}
+
+export function testExercisePlanAiApi(): Promise<ApiAiTestResult> {
+    return apiRequest<ApiAiTestResult>('/admin/ai/exercise-plan-test', {
+        method: 'POST',
     });
 }
 

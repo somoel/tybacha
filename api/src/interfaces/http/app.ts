@@ -17,6 +17,7 @@ import { registerNotificationRoutes } from './modules/notifications/routes.js';
 import { registerOlderAdultRoutes } from './modules/olderAdults/routes.js';
 import { registerReportRoutes } from './modules/reports/routes.js';
 import { registerSftRoutes } from './modules/sft/routes.js';
+import { registerAdminRoutes } from './modules/admin/routes.js';
 import { registerSyncRoutes } from './modules/sync/routes.js';
 import { registerTrackingRoutes } from './modules/tracking/routes.js';
 import { registerUserRoutes } from './modules/users/routes.js';
@@ -156,6 +157,7 @@ export async function buildApp() {
   await registerAlertCronRoutes(app);
   await registerReportRoutes(app);
   await registerAuditRoutes(app);
+  await registerAdminRoutes(app);
   await registerSyncRoutes(app);
 
   return app;

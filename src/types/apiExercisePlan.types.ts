@@ -70,3 +70,22 @@ export interface ApiCreateExercisePlanInput {
     }[];
 }
 
+export interface ApiAiTestExercise {
+    diaSemana: string;
+    nombre: string;
+    descripcion: string | null;
+    series: number | null;
+    repeticiones: number | null;
+    duracionSegundos: number | null;
+    dificultad: string | null;
+}
+
+export interface ApiAiTestResult {
+    ok: boolean;
+    durationMs: number;
+    resumen: string;
+    objetivo: string | null;
+    nivelDificultad: string;
+    ejercicios: ApiAiTestExercise[];
+}
+
