@@ -105,9 +105,12 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       throw new Error('La respuesta no contiene exactamente 5 ejercicios');
     }
 
+    console.log(JSON.stringify({ event: 'debug_exercise_plan', ejercicios: ejercicios.map((e: any) => ({ diaSemana: e.diaSemana, nombre: e.nombre })) }));
+
+    const normalize = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
     for (const dia of dias) {
-      const found = ejercicios.some((e: any) => e.diaSemana === dia);
+      const found = ejercicios.some((e: any) => normalize(e.diaSemana) === dia);
       if (!found) throw new Error(`Falta ejercicio para ${dia}`);
     }
 
