@@ -227,17 +227,26 @@ export default function AdminScreen() {
                 </AppCard>
             )}
 
-            <Text style={styles.sectionTitle}>Usuarios recientes</Text>
-            {users.slice(0, 10).map((user) => (
-                <AppCard key={user.idUsuario}>
+            <Text style={styles.sectionTitle}>Usuarios del equipo ({users.length})</Text>
+            {users.map((user) => (
+                <AppCard
+                    key={user.idUsuario}
+                    onPress={user.rol === 'profesional' || user.rol === 'cuidador'
+                        ? () => router.push(`/(app)/admin/${user.idUsuario}` as never)
+                        : undefined}
+                    accessibilityLabel={`Editar ${user.nombres ?? user.correo}`}
+                >
                     <View style={styles.userRow}>
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>{(user.nombres ?? user.correo)[0]?.toUpperCase()}</Text>
                         </View>
                         <View style={styles.userInfo}>
                             <Text style={styles.userName}>{user.nombres} {user.apellidos}</Text>
-                            <Text style={styles.userMeta}>{user.correo} · {user.rol}</Text>
+                            <Text style={styles.userMeta}>{user.correo} · {user.rol} · {user.estado}</Text>
                         </View>
+                        {(user.rol === 'profesional' || user.rol === 'cuidador') && (
+                            <MaterialCommunityIcons name="chevron-right" size={22} color="#6b7280" />
+                        )}
                     </View>
                 </AppCard>
             ))}
