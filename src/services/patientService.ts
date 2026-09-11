@@ -6,6 +6,7 @@ import {
     fetchApiOlderAdults,
     fetchApiOlderAdultsPhotos,
     unassignCaregiverApi,
+    transferOlderAdultApi,
     updateApiOlderAdult,
     uploadPatientPhotoApi,
 } from '@/src/api/olderAdultsApi';
@@ -193,6 +194,10 @@ export async function unassignCaregiver(
     patientId: string,
 ): Promise<void> {
     await unassignCaregiverApi(Number(patientId));
+}
+
+export async function transferOlderAdult(patientId: string, professionalEmail: string): Promise<void> {
+    await transferOlderAdultApi(Number(patientId), professionalEmail);
 }
 
 export async function fetchAssignedCaregiver(patientId: string) {

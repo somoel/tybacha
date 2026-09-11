@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { insertAccessAuditWithPool, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
-import { requireAuth } from '../../requireAuth.js';
+import { requireAuth, requireRoles } from '../../requireAuth.js';
 
 const ALLOWED_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_PHOTO_BYTES = 1 * 1024 * 1024;
@@ -568,11 +568,110 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
 
   // ── Caregiver assignment ──────────────────────────────────────────
 
+  const transferProfessionalSchema = z.object({
+    correoProfesional: z.string().trim().email(),
+  });
+
+  app.patch('/older-adults/:id/professional', { preHandler: requireRoles(app, ['administrador', 'profesional']) }, async (request) => {
+    const actor = request.authUser!;
+    const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
+    const body = transferProfessionalSchema.parse(request.body);
+    const correoProfesional = body.correoProfesional.toLowerCase();
+
+    console.log('[transfer-professional] solicitud recibida', {
+      adulto: params.id,
+      correoProfesional,
+      actor: actor.idUsuario,
+      rol: actor.rol,
+    });
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const existing = await assertOlderAdultExists(params.id);
+      if (actor.rol === 'profesional' && existing.id_profesional_responsable !== actor.idUsuario) {
+        throw forbidden();
+      }
+
+      const [professionalRows] = await connection.query<RowDataPacket[]>(
+        `select id_usuario
+         from usuario
+         where correo = :correo and rol = 'profesional' and estado = 'activo'
+         limit 1`,
+        { correo: correoProfesional },
+      );
+      const target = professionalRows[0] as { id_usuario: number } | undefined;
+      if (!target) throw notFound('No existe un profesional activo con ese correo');
+      if (target.id_usuario === existing.id_profesional_responsable) {
+        throw badRequest('El adulto mayor ya esta asignado a ese profesional');
+      }
+
+      await connection.query(
+        `update adulto_mayor
+         set id_profesional_responsable = :idProfesional,
+             actualizado_por = :actualizadoPor
+         where id_adulto_mayor = :idAdultoMayor`,
+        {
+          idProfesional: target.id_usuario,
+          actualizadoPor: actor.idUsuario,
+          idAdultoMayor: params.id,
+        },
+      );
+
+      await connection.query(
+        `update asignacion_cuidador_adulto_mayor
+         set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Transferencia de profesional'
+         where id_adulto_mayor = :idAdultoMayor and estado = 'activa'`,
+        { idAdultoMayor: params.id },
+      );
+
+      await insertChangeAudit(connection, {
+        tabla: 'adulto_mayor',
+        registroId: params.id,
+        accion: 'actualizar',
+        anteriores: {
+          id_profesional_responsable: existing.id_profesional_responsable,
+          id_cuidador: existing.id_cuidador,
+        },
+        nuevos: {
+          id_profesional_responsable: target.id_usuario,
+          cuidador_desasignado: existing.id_cuidador,
+        },
+        context: {
+          userId: actor.idUsuario,
+          ip: request.ip,
+          userAgent: request.headers['user-agent'] ?? null,
+        },
+      });
+
+      await connection.commit();
+
+      console.log(
+        `[transfer-professional] adulto=${params.id} profesional anterior=${existing.id_profesional_responsable} ` +
+        `profesional nuevo=${target.id_usuario} cuidador desasignado=${existing.id_cuidador} ` +
+        `actor=${actor.idUsuario} (${actor.rol})`,
+      );
+
+      return { ok: true };
+    } catch (error) {
+      await connection.rollback();
+      console.error('[transfer-professional] transferencia fallida', {
+        adulto: params.id,
+        actor: actor.idUsuario,
+        error,
+      });
+      throw error;
+    } finally {
+      connection.release();
+    }
+  });
+
   const assignCaregiverSchema = z.object({
     idCuidador: z.number().int().positive().nullable(),
   });
 
-  app.patch('/older-adults/:id/caregiver', { preHandler: requireAuth(app) }, async (request) => {
+  app.patch('/older-adults/:id/caregiver', { preHandler: requireRoles(app, ['administrador', 'profesional']) }, async (request) => {
     const actor = request.authUser!;
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
     const body = assignCaregiverSchema.parse(request.body);
@@ -641,7 +740,7 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
     }
   });
 
-  app.delete('/older-adults/:id/caregiver', { preHandler: requireAuth(app) }, async (request) => {
+  app.delete('/older-adults/:id/caregiver', { preHandler: requireRoles(app, ['administrador', 'profesional']) }, async (request) => {
     const actor = request.authUser!;
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
 

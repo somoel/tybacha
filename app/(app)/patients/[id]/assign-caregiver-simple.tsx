@@ -84,7 +84,7 @@ export default function AssignCaregiverScreen() {
         }
     };
 
-    const handleAssign = async (caregiverEmail: string) => {
+    const handleAssign = async (caregiverId: string) => {
         if (!id || !user) {
             setSnackbar({ 
                 visible: true, 
@@ -95,8 +95,8 @@ export default function AssignCaregiverScreen() {
         }
         
         try {
-            console.log('Assigning caregiver:', caregiverEmail, 'to patient:', id, 'by:', user.id);
-            await assignCaregiver(caregiverEmail, id, user.id);
+            console.log('Assigning caregiver:', caregiverId, 'to patient:', id, 'by:', user.id);
+            await assignCaregiver(caregiverId, id, user.id);
             setSnackbar({ visible: true, message: 'Cuidador asignado correctamente ✓', type: 'success' });
             
             // Refresh assigned caregiver
@@ -125,7 +125,7 @@ export default function AssignCaregiverScreen() {
         
         try {
             console.log('Unassigning caregiver from patient:', id);
-            await unassignCaregiver(id, user.id);
+            await unassignCaregiver('', id);
             setAssignedCaregiver(null);
             setSnackbar({ visible: true, message: 'Cuidador desasignado correctamente ✓', type: 'success' });
         } catch (error) {

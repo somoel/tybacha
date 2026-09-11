@@ -48,6 +48,7 @@ export default function PatientsLayout() {
             <Stack.Screen name="[id]/index" options={({ navigation }) => ({ title: 'Detalle', headerLeft: backLeft(navigation, list) })} />
             <Stack.Screen name="[id]/edit" options={({ navigation }) => ({ title: 'Editar adulto mayor', headerLeft: backLeft(navigation, detail) })} />
             <Stack.Screen name="[id]/assign-caregiver" options={({ navigation }) => ({ title: 'Asignar Cuidador', headerLeft: backLeft(navigation, detail) })} />
+            <Stack.Screen name="[id]/transfer-professional" options={({ navigation }) => ({ title: 'Transferir profesional', headerLeft: backLeft(navigation, detail) })} />
             <Stack.Screen name="[id]/batteries/index" options={({ navigation }) => ({ title: 'Historial Baterías', headerLeft: backLeft(navigation, detail) })} />
             <Stack.Screen name="[id]/batteries/new" options={({ navigation }) => ({ title: 'Realizar bateria SFT', headerLeft: backLeft(navigation, `${detail}/batteries`) })} />
             <Stack.Screen name="[id]/batteries/summary" options={({ navigation }) => ({ title: 'Resumen bateria SFT', headerLeft: backLeft(navigation, `${detail}/batteries`) })} />

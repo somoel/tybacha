@@ -65,3 +65,13 @@ export function unassignCaregiverApi(
   });
 }
 
+export function transferOlderAdultApi(
+    idAdultoMayor: number,
+    correoProfesional: string,
+): Promise<{ ok: true }> {
+    console.log('[transfer-professional] solicitud API', { idAdultoMayor, correoProfesional });
+    return apiRequest<{ ok: true }>(`/older-adults/${idAdultoMayor}/professional`, {
+        method: 'PATCH',
+        body: JSON.stringify({ correoProfesional }),
+    });
+}

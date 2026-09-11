@@ -507,6 +507,22 @@ export default function PatientDetailScreen() {
                             <Text style={[styles.caregiverAction, { color: '#d97706' }]}>Asignar</Text>
                         </Pressable>
                     )}
+
+                    {hasStaffAccess && (
+                        <Pressable
+                            style={styles.transferRow}
+                            onPress={() => router.push(`/(app)/patients/${id}/transfer-professional` as never)}
+                            accessibilityLabel="Transferir adulto mayor a otro profesional"
+                            accessibilityRole="button"
+                        >
+                            <MaterialCommunityIcons name="account-switch-outline" size={20} color={theme.colors.primary} />
+                            <View style={styles.caregiverInfo}>
+                                <Text style={styles.caregiverLabel}>Profesional responsable</Text>
+                                <Text style={styles.caregiverWarningText}>Transferir este adulto mayor a otro profesional</Text>
+                            </View>
+                            <Text style={styles.caregiverAction}>Transferir</Text>
+                        </Pressable>
+                    )}
                 </AppCard>
 
                 {/* Sección 1: Información Médica */}
@@ -770,6 +786,7 @@ const styles = StyleSheet.create({
     detailText: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280' },
     caregiverDivider: { height: 1, backgroundColor: '#e5e7eb', marginVertical: 12 },
     caregiverRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    transferRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
     caregiverWarning: { backgroundColor: '#fffbeb', paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, marginHorizontal: -6 },
     caregiverInfo: { flex: 1 },
     caregiverLabel: { fontFamily: 'Montserrat_500Medium', fontSize: 13, color: '#374151' },
