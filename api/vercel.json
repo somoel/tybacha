@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "src/vercel.ts",
-      "use": "@vercel/node"
-    }
   ],
   "functions": {
     "src/vercel.ts": {
