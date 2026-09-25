@@ -1,6 +1,5 @@
 {
   "version": 2,
-  ],
   "functions": {
     "src/vercel.ts": {
       "maxDuration": 60
