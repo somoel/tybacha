@@ -1,10 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
-import { generateWithCerebras } from '../../../../infrastructure/ai/cerebras.js';
+import { generateWithOpenRouter } from '../../../../infrastructure/ai/openrouter.js';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
-import { env } from '../../../../config/env.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -375,11 +374,10 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
     const { results: sftResults, metrics } = await getLatestSftResults(body.idAdultoMayor, body.idAplicacionSft);
     const prompt = buildPrompt(adult, sftResults, metrics);
 
+    const generation = await generateWithOpenRouter(prompt);
+    const parsed = aiPlanSchema.parse(normalizeAiJson(generation.text));
     const connection = await pool.getConnection();
     try {
-      const responseText = await generateWithCerebras(prompt);
-      const parsed = aiPlanSchema.parse(normalizeAiJson(responseText));
-
       await connection.beginTransaction();
 
       const [existingRows] = await connection.query<RowDataPacket[]>(
@@ -463,10 +461,10 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
         `insert into generacion_ia_plan
           (id_plan_ejercicio, proveedor, modelo, solicitud, respuesta, estado, creado_por)
          values
-          (:idPlanEjercicio, 'cerebras', :modelo, :solicitud, :respuesta, 'exitosa', :creadoPor)`,
+          (:idPlanEjercicio, 'openrouter', :modelo, :solicitud, :respuesta, 'exitosa', :creadoPor)`,
         {
           idPlanEjercicio,
-          modelo: env.CEREBRAS_MODEL,
+          modelo: generation.model,
           solicitud: JSON.stringify({ prompt }),
           respuesta: JSON.stringify(parsed),
           creadoPor: actor.idUsuario,

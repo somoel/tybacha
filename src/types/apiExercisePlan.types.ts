@@ -83,6 +83,8 @@ export interface ApiAiTestExercise {
 export interface ApiAiTestResult {
     ok: boolean;
     durationMs: number;
+    model: string;
+    usedFallback: boolean;
     resumen: string;
     objetivo: string | null;
     nivelDificultad: string;

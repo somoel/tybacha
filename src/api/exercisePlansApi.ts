@@ -52,8 +52,11 @@ export function updateApiExercisePlanStatus(
 }
 
 export function testExercisePlanAiApi(): Promise<ApiAiTestResult> {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55_000);
     return apiRequest<ApiAiTestResult>('/admin/ai/exercise-plan-test', {
         method: 'POST',
-    });
+        signal: controller.signal,
+    }).finally(() => clearTimeout(timeout));
 }
 

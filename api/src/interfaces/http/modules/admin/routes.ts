@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { generateWithCerebras } from '../../../../infrastructure/ai/cerebras.js';
+import { z } from 'zod';
+import { generateWithOpenRouter } from '../../../../infrastructure/ai/openrouter.js';
 import { requireRoles } from '../../requireAuth.js';
 
 const TEST_PROMPT = `Eres un especialista en ejercicio fisico para adultos mayores.
@@ -52,84 +53,125 @@ JSON esperado:
   ]
 }`;
 
-const aiPlanTestSchema = {
-  type: 'object' as const,
-  required: ['resumen', 'ejercicios'],
-  properties: {
-    resumen: { type: 'string' },
-    objetivo: { type: 'string' },
-    nivelDificultad: { type: 'string', enum: ['bajo', 'medio', 'alto'] },
-    ejercicios: {
-      type: 'array',
-      minItems: 5,
-      maxItems: 5,
-      items: {
-        type: 'object',
-        required: ['diaSemana', 'nombre'],
-        properties: {
-          diaSemana: { type: 'string', enum: ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'] },
-          nombre: { type: 'string' },
-          descripcion: { type: 'string' },
-          series: { type: 'number' },
-          repeticiones: { type: 'number' },
-          duracionSegundos: { type: 'number' },
-          descansoSegundos: { type: 'number' },
-          dificultad: { type: 'string', enum: ['bajo', 'medio', 'alto'] },
-          instrucciones: { type: 'string' },
-        },
-      },
-    },
-  },
+const normalizeDay = (value: unknown) => {
+  if (typeof value !== 'string') return value;
+  const normalized = value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const aliases: Record<string, string> = {
+    monday: 'lunes',
+    tuesday: 'martes',
+    wednesday: 'miercoles',
+    thursday: 'jueves',
+    friday: 'viernes',
+  };
+  return aliases[normalized] ?? normalized;
 };
 
+const aiPlanTestSchema = z.object({
+  resumen: z.string().min(1),
+  objetivo: z.string().nullable().optional(),
+  nivelDificultad: z.enum(['bajo', 'medio', 'alto']).default('bajo'),
+  ejercicios: z.array(z.object({
+    diaSemana: z.preprocess(normalizeDay, z.enum(['lunes', 'martes', 'miercoles', 'jueves', 'viernes'])),
+    nombre: z.string().min(1),
+    descripcion: z.string().nullable().optional(),
+    series: z.number().int().positive().nullable().optional(),
+    repeticiones: z.number().int().positive().nullable().optional(),
+    duracionSegundos: z.number().int().positive().nullable().optional(),
+    descansoSegundos: z.number().int().nonnegative().nullable().optional(),
+    dificultad: z.string().nullable().optional(),
+    instrucciones: z.string().nullable().optional(),
+  })).length(5),
+});
+
 function normalizeAiJson(text: string): unknown {
+  const cleaned = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('La respuesta de IA no contiene JSON valido');
-    return JSON.parse(match[0]);
+    const start = cleaned.indexOf('{');
+    if (start < 0) throw new Error('La respuesta de IA no contiene JSON valido');
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let index = start; index < cleaned.length; index += 1) {
+      const character = cleaned[index];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (character === '\\') {
+          escaped = true;
+        } else if (character === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (character === '"') {
+        inString = true;
+      } else if (character === '{') {
+        depth += 1;
+      } else if (character === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          return JSON.parse(cleaned.slice(start, index + 1));
+        }
+      }
+    }
+
+    throw new Error('La respuesta de IA contiene JSON incompleto');
   }
 }
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.post('/admin/ai/exercise-plan-test', { preHandler: requireRoles(app, ['administrador']) }, async (request, reply) => {
     const start = Date.now();
+    const generation = await generateWithOpenRouter(TEST_PROMPT);
+    let parsed: z.infer<typeof aiPlanTestSchema>;
 
-    const responseText = await generateWithCerebras(TEST_PROMPT);
-    const parsed = normalizeAiJson(responseText);
-
-    const validated = aiPlanTestSchema as any;
-    const ejercicios = (parsed as any).ejercicios;
-    if (!Array.isArray(ejercicios) || ejercicios.length !== 5) {
-      throw new Error('La respuesta no contiene exactamente 5 ejercicios');
+    try {
+      parsed = aiPlanTestSchema.parse(normalizeAiJson(generation.text));
+    } catch (error) {
+      request.log.error({
+        event: 'ai_test_invalid_response',
+        model: generation.model,
+        usedFallback: generation.usedFallback,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return reply.code(502).send({
+        code: 'AI_INVALID_RESPONSE',
+        message: 'La IA no devolvio un plan valido',
+      });
     }
 
-    console.log(JSON.stringify({ event: 'debug_exercise_plan', ejercicios: ejercicios.map((e: any) => ({ diaSemana: e.diaSemana, nombre: e.nombre })) }));
-
-    const normalize = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
-    for (const dia of dias) {
-      const found = ejercicios.some((e: any) => normalize(e.diaSemana) === dia);
-      if (!found) throw new Error(`Falta ejercicio para ${dia}`);
-    }
+    console.log(JSON.stringify({
+      event: 'debug_exercise_plan',
+      model: generation.model,
+      usedFallback: generation.usedFallback,
+      ejercicios: parsed.ejercicios.map((ejercicio) => ({ diaSemana: ejercicio.diaSemana, nombre: ejercicio.nombre })),
+    }));
 
     const durationMs = Date.now() - start;
 
     return {
       ok: true,
       durationMs,
-      resumen: (parsed as any).resumen,
-      objetivo: (parsed as any).objetivo,
-      nivelDificultad: (parsed as any).nivelDificultad,
-      ejercicios: ejercicios.map((e: any) => ({
-        diaSemana: e.diaSemana,
-        nombre: e.nombre,
-        descripcion: e.descripcion ?? null,
-        series: e.series ?? null,
-        repeticiones: e.repeticiones ?? null,
-        duracionSegundos: e.duracionSegundos ?? null,
-        dificultad: e.dificultad ?? null,
+      model: generation.model,
+      usedFallback: generation.usedFallback,
+      resumen: parsed.resumen,
+      objetivo: parsed.objetivo ?? null,
+      nivelDificultad: parsed.nivelDificultad,
+      ejercicios: parsed.ejercicios.map((ejercicio) => ({
+        diaSemana: ejercicio.diaSemana,
+        nombre: ejercicio.nombre,
+        descripcion: ejercicio.descripcion ?? null,
+        series: ejercicio.series ?? null,
+        repeticiones: ejercicio.repeticiones ?? null,
+        duracionSegundos: ejercicio.duracionSegundos ?? null,
+        dificultad: ejercicio.dificultad ?? null,
       })),
     };
   });

@@ -6,6 +6,11 @@
       "use": "@vercel/node"
     }
   ],
+  "functions": {
+    "src/vercel.ts": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/cron/process-alerts",

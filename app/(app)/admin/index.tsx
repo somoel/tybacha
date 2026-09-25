@@ -38,6 +38,7 @@ export default function AdminScreen() {
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [isTestingAi, setIsTestingAi] = useState(false);
     const [aiTestResult, setAiTestResult] = useState<ApiAiTestResult | null>(null);
+    const [aiTestError, setAiTestError] = useState<string | null>(null);
 
     const { control, handleSubmit, reset } = useForm<UserForm>({
         resolver: zodResolver(userSchema),
@@ -109,14 +110,19 @@ export default function AdminScreen() {
     const handleTestAi = async () => {
         setIsTestingAi(true);
         setAiTestResult(null);
+        setAiTestError(null);
         try {
             const result = await testExercisePlanAiApi();
             setAiTestResult(result);
-            setSnackbar({ visible: true, message: `API respondio en ${result.durationMs}ms`, type: 'success' });
+            setSnackbar({ visible: true, message: `API respondió en ${result.durationMs}ms con ${result.model}`, type: 'success' });
         } catch (error) {
+            const message = error instanceof Error && error.name === 'AbortError'
+                ? 'La prueba de IA excedio 55 segundos. Intenta de nuevo.'
+                : error instanceof Error ? error.message : 'Error probando la API de IA';
+            setAiTestError(message);
             setSnackbar({
                 visible: true,
-                message: error instanceof Error ? error.message : 'Error probando la API de IA',
+                message,
                 type: 'error',
             });
         } finally {
@@ -162,7 +168,7 @@ export default function AdminScreen() {
                     <MaterialCommunityIcons name="robot" size={24} color="#7c3aed" />
                     <View style={styles.linkInfo}>
                         <Text style={styles.linkTitle}>Probar API de IA</Text>
-                        <Text style={styles.linkSubtitle}>Verificar que Cerebras genera planes correctamente</Text>
+                        <Text style={styles.linkSubtitle}>Verificar que OpenRouter genera planes correctamente</Text>
                     </View>
                 </View>
                 <AppButton
@@ -173,6 +179,7 @@ export default function AdminScreen() {
                     onPress={handleTestAi}
                     style={styles.testAiButton}
                 />
+                {aiTestError && <Text style={styles.aiTestError}>{aiTestError}</Text>}
                 {aiTestResult && (
                     <View style={styles.aiResult}>
                         <View style={styles.aiResultHeader}>
@@ -181,7 +188,7 @@ export default function AdminScreen() {
                         </View>
                         <Text style={styles.aiResultSummary}>{aiTestResult.resumen}</Text>
                         <Text style={styles.aiResultMeta}>
-                            Nivel: {aiTestResult.nivelDificultad} | Ejercicios: {aiTestResult.ejercicios.length}
+                            Modelo: {aiTestResult.model}{aiTestResult.usedFallback ? ' (fallback)' : ''} | Nivel: {aiTestResult.nivelDificultad} | Ejercicios: {aiTestResult.ejercicios.length}
                         </Text>
                         {aiTestResult.ejercicios.map((ex, i) => (
                             <Text key={i} style={styles.aiResultExercise}>
@@ -276,6 +283,7 @@ export default function AdminScreen() {
                 visible={snackbar.visible}
                 message={snackbar.message}
                 type={snackbar.type}
+                duration={snackbar.type === 'error' ? 8000 : 3000}
                 onDismiss={() => setSnackbar((state) => ({ ...state, visible: false }))}
             />
         </ScrollView>
@@ -308,6 +316,7 @@ const styles = StyleSheet.create({
     userMeta: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#6b7280' },
     empty: { fontFamily: 'Montserrat_400Regular', fontSize: 13, color: '#6b7280', paddingVertical: 12 },
     testAiButton: { marginTop: 12 },
+    aiTestError: { fontFamily: 'Montserrat_500Medium', fontSize: 12, color: '#b91c1c', marginTop: 8 },
     aiResult: { marginTop: 12, padding: 12, backgroundColor: '#f0fdf4', borderRadius: 8 },
     aiResultHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
     aiResultTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 13, color: '#059669' },

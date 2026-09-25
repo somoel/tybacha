@@ -8,7 +8,7 @@ Aplicación móvil para profesionales en educación física y cuidadores que eva
 - **Registro y gestión de pacientes** con datos demográficos y patologías
 - **Batería completa SFT** (6 pruebas) con cronómetros y contadores interactivos
 - **Resultados gráficos** con comparativas usando react-native-gifted-charts
-- **Plan de ejercicios con IA** generado por Gemini 2.0 Flash
+- **Plan de ejercicios con IA** generado por OpenRouter
 - **Modo offline** con SQLite local y sincronización automática
 - **Asignación de cuidadores** con control de acceso por roles
 - **Material Design 3** con tema teal-cyan y fuente Montserrat
@@ -24,7 +24,7 @@ Aplicación móvil para profesionales en educación física y cuidadores que eva
 | React Native Paper | v5 (MD3) |
 | Zustand | v5 + persist |
 | expo-sqlite | v14+ |
-| Gemini AI | 2.0 Flash |
+| OpenRouter | Space Bunny Alpha + MiMo V2.5 |
 | react-native-gifted-charts | Latest |
 
 ## 🚀 Instalación
@@ -39,21 +39,24 @@ npm install
 
 ### 2. Configurar variables de entorno
 
-Editar el archivo `.env` en la raíz del proyecto:
+En la raíz del proyecto, configura la URL de la API:
 
 ```env
 EXPO_PUBLIC_API_URL=https://tu-api.vercel.app
-EXPO_PUBLIC_GEMINI_API_KEY=tu_clave_api_gemini
-EXPO_PUBLIC_OPENROUTER_API_KEY=tu_clave_openrouter
 ```
 
-### 3. Obtener API Key de Gemini
+La generación de planes se configura en `api/.env`:
 
-1. Ir a [Google AI Studio](https://aistudio.google.com/apikey)
-2. Crear una API key
-3. Copiarla en `EXPO_PUBLIC_GEMINI_API_KEY` del `.env`
+```env
+OPENROUTER_API_KEY=tu_clave_openrouter
+OPENROUTER_PRIMARY_MODEL=stealth/space-bunny-alpha
+OPENROUTER_FALLBACK_MODEL=xiaomi/mimo-v2.5
+OPENROUTER_REQUEST_TIMEOUT_MS=25000
+```
 
-### 4. Ejecutar la app
+La clave de OpenRouter debe permanecer únicamente en la API, nunca en una variable `EXPO_PUBLIC_*`.
+
+### 3. Ejecutar la app
 
 ```bash
 # Iniciar el servidor de desarrollo
