@@ -61,13 +61,25 @@ export default function BatterySummaryScreen() {
         router.replace(`/(app)/tests/${testType ?? SFT_TESTS[SFT_TESTS.length - 1].type}/active` as never);
     };
 
+    /**
+     * Cierra el flujo de batería: descarta `batteries/new` y este resumen del stack de
+     * `patients/[id]` con dismissTo (no replace), de modo que el usuario nunca vuelva a
+     * "Registrar IMC" al usar el botón atrás. Opcionalmente apila una pantalla encima.
+     */
+    const leaveBatteryFlow = (next?: string) => {
+        router.dismissTo(`/(app)/patients/${id}` as never);
+        if (next) {
+            router.push(next as never);
+        }
+    };
+
     const handleClose = () => {
         if (isComplete) {
             handleConfirmFinalize('patient');
         } else {
             allowExitRef.current = true;
             clearSession();
-            router.replace(`/(app)/patients/${id}` as never);
+            leaveBatteryFlow();
         }
     };
 
@@ -103,10 +115,9 @@ export default function BatterySummaryScreen() {
 
             clearSession();
             allowExitRef.current = true;
-            const destination = action === 'plan'
-                ? `/(app)/patients/${id}/progress/edit-plan?from=battery`
-                : `/(app)/patients/${id}`;
-            router.replace(destination as never);
+            leaveBatteryFlow(
+                action === 'plan' ? `/(app)/patients/${id}/progress/edit-plan?from=battery` : undefined,
+            );
         } catch (error) {
             if (batteryPersisted) {
                 clearSession();
@@ -117,7 +128,7 @@ export default function BatterySummaryScreen() {
                 console.error('Error generando plan tras persistir batería:', error);
                 setSnackbar({ visible: true, message, type: 'error' });
                 setTimeout(() => {
-                    router.replace(`/(app)/patients/${id}` as never);
+                    leaveBatteryFlow();
                 }, 2000);
             } else {
                 const message = error instanceof Error ? error.message : 'Error al guardar la batería.';
@@ -252,7 +263,7 @@ export default function BatterySummaryScreen() {
                     </Dialog.Content>
                     <Dialog.Actions>
                         <PaperButton onPress={() => setExitDialogVisible(false)}>Quedarse</PaperButton>
-                        <PaperButton onPress={() => { allowExitRef.current = true; setExitDialogVisible(false); clearSession(); router.replace(`/(app)/patients/${id}` as never); }}>Salir</PaperButton>
+                        <PaperButton onPress={() => { allowExitRef.current = true; setExitDialogVisible(false); clearSession(); leaveBatteryFlow(); }}>Salir</PaperButton>
                     </Dialog.Actions>
                 </Dialog>
 

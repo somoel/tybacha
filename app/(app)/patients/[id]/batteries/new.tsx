@@ -7,8 +7,8 @@ import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { Stack, useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { Button as PaperButton, Dialog, IconButton, Portal, Text, useTheme } from 'react-native-paper';
 
@@ -30,11 +30,15 @@ export default function NewBatteryScreen() {
     const metricsConfirmed = pesoKg !== null;
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
-    useEffect(() => {
-        if (!activeBatteryId && id) {
-            startBattery(id);
-        }
-    }, [id, activeBatteryId, startBattery]);
+    // Solo arranca sesión cuando esta pantalla está enfocada. Si queda montada en el stack
+    // detrás del resumen/plan, un clearSession() no debe resucitar una batería fantasma.
+    useFocusEffect(
+        useCallback(() => {
+            if (!activeBatteryId && id) {
+                startBattery(id);
+            }
+        }, [id, activeBatteryId, startBattery]),
+    );
 
     const progress = completedTests.length / SFT_TESTS.length;
     const allComplete = completedTests.length === SFT_TESTS.length;

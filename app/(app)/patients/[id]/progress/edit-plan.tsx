@@ -164,7 +164,9 @@ export default function EditPlanSheet() {
                         hideActions
                         onSuccess={() => {
                             if (from === 'battery') {
-                                router.replace(`/(app)/patients/${patientId}/progress` as never);
+                                // dismissTo cierra el modal y deja el stack en el detalle del
+                                // paciente: el botón atrás nunca devuelve a la batería en curso.
+                                router.dismissTo(`/(app)/patients/${patientId}` as never);
                             } else {
                                 router.back();
                             }
