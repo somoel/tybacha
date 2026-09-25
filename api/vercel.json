@@ -1,10 +1,11 @@
 {
   "version": 2,
-  "functions": {
-    "src/vercel.ts": {
-      "maxDuration": 60
+  "builds": [
+    {
+      "src": "src/vercel.ts",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "crons": [
     {
       "path": "/cron/process-alerts",
