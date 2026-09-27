@@ -79,6 +79,7 @@ interface SftResultRow extends RowDataPacket {
   valor_numerico: number | null;
   valor_texto: string | null;
   unidad_resultado: string | null;
+  observaciones: string | null;
 }
 
 interface SftBodyMetrics {
@@ -90,6 +91,7 @@ interface SftBodyMetrics {
 interface SftData {
   results: SftResultRow[];
   metrics: SftBodyMetrics;
+  observacionesBateria: string | null;
 }
 
 interface PlanRow extends RowDataPacket {
@@ -170,7 +172,7 @@ async function getOlderAdultContext(idAdultoMayor: number, actorId: number, role
 async function getLatestSftResults(idAdultoMayor: number, idAplicacionSft?: number): Promise<SftData> {
   const params = { idAdultoMayor, idAplicacionSft: idAplicacionSft ?? null };
   const [applicationRows] = await pool.query<RowDataPacket[]>(
-    `select id_aplicacion_sft
+    `select id_aplicacion_sft, observaciones
      from aplicacion_sft
      where id_adulto_mayor = :idAdultoMayor
        and (:idAplicacionSft is null or id_aplicacion_sft = :idAplicacionSft)
@@ -179,13 +181,14 @@ async function getLatestSftResults(idAdultoMayor: number, idAplicacionSft?: numb
     params,
   );
 
-  const application = applicationRows[0] as { id_aplicacion_sft?: number } | undefined;
+  const application = applicationRows[0] as { id_aplicacion_sft?: number; observaciones?: string | null } | undefined;
   if (!application?.id_aplicacion_sft) {
     throw badRequest('El adulto mayor no tiene una aplicacion SFT disponible');
   }
 
   const [rows] = await pool.query<SftResultRow[]>(
-    `select ps.nombre as prueba, rs.valor_numerico, rs.valor_texto, ps.unidad_resultado
+    `select ps.nombre as prueba, rs.valor_numerico, rs.valor_texto, ps.unidad_resultado,
+            rs.observaciones
      from resultado_sft rs
      join prueba_sft ps on ps.id_prueba_sft = rs.id_prueba_sft
      where rs.id_aplicacion_sft = :idAplicacionSft
@@ -206,7 +209,11 @@ async function getLatestSftResults(idAdultoMayor: number, idAplicacionSft?: numb
     imc: metricRows[0]?.imc ?? null,
   };
 
-  return { results: rows, metrics };
+  return {
+    results: rows,
+    metrics,
+    observacionesBateria: application.observaciones ?? null,
+  };
 }
 
 function getImcCategory(imc: number): string {
@@ -216,9 +223,18 @@ function getImcCategory(imc: number): string {
   return 'obesidad';
 }
 
-function buildPrompt(adult: OlderAdultContextRow, sftResults: SftResultRow[], metrics: SftBodyMetrics) {
+function buildPrompt(
+  adult: OlderAdultContextRow,
+  sftResults: SftResultRow[],
+  metrics: SftBodyMetrics,
+  observacionesBateria: string | null,
+) {
   const results = sftResults
-    .map((result) => `- ${result.prueba}: ${result.valor_numerico ?? result.valor_texto ?? 'Sin valor'} ${result.unidad_resultado ?? ''}`)
+    .map((result) => {
+      const value = `${result.valor_numerico ?? result.valor_texto ?? 'Sin valor'} ${result.unidad_resultado ?? ''}`.trim();
+      const line = `- ${result.prueba}: ${value}`;
+      return result.observaciones ? `${line} | Observaciones: ${result.observaciones}` : line;
+    })
     .join('\n');
 
   const bodyMetricsBlock = [
@@ -246,6 +262,7 @@ ADULTO MAYOR:
 - Patologias: ${adult.patologias ?? 'No registradas'}
 - Medicamentos activos: ${adult.medicamentos ?? 'No registrados'}
 ${bodyMetricsBlock ? `\nDATOS CORPORALES:\n${bodyMetricsBlock}\n` : ''}
+${observacionesBateria ? `\nOBSERVACIONES GENERALES DE LA BATERIA:\n${observacionesBateria}\n` : ''}
 RESULTADOS SFT:
 ${results}
 
@@ -371,8 +388,8 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
 
     const body = generatePlanSchema.parse(request.body);
     const adult = await getOlderAdultContext(body.idAdultoMayor, actor.idUsuario, actor.rol);
-    const { results: sftResults, metrics } = await getLatestSftResults(body.idAdultoMayor, body.idAplicacionSft);
-    const prompt = buildPrompt(adult, sftResults, metrics);
+    const { results: sftResults, metrics, observacionesBateria } = await getLatestSftResults(body.idAdultoMayor, body.idAplicacionSft);
+    const prompt = buildPrompt(adult, sftResults, metrics, observacionesBateria);
 
     const generation = await generateWithOpenRouter(prompt);
     const parsed = aiPlanSchema.parse(normalizeAiJson(generation.text));
