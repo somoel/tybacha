@@ -48,9 +48,13 @@ function mapOlderAdultToPatient(adult: ApiOlderAdult): Patient {
 
 /**
  * Fetch adults visible for the current authenticated user.
+ * The API scopes the list by token; `limit`/`order` are optional server-side options.
  */
-export async function fetchPatients(_userId?: string, _role?: string): Promise<Patient[]> {
-    const adults = await fetchApiOlderAdults();
+export async function fetchPatients(options?: {
+    limit?: number;
+    order?: 'alfabetico' | 'recientes';
+}): Promise<Patient[]> {
+    const adults = await fetchApiOlderAdults(options);
     return adults.map(mapOlderAdultToPatient);
 }
 

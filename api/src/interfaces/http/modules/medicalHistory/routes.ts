@@ -266,7 +266,7 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       if (!existing) throw notFound('Patologia no encontrada');
 
       const updates: string[] = [];
-      const vals: Record<string, unknown> = { id: params.pathologyId };
+      const vals: Record<string, string | number> = { id: params.pathologyId };
       if (body.nombre !== undefined) { updates.push('nombre = :nombre'); vals.nombre = body.nombre; }
       if (body.descripcion !== undefined) { updates.push('descripcion = :descripcion'); vals.descripcion = body.descripcion; }
       if (body.fechaDiagnostico !== undefined) { updates.push('fecha_diagnostico = :fechaDiagnostico'); vals.fechaDiagnostico = body.fechaDiagnostico; }
@@ -445,7 +445,7 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       if (!existing) throw notFound('Medicamento no encontrado');
 
       const updates: string[] = [];
-      const vals: Record<string, unknown> = { id: params.medicationId };
+      const vals: Record<string, string | number> = { id: params.medicationId };
       if (body.nombre !== undefined) { updates.push('nombre = :nombre'); vals.nombre = body.nombre; }
       if (body.dosis !== undefined) { updates.push('dosis = :dosis'); vals.dosis = body.dosis; }
       if (body.frecuencia !== undefined) { updates.push('frecuencia = :frecuencia'); vals.frecuencia = body.frecuencia; }
@@ -583,7 +583,7 @@ export async function registerMedicalHistoryRoutes(app: FastifyInstance): Promis
       if (!existing) throw notFound('Nota medica no encontrada');
 
       const updates: string[] = [];
-      const vals: Record<string, unknown> = { id: params.noteId };
+      const vals: Record<string, string | number> = { id: params.noteId };
       if (body.tipoNota !== undefined) { updates.push('tipo_nota = :tipoNota'); vals.tipoNota = body.tipoNota; }
       if (body.contenido !== undefined) { updates.push('contenido = :contenido'); vals.contenido = body.contenido; }
 

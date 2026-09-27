@@ -3,14 +3,11 @@ import { PatientSectionList } from '@/src/components/patients/PatientSectionList
 import { PatientsListSkeleton } from '@/src/components/ui/PatientsListSkeleton';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { exportBulkBatteryXlsx } from '@/src/api/reportsApi';
-import { fetchActivePlanStatus, fetchBatteryCountsForPatients, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
-import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
-import { useAuthStore } from '@/src/stores/authStore';
 import { getSectionedPatients, usePatientsStore } from '@/src/stores/patientsStore';
 import type { Patient, SectionedPatients } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Searchbar, Text } from 'react-native-paper';
 
@@ -19,68 +16,41 @@ import { ActivityIndicator, Searchbar, Text } from 'react-native-paper';
  */
 export default function PatientsListScreen() {
     const router = useRouter();
-    const { user } = useAuthStore();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
     const hasStaffAccess = isAdmin || isProfessional;
-    const { patients, setPatients, searchQuery, setSearchQuery, isLoading, setLoading, setPhotoThumbnails, exerciseData, setExerciseData } = usePatientsStore();
-    const [sections, setSections] = useState<SectionedPatients | null>(null);
+    const {
+        patients,
+        searchQuery,
+        setSearchQuery,
+        isLoading,
+        exerciseData,
+        batteryCounts,
+        activePlanMap,
+        loadDashboard,
+    } = usePatientsStore();
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
-    const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [isExporting, setIsExporting] = useState(false);
 
-    const loadPatients = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
-        if (!user) return;
-
-        if (mode === 'refresh') {
-            setIsRefreshing(true);
-        } else {
-            setLoading(true);
-        }
-
-        try {
-            const role = hasStaffAccess ? 'profesional' : 'cuidador';
-            const data = await fetchPatients(user.id, role);
-            setPatients(data);
-
-            if (data.length > 0) {
-                const ids = data.map((p) => p.id);
-                const [counts, plans, weeklyData] = await Promise.all([
-                    fetchBatteryCountsForPatients(ids),
-                    fetchActivePlanStatus(ids),
-                    fetchWeeklyExerciseDataForPatients(ids),
-                ]);
-                setBatteryCounts(counts);
-                setActivePlanMap(plans);
-                setExerciseData(weeklyData);
-
-                if (hasStaffAccess) {
-                    setSections(getSectionedPatients(data, counts, plans));
-                } else {
-                    setSections(null);
-                }
-            } else {
-                setSections(null);
-            }
-
-            const thumbnails = await fetchPatientThumbnails();
-            setPhotoThumbnails(thumbnails);
-        } catch (error) {
-            console.error('Error cargando adultos mayores:', error);
-        } finally {
-            if (mode === 'refresh') {
-                setIsRefreshing(false);
-            } else {
-                setLoading(false);
-            }
-        }
-    }, [user, hasStaffAccess, setPatients, setLoading, setPhotoThumbnails, setExerciseData]);
-
     useEffect(() => {
-        void loadPatients();
-    }, [loadPatients]);
+        void loadDashboard({ scope: 'all' });
+    }, [loadDashboard]);
+
+    const handleRefresh = useCallback(async () => {
+        setIsRefreshing(true);
+        try {
+            await loadDashboard({ scope: 'all', force: true });
+        } finally {
+            setIsRefreshing(false);
+        }
+    }, [loadDashboard]);
+
+    // Las secciones se derivan del estado vigente del store (nunca de un snapshot obsoleto).
+    const sections = useMemo<SectionedPatients | null>(() => {
+        if (!hasStaffAccess || patients.length === 0) return null;
+        return getSectionedPatients(patients, batteryCounts, activePlanMap);
+    }, [hasStaffAccess, patients, batteryCounts, activePlanMap]);
 
     const toggleSelectionMode = useCallback(() => {
         setSelectionMode((prev) => !prev);
@@ -138,7 +108,7 @@ export default function PatientsListScreen() {
         router.push(`/(app)/patients/${patient.id}` as never);
     };
 
-    if (isLoading) {
+    if (isLoading && !isRefreshing) {
         return <PatientsListSkeleton />;
     }
 
@@ -175,7 +145,7 @@ export default function PatientsListScreen() {
                     />
                     <Pressable
                         style={[styles.refreshButton, isRefreshing && styles.refreshButtonDisabled]}
-                        onPress={() => void loadPatients('refresh')}
+                        onPress={() => void handleRefresh()}
                         disabled={isRefreshing}
                         accessibilityLabel="Refrescar adultos mayores"
                         accessibilityRole="button"

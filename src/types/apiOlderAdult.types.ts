@@ -45,3 +45,19 @@ export type ApiUpdateOlderAdultInput = Partial<ApiCreateOlderAdultInput> & {
     motivoInactivacion?: string;
 };
 
+export interface ApiPatientsSummaryItem {
+    idAdultoMayor: number;
+    batteryCount: number;
+    hasActivePlan: boolean;
+    todayTotal: number;
+    todayCompleted: number;
+    weeklyCompliance: number;
+    lastExerciseDate: string | null;
+}
+
+export interface ApiPatientsSummary {
+    totalAdultos: number;
+    conPlanActivo: number;
+    items: ApiPatientsSummaryItem[];
+}
+

@@ -9,6 +9,8 @@ import { requireAuth, requireRoles } from '../../requireAuth.js';
 const ALLOWED_PHOTO_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_PHOTO_BYTES = 1 * 1024 * 1024;
 
+const WEEKDAY_KEYS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
 const genderSchema = z.enum(['femenino', 'masculino']);
 
 const createOlderAdultSchema = z.object({
@@ -30,6 +32,24 @@ const createOlderAdultSchema = z.object({
 const updateOlderAdultSchema = createOlderAdultSchema.partial().extend({
   estado: z.enum(['activo', 'inactivo']).optional(),
   motivoInactivacion: z.string().max(255).optional(),
+});
+
+const listOlderAdultsQuerySchema = z.object({
+  limit: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() !== '' ? Number(value) : undefined),
+    z.number().int().positive().optional(),
+  ),
+  order: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() !== '' ? value : undefined),
+    z.enum(['alfabetico', 'recientes']).default('alfabetico'),
+  ),
+});
+
+const summaryOlderAdultsQuerySchema = z.object({
+  ids: z.preprocess(
+    (value) => (Array.isArray(value) ? value.join(',') : value),
+    z.string().optional(),
+  ),
 });
 
 interface OlderAdultRow extends RowDataPacket {
@@ -56,6 +76,16 @@ interface PhotoRow extends RowDataPacket {
   foto_binaria: Buffer;
   tipo_mime: string;
   tamano_bytes: number;
+}
+
+interface OlderAdultSummaryRow extends RowDataPacket {
+  id_adulto_mayor: number;
+  battery_count: number | null;
+  has_active_plan: number | null;
+  today_total: number | null;
+  today_completed: number | null;
+  last_exercise_date: string | null;
+  weekly_compliance: number | null;
 }
 
 function mapOlderAdult(row: OlderAdultRow) {
@@ -127,25 +157,51 @@ async function assertCaregiverExists(idCuidador: number, idProfesional?: number)
   if (!rows[0]) throw badRequest('El cuidador indicado no existe, no esta activo o no pertenece al profesional');
 }
 
-export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<void> {
-  app.get('/older-adults', { preHandler: requireAuth(app) }, async (request) => {
-    const actor = request.authUser!;
+function buildOlderAdultScope(actor: { rol: string; idUsuario: number }): {
+  where: string;
+  params: Record<string, string | number>;
+} {
+  if (actor.rol === 'profesional') {
+    return {
+      where: 'where a.id_profesional_responsable = :actorId',
+      params: { actorId: actor.idUsuario },
+    };
+  }
 
-    let where = '';
-    const params: Record<string, string | number> = {};
-
-    if (actor.rol === 'profesional') {
-      where = 'where a.id_profesional_responsable = :actorId';
-      params.actorId = actor.idUsuario;
-    } else if (actor.rol === 'cuidador') {
-      where = `where exists (
+  if (actor.rol === 'cuidador') {
+    return {
+      where: `where exists (
         select 1 from asignacion_cuidador_adulto_mayor ac
         where ac.id_adulto_mayor = a.id_adulto_mayor
           and ac.id_cuidador = :actorId
           and ac.estado = 'activa'
-      )`;
-      params.actorId = actor.idUsuario;
-    }
+      )`,
+      params: { actorId: actor.idUsuario },
+    };
+  }
+
+  return { where: '', params: {} };
+}
+
+function parseIdsParam(raw: string | undefined): number[] | undefined {
+  if (!raw?.trim()) return undefined;
+  const values = raw.split(',').map((value) => Number(value.trim()));
+  if (values.some((value) => !Number.isInteger(value) || value <= 0)) return undefined;
+  return values;
+}
+
+export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/older-adults', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const query = listOlderAdultsQuerySchema.parse(request.query);
+
+    const scope = buildOlderAdultScope(actor);
+    const params: Record<string, string | number> = { ...scope.params };
+    if (query.limit !== undefined) params.limit = query.limit;
+
+    const orderBy = query.order === 'recientes'
+      ? 'a.creado_en desc, a.id_adulto_mayor desc'
+      : 'a.apellidos, a.nombres';
 
     const [rows] = await pool.query<OlderAdultRow[]>(
       `select a.*,
@@ -157,12 +213,78 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
        left join asignacion_cuidador_adulto_mayor ac
          on ac.id_adulto_mayor = a.id_adulto_mayor and ac.estado = 'activa'
        left join perfil_usuario pc on pc.id_usuario = ac.id_cuidador
-       ${where}
-       order by a.apellidos, a.nombres`,
+       ${scope.where}
+       order by ${orderBy}
+       ${query.limit !== undefined ? 'limit :limit' : ''}`,
       params,
     );
 
     return rows.map(mapOlderAdult);
+  });
+
+  app.get('/older-adults/summary', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
+    const query = summaryOlderAdultsQuerySchema.parse(request.query);
+    const ids = parseIdsParam(query.ids);
+
+    const scope = buildOlderAdultScope(actor);
+    const params: Record<string, string | number | number[]> = {
+      ...scope.params,
+      diaHoy: WEEKDAY_KEYS[new Date().getDay()],
+    };
+    if (ids) params.ids = ids;
+
+    let where = scope.where;
+    if (ids) {
+      where = where
+        ? `${where} and a.id_adulto_mayor in (:ids)`
+        : 'where a.id_adulto_mayor in (:ids)';
+    }
+
+    const [rows] = await pool.query<OlderAdultSummaryRow[]>(
+      `select a.id_adulto_mayor,
+              coalesce((select count(*) from aplicacion_sft aps
+                where aps.id_adulto_mayor = a.id_adulto_mayor and aps.estado = 'finalizada'), 0) as battery_count,
+              (select 1 from plan_ejercicio pe
+                where pe.id_adulto_mayor = a.id_adulto_mayor
+                  and pe.estado not in ('borrador', 'finalizado', 'cancelado')
+                limit 1) as has_active_plan,
+              coalesce((select count(*) from ejercicio_plan ep
+                join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
+                where pe.id_adulto_mayor = a.id_adulto_mayor
+                  and pe.estado not in ('borrador', 'finalizado', 'cancelado')
+                  and ep.activo = 1 and ep.dia_semana = :diaHoy), 0) as today_total,
+              coalesce((select count(*) from registro_ejercicio_plan rep
+                join ejercicio_plan ep on ep.id_ejercicio_plan = rep.id_ejercicio_plan
+                join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
+                where pe.id_adulto_mayor = a.id_adulto_mayor
+                  and pe.estado not in ('borrador', 'finalizado', 'cancelado')
+                  and ep.activo = 1 and ep.dia_semana = :diaHoy
+                  and rep.fecha_programada = current_date() and rep.estado = 'completado'), 0) as today_completed,
+              (select max(rep.fecha_realizacion) from registro_ejercicio_plan rep
+                where rep.id_adulto_mayor = a.id_adulto_mayor and rep.estado = 'completado') as last_exercise_date,
+              coalesce((select est.porcentaje_cumplimiento from estadistica_progreso est
+                where est.id_adulto_mayor = a.id_adulto_mayor
+                order by est.fecha_inicio desc, est.calculado_en desc limit 1), 0) as weekly_compliance
+       from adulto_mayor a
+       ${where}
+       order by a.creado_en desc, a.id_adulto_mayor desc`,
+      params,
+    );
+
+    return {
+      totalAdultos: rows.length,
+      conPlanActivo: rows.filter((row) => Boolean(row.has_active_plan)).length,
+      items: rows.map((row) => ({
+        idAdultoMayor: row.id_adulto_mayor,
+        batteryCount: row.battery_count ?? 0,
+        hasActivePlan: Boolean(row.has_active_plan),
+        todayTotal: row.today_total ?? 0,
+        todayCompleted: row.today_completed ?? 0,
+        weeklyCompliance: row.weekly_compliance ?? 0,
+        lastExerciseDate: row.last_exercise_date ? row.last_exercise_date.replace(' ', 'T') : null,
+      })),
+    };
   });
 
   app.get('/older-adults/:id', { preHandler: requireAuth(app) }, async (request) => {
@@ -521,22 +643,7 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
 
   app.get('/older-adults/photos', { preHandler: requireAuth(app) }, async (request) => {
     const actor = request.authUser!;
-
-    let where = '';
-    const params: Record<string, string | number> = {};
-
-    if (actor.rol === 'profesional') {
-      where = 'where a.id_profesional_responsable = :actorId';
-      params.actorId = actor.idUsuario;
-    } else if (actor.rol === 'cuidador') {
-      where = `where exists (
-        select 1 from asignacion_cuidador_adulto_mayor ac
-        where ac.id_adulto_mayor = a.id_adulto_mayor
-          and ac.id_cuidador = :actorId
-          and ac.estado = 'activa'
-      )`;
-      params.actorId = actor.idUsuario;
-    }
+    const scope = buildOlderAdultScope(actor);
 
     interface PhotoBatchRow extends RowDataPacket {
       id_adulto_mayor: number;
@@ -550,9 +657,9 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
               fp.tipo_mime
        from adulto_mayor a
        inner join foto_perfil_adulto_mayor fp on fp.id_adulto_mayor = a.id_adulto_mayor
-       ${where}
+       ${scope.where}
        order by a.id_adulto_mayor`,
-      params,
+      scope.params,
     );
 
     const photos: Record<string, string> = {};

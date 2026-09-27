@@ -6,8 +6,6 @@ import type { ActivityItem } from '@/src/components/ui/ActivityFeed';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
-import { fetchActivePlanStatus, fetchBatteryCountsForPatients, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
-import { fetchPatients, fetchPatientThumbnails } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,15 +24,14 @@ import { Text, useTheme } from 'react-native-paper';
 export default function HomeScreen() {
     const theme = useTheme();
     const router = useRouter();
-    const { user, profile } = useAuthStore();
+    const { profile } = useAuthStore();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
     const unreadCount = useNotificationStore((s) => s.unreadCount);
-    const { patients, setPatients, setLoading, isLoading, setPhotoThumbnails, exerciseData, setExerciseData } = usePatientsStore();
+    const { patients, isLoading, exerciseData, batteryCounts, activePlanMap, totals, loadDashboard } =
+        usePatientsStore();
     const insets = useSafeAreaInsets();
     const { pendingCount } = useSyncQueue();
     const [greeting, setGreeting] = useState('Buenos días');
-    const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
-    const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
     const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
 
     useEffect(() => {
@@ -43,65 +40,44 @@ export default function HomeScreen() {
         else if (hour >= 18) setGreeting('Buenas noches');
     }, []);
 
-    useEffect(() => {
-        const loadPatients = async () => {
-            if (!user) return;
-            setLoading(true);
-            try {
-                const role = isAdmin || isProfessional ? 'profesional' : 'cuidador';
-                const data = await fetchPatients(user.id, role);
-                setPatients(data);
-
-                if (data.length > 0) {
-                    const ids = data.map((p) => p.id);
-                    const [counts, plans, weeklyData] = await Promise.all([
-                        fetchBatteryCountsForPatients(ids),
-                        fetchActivePlanStatus(ids),
-                        fetchWeeklyExerciseDataForPatients(ids),
-                    ]);
-                    setBatteryCounts(counts);
-                    setActivePlanMap(plans);
-                    setExerciseData(weeklyData);
-
-                    // Build recent activity from exercise data
-                    const activity: ActivityItem[] = [];
-                    for (const patient of data) {
-                        const exData = weeklyData[patient.id];
-                        if (exData?.lastExerciseDate) {
-                            const fullName = [patient.first_name, patient.first_lastname].filter(Boolean).join(' ');
-                            activity.push({
-                                patientName: fullName,
-                                action: exData.todayCompleted > 0 ? 'Ejercicio completado' : 'Último ejercicio registrado',
-                                date: exData.lastExerciseDate,
-                                icon: 'dumbbell',
-                                iconColor: '#2e7d32',
-                            });
-                        }
-                    }
-                    activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                    setRecentActivity(activity);
-                }
-
-                const thumbnails = await fetchPatientThumbnails();
-                setPhotoThumbnails(thumbnails);
-            } catch (error) {
-                console.error('Error cargando adultos mayores:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        void loadPatients();
-    }, [user, isAdmin, isProfessional, setPatients, setLoading, setPhotoThumbnails, setExerciseData]);
-
     const userName = profile?.full_name ?? 'Usuario';
     const hasStaffAccess = isAdmin || isProfessional;
+
+    useEffect(() => {
+        void loadDashboard({ scope: hasStaffAccess ? 'recent' : 'all' });
+    }, [loadDashboard, hasStaffAccess]);
+
+    useEffect(() => {
+        const activity: ActivityItem[] = [];
+        for (const patient of patients) {
+            const exData = exerciseData[patient.id];
+            if (exData?.lastExerciseDate) {
+                const fullName = [patient.first_name, patient.first_lastname].filter(Boolean).join(' ');
+                activity.push({
+                    patientName: fullName,
+                    action: exData.todayCompleted > 0 ? 'Ejercicio completado' : 'Último ejercicio registrado',
+                    date: exData.lastExerciseDate,
+                    icon: 'dumbbell',
+                    iconColor: '#2e7d32',
+                });
+            }
+        }
+        activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setRecentActivity(activity);
+    }, [patients, exerciseData]);
 
     // Caregiver stats
     const totalTodayCompleted = Object.values(exerciseData).reduce((sum, d) => sum + d.todayCompleted, 0);
     const totalTodayExercises = Object.values(exerciseData).reduce((sum, d) => sum + d.todayTotal, 0);
-    const avgCompliance = patients.length > 0
-        ? Math.round(Object.values(exerciseData).reduce((sum, d) => sum + d.weeklyCompliance, 0) / patients.length)
+    const exerciseCount = Object.keys(exerciseData).length;
+    const avgCompliance = exerciseCount > 0
+        ? Math.round(Object.values(exerciseData).reduce((sum, d) => sum + d.weeklyCompliance, 0) / exerciseCount)
         : 0;
+
+    // El resumen cubre a todos los pacientes aunque la lista venga limitada a 3.
+    const totalAdultos = totals?.totalAdultos ?? patients.length;
+    const totalConPlanActivo =
+        totals?.conPlanActivo ?? Object.values(activePlanMap).filter(Boolean).length;
 
     if (isLoading) {
         return <HomeSkeleton />;
@@ -159,7 +135,7 @@ export default function HomeScreen() {
                             <AppCard style={styles.statCard}>
                                 <View style={styles.statContent}>
                                     <MaterialCommunityIcons name="account-group" size={28} color={theme.colors.primary} />
-                                    <Text style={styles.statNumber}>{patients.length}</Text>
+                                    <Text style={styles.statNumber}>{totalAdultos}</Text>
                                     <Text style={styles.statLabel}>Adultos mayores</Text>
                                 </View>
                             </AppCard>
@@ -167,7 +143,7 @@ export default function HomeScreen() {
                                 <View style={styles.statContent}>
                                     <MaterialCommunityIcons name="clipboard-check" size={28} color="#2e7d32" />
                                     <Text style={styles.statNumber}>
-                                        {Object.values(activePlanMap).filter(Boolean).length}
+                                        {totalConPlanActivo}
                                     </Text>
                                     <Text style={styles.statLabel}>Con plan activo</Text>
                                 </View>
@@ -244,7 +220,7 @@ export default function HomeScreen() {
                         ))
                     )}
 
-                    {hasStaffAccess && patients.length > 3 && (
+                    {hasStaffAccess && totalAdultos > 3 && (
                         <Text
                             style={styles.seeAll}
                             onPress={() => router.push('/(app)/patients' as never)}

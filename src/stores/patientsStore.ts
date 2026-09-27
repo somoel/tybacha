@@ -1,13 +1,22 @@
 import type { Patient, PatientFormData, SectionedPatients } from '@/src/types/patient.types';
 import type { WeeklyExerciseData } from '@/src/services/batteryService';
+import { fetchApiPatientsSummary } from '@/src/api/olderAdultsApi';
 import {
     createPatient,
     deletePatient,
     fetchPatientById,
+    fetchPatientThumbnails,
     fetchPatients,
     updatePatient,
 } from '@/src/services/patientService';
 import { create } from 'zustand';
+
+/** Cadena de cada recurso del panel (lista, resumen, miniaturas). */
+const DASHBOARD_TTL_MS = 60_000;
+
+function isFresh(fetchedAt: number, now: number): boolean {
+    return fetchedAt > 0 && now - fetchedAt < DASHBOARD_TTL_MS;
+}
 
 interface PatientsState {
     patients: Patient[];
@@ -17,6 +26,15 @@ interface PatientsState {
     sectionedPatients: SectionedPatients;
     photoThumbnails: Record<string, string>;
     exerciseData: Record<string, WeeklyExerciseData>;
+    batteryCounts: Record<string, number>;
+    activePlanMap: Record<string, boolean>;
+    totals: { totalAdultos: number; conPlanActivo: number } | null;
+    /** Cobertura de la lista cacheada: 'recent' = limit=3, 'all' = lista completa. */
+    patientsScope: 'recent' | 'all' | null;
+    patientsFetchedAt: number;
+    summaryFetchedAt: number;
+    thumbnailsFetchedAt: number;
+    dashboardFetchedAt: number;
 
     /** Replace the entire patients list */
     setPatients: (patients: Patient[]) => void;
@@ -40,7 +58,7 @@ interface PatientsState {
     setExerciseData: (data: Record<string, WeeklyExerciseData>) => void;
 
     /** Async operations */
-    loadPatients: (userId: string, userRole: string) => Promise<void>;
+    loadDashboard: (options?: { scope?: 'recent' | 'all'; force?: boolean }) => Promise<void>;
     createPatient: (patientData: PatientFormData, createdBy: string) => Promise<boolean>;
     updatePatientData: (patientId: string, patientData: Partial<PatientFormData>) => Promise<boolean>;
     deletePatientData: (patientId: string) => Promise<boolean>;
@@ -60,6 +78,14 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     sectionedPatients: { noBatteries: [], pendingRecommendation: [], inProgress: [] },
     photoThumbnails: {},
     exerciseData: {},
+    batteryCounts: {},
+    activePlanMap: {},
+    totals: null,
+    patientsScope: null,
+    patientsFetchedAt: 0,
+    summaryFetchedAt: 0,
+    thumbnailsFetchedAt: 0,
+    dashboardFetchedAt: 0,
 
     setPatients: (patients) => set({ patients }),
 
@@ -92,13 +118,83 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
     setExerciseData: (exerciseData) => set({ exerciseData }),
 
     // Async operations
-    loadPatients: async (userId: string, userRole: string) => {
+    /**
+     * Carga el panel (lista + resumen + miniaturas) con TTL de 60 s por recurso.
+     * - `scope: 'recent'` pide la lista con limit=3; `'all'` pide la lista completa.
+     * - Si el caché cubre lo pedido, resuelve sin tocar `isLoading` (navegación instantánea).
+     * - `force: true` refresca los tres recursos pase lo que pase.
+     */
+    loadDashboard: async (options) => {
+        const now = Date.now();
+        const current = get();
+        const scope = options?.scope ?? current.patientsScope ?? 'recent';
+        const force = options?.force === true;
+
+        // El caché de home (limit=3) no sirve para /patients: hay que re-pedir aunque esté fresco.
+        const scopeRequiresFullList = scope === 'all' && current.patientsScope === 'recent';
+        const needPatients = force || scopeRequiresFullList || !isFresh(current.patientsFetchedAt, now);
+        const needSummary = force || !isFresh(current.summaryFetchedAt, now);
+        const needThumbnails = force || !isFresh(current.thumbnailsFetchedAt, now);
+
+        if (!needPatients && !needSummary && !needThumbnails) {
+            return;
+        }
+
         set({ isLoading: true });
         try {
-            const patients = await fetchPatients(userId, userRole);
-            set({ patients, isLoading: false });
+            const [patients, summary, thumbnails] = await Promise.all([
+                needPatients
+                    ? fetchPatients(scope === 'recent' ? { limit: 3, order: 'recientes' } : {})
+                    : Promise.resolve(null),
+                needSummary ? fetchApiPatientsSummary() : Promise.resolve(null),
+                needThumbnails ? fetchPatientThumbnails() : Promise.resolve(null),
+            ]);
+
+            const fetchedAt = Date.now();
+            const patch: Partial<PatientsState> = { dashboardFetchedAt: fetchedAt };
+
+            if (patients) {
+                patch.patients = patients;
+                patch.patientsScope = scope;
+                patch.patientsFetchedAt = fetchedAt;
+            }
+
+            if (summary) {
+                const exerciseData: Record<string, WeeklyExerciseData> = {};
+                const batteryCounts: Record<string, number> = {};
+                const activePlanMap: Record<string, boolean> = {};
+
+                for (const item of summary.items) {
+                    const key = String(item.idAdultoMayor);
+                    exerciseData[key] = {
+                        todayCompleted: item.todayCompleted,
+                        todayTotal: item.todayTotal,
+                        weeklyCompliance: item.weeklyCompliance,
+                        lastExerciseDate: item.lastExerciseDate,
+                    };
+                    batteryCounts[key] = item.batteryCount;
+                    activePlanMap[key] = item.hasActivePlan;
+                }
+
+                patch.exerciseData = exerciseData;
+                patch.batteryCounts = batteryCounts;
+                patch.activePlanMap = activePlanMap;
+                patch.totals = {
+                    totalAdultos: summary.totalAdultos,
+                    conPlanActivo: summary.conPlanActivo,
+                };
+                patch.summaryFetchedAt = fetchedAt;
+            }
+
+            if (thumbnails) {
+                patch.photoThumbnails = thumbnails;
+                patch.thumbnailsFetchedAt = fetchedAt;
+            }
+
+            set(patch);
         } catch (error) {
-            console.error('Error loading patients:', error);
+            console.error('Error cargando adultos mayores:', error);
+        } finally {
             set({ isLoading: false });
         }
     },

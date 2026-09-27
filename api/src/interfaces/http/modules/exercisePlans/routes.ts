@@ -376,8 +376,13 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
   });
 
   app.get('/exercise-plans/:id', { preHandler: requireAuth(app) }, async (request) => {
+    const actor = request.authUser!;
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
-    return fetchPlanWithExercises(params.id);
+
+    const plan = await fetchPlanWithExercises(params.id);
+    await getOlderAdultContext(plan.idAdultoMayor, actor.idUsuario, actor.rol);
+
+    return plan;
   });
 
   app.post('/exercise-plans/generate', { preHandler: requireAuth(app) }, async (request) => {

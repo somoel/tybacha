@@ -5,13 +5,9 @@ import {
     fetchSftApplicationDetail,
     fetchSftBatteryTests,
 } from '@/src/api/sftApi';
-import { fetchApiExercisePlans } from '@/src/api/exercisePlansApi';
-import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
-import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { generateUUID } from '@/src/lib/sqlite';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import type { BatteryWithResults, SFTBattery, SFTResult, SFTTestType } from '@/src/types/battery.types';
-import { format } from 'date-fns';
 
 const pendingBatteryContext = new Map<string, { patientId: string; notes?: string; pesoKg?: number; estaturaCm?: number; imc?: number }>();
 
@@ -215,125 +211,9 @@ export async function fetchBatteryWithResults(batteryId: string): Promise<Batter
     };
 }
 
-export async function fetchBatteryCountsForPatients(
-    patientIds: string[],
-): Promise<Record<string, number>> {
-    const counts: Record<string, number> = {};
-
-    await Promise.all(
-        patientIds.map(async (patientId) => {
-            const batteries = await fetchBatteries(patientId);
-            counts[patientId] = batteries.length;
-        }),
-    );
-
-    return counts;
-}
-
-export async function fetchActivePlanStatus(
-    patientIds: string[],
-): Promise<Record<string, boolean>> {
-    const entries = await Promise.all(
-        patientIds.map(async (patientId) => {
-            const plans = await fetchApiExercisePlans(Number(patientId));
-            return [patientId, plans.length > 0] as const;
-        }),
-    );
-
-    return Object.fromEntries(entries);
-}
-
 export interface WeeklyExerciseData {
     todayCompleted: number;
     todayTotal: number;
     weeklyCompliance: number;
     lastExerciseDate: string | null;
-}
-
-function getWeekRange(): { from: string; to: string } {
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + mondayOffset);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    return {
-        from: format(monday, 'yyyy-MM-dd'),
-        to: format(sunday, 'yyyy-MM-dd'),
-    };
-}
-
-function getTodayKey(): string {
-    const day = new Date().getDay();
-    const map = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    return map[day];
-}
-
-/**
- * Fetches today's exercise completion status and weekly compliance for each patient.
- * Uses the active plan to determine today's total exercises scheduled.
- */
-export async function fetchWeeklyExerciseDataForPatients(
-    patientIds: string[],
-): Promise<Record<string, WeeklyExerciseData>> {
-    const todayKey = getTodayKey();
-    const weekRange = getWeekRange();
-
-    const results = await Promise.all(
-        patientIds.map(async (patientId) => {
-            try {
-                const [records, progressStats, plans] = await Promise.all([
-                    fetchApiExerciseRecords(Number(patientId), weekRange.from, weekRange.to),
-                    fetchApiProgressStats(Number(patientId)),
-                    fetchExercisePlans(patientId),
-                ]);
-
-                const activePlan = plans[0] ?? null;
-
-                const todayExercises = activePlan?.exercises.filter((ex) => ex.frequency === todayKey) ?? [];
-                const todayTotal = todayExercises.length;
-
-                const completedTodayIds = new Set<number>();
-                for (const record of records) {
-                    if (record.estado === 'completado') {
-                        const isTodayExercise = todayExercises.some(
-                            (ex) => ex.id_ejercicio_plan === record.idEjercicioPlan
-                        );
-                        if (isTodayExercise) {
-                            completedTodayIds.add(record.idEjercicioPlan);
-                        }
-                    }
-                }
-                const todayCompleted = completedTodayIds.size;
-
-                const latestStats = progressStats[0];
-                const weeklyCompliance = latestStats?.porcentaje_cumplimiento ?? 0;
-
-                let lastExerciseDate: string | null = null;
-                const completedRecords = records
-                    .filter((r) => r.estado === 'completado' && r.fechaRealizacion)
-                    .sort((a, b) => new Date(b.fechaRealizacion!).getTime() - new Date(a.fechaRealizacion!).getTime());
-                if (completedRecords.length > 0) {
-                    lastExerciseDate = completedRecords[0].fechaRealizacion!;
-                }
-
-                return [patientId, {
-                    todayCompleted,
-                    todayTotal,
-                    weeklyCompliance,
-                    lastExerciseDate,
-                }] as const;
-            } catch {
-                return [patientId, {
-                    todayCompleted: 0,
-                    todayTotal: 0,
-                    weeklyCompliance: 0,
-                    lastExerciseDate: null,
-                }] as const;
-            }
-        }),
-    );
-
-    return Object.fromEntries(results);
 }

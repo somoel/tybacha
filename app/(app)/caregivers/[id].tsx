@@ -4,7 +4,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { usePatientsStore } from '@/src/stores/patientsStore';
-import { fetchBatteryCountsForPatients, fetchActivePlanStatus, fetchWeeklyExerciseDataForPatients } from '@/src/services/batteryService';
+import { fetchApiPatientsSummary } from '@/src/api/olderAdultsApi';
 import { fetchPatientThumbnails } from '@/src/services/patientService';
 import { fetchCaregiverDetail, mapCaregiverPatientToPatient, type CaregiverDetail } from '@/src/services/caregiverService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -50,13 +50,28 @@ export default function CaregiverDetailScreen() {
             setCaregiver(data);
 
             if (data.pacientes.length > 0) {
-                const patientIds = data.pacientes.map((p) => p.id);
-                const [counts, plans, weeklyData, thumbnails] = await Promise.all([
-                    fetchBatteryCountsForPatients(patientIds),
-                    fetchActivePlanStatus(patientIds),
-                    fetchWeeklyExerciseDataForPatients(patientIds),
+                const patientIds = data.pacientes.map((p) => Number(p.id));
+                const [summary, thumbnails] = await Promise.all([
+                    fetchApiPatientsSummary(patientIds),
                     fetchPatientThumbnails(),
                 ]);
+
+                const counts: Record<string, number> = {};
+                const plans: Record<string, boolean> = {};
+                const weeklyData: Record<string, WeeklyExerciseData> = {};
+
+                for (const item of summary.items) {
+                    const key = String(item.idAdultoMayor);
+                    counts[key] = item.batteryCount;
+                    plans[key] = item.hasActivePlan;
+                    weeklyData[key] = {
+                        todayCompleted: item.todayCompleted,
+                        todayTotal: item.todayTotal,
+                        weeklyCompliance: item.weeklyCompliance,
+                        lastExerciseDate: item.lastExerciseDate,
+                    };
+                }
+
                 setBatteryCounts(counts);
                 setActivePlanMap(plans);
                 setExerciseData(weeklyData);
