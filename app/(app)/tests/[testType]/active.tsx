@@ -24,6 +24,78 @@ function renderRichText(text: string, color = '#4b5563'): ReactNode {
     );
 }
 
+const DISTANCE_MIN = -100;
+const DISTANCE_MAX = 100;
+
+interface ExpandableInfoCardProps {
+    title: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
+    items: string[];
+    expanded: boolean;
+    onToggle: () => void;
+    accessibilityLabel: string;
+}
+
+/**
+ * Tarjeta colapsable de procedimiento o normas de seguridad.
+ * Va memoizada para que pulsar el contador no vuelva a renderizar su contenido.
+ */
+const ExpandableInfoCard = React.memo(function ExpandableInfoCard({
+    title,
+    icon,
+    items,
+    expanded,
+    onToggle,
+    accessibilityLabel,
+}: ExpandableInfoCardProps) {
+    const theme = useTheme();
+    if (items.length === 0) return null;
+
+    return (
+        <Pressable
+            style={[styles.safetyCard, { borderColor: theme.colors.outlineVariant }]}
+            onPress={onToggle}
+            accessibilityRole="button"
+            accessibilityLabel={accessibilityLabel}
+            accessibilityState={{ expanded }}
+        >
+            <View style={styles.safetyHeader}>
+                <View style={styles.safetyTitleRow}>
+                    <MaterialCommunityIcons name={icon} size={18} color={theme.colors.primary} />
+                    <Text style={styles.safetyTitle}>{title}</Text>
+                </View>
+                <MaterialCommunityIcons
+                    name={expanded ? 'chevron-up' : 'chevron-down'}
+                    size={20}
+                    color="#6b7280"
+                />
+            </View>
+            {!expanded && (
+                <Text style={styles.safetyPreview} numberOfLines={1}>
+                    {items[0].replace(/\*\*/g, '')}
+                </Text>
+            )}
+            {expanded && (
+                <View style={styles.stepContainer}>
+                    {items.map((item, i) => (
+                        <View key={i} style={styles.stepRow}>
+                            <View style={styles.stepColumn}>
+                                <View style={[styles.stepCircle, { backgroundColor: theme.colors.outlineVariant }]}>
+                                    <Text style={[styles.stepNumber, { color: '#6b7280' }]}>{i + 1}</Text>
+                                </View>
+                                {i < items.length - 1 && (
+                                    <View style={[styles.stepLine, { backgroundColor: theme.colors.outlineVariant }]} />
+                                )}
+                            </View>
+                            <Text style={styles.stepText}>{renderRichText(item)}</Text>
+                        </View>
+                    ))}
+                </View>
+            )}
+        </Pressable>
+    );
+});
+
 /**
  * Active test screen inside the dedicated SFT battery mode.
  */
@@ -53,6 +125,7 @@ export default function ActiveTestScreen() {
     const hasActiveSession = Boolean(activeBatteryId);
 
     useEffect(() => {
+        setValue(0);
         setTestNotes('');
         setSafetyExpanded(false);
         setProcedureExpanded(false);
@@ -108,6 +181,10 @@ export default function ActiveTestScreen() {
     const handleValueChange = useCallback((newValue: number) => {
         setValue(newValue);
     }, []);
+
+    const toggleProcedure = useCallback(() => setProcedureExpanded((prev) => !prev), []);
+    const toggleSafety = useCallback(() => setSafetyExpanded((prev) => !prev), []);
+    const toggleNotes = useCallback(() => setNotesExpanded((prev) => !prev), []);
 
     const handleSave = () => {
         if (!test || !patientId) return;
@@ -191,89 +268,25 @@ export default function ActiveTestScreen() {
                 </View>
 
                 {test.procedure && test.procedure.length > 0 && (
-                    <Pressable
-                        style={[styles.safetyCard, { borderColor: theme.colors.outlineVariant }]}
-                        onPress={() => setProcedureExpanded((prev) => !prev)}
-                        accessibilityRole="button"
+                    <ExpandableInfoCard
+                        title="Procedimiento"
+                        icon="clipboard-text-outline"
+                        items={test.procedure}
+                        expanded={procedureExpanded}
+                        onToggle={toggleProcedure}
                         accessibilityLabel="Procedimiento"
-                    >
-                        <View style={styles.safetyHeader}>
-                            <View style={styles.safetyTitleRow}>
-                                <MaterialCommunityIcons name="clipboard-text-outline" size={18} color={theme.colors.primary} />
-                                <Text style={styles.safetyTitle}>Procedimiento</Text>
-                            </View>
-                            <MaterialCommunityIcons
-                                name={procedureExpanded ? 'chevron-up' : 'chevron-down'}
-                                size={20}
-                                color="#6b7280"
-                            />
-                        </View>
-                        {!procedureExpanded && (
-                            <Text style={styles.safetyPreview} numberOfLines={1}>
-                                {test.procedure[0].replace(/\*\*/g, '')}
-                            </Text>
-                        )}
-                        {procedureExpanded && (
-                            <View style={styles.stepContainer}>
-                                {test.procedure.map((step, i) => (
-                                    <View key={i} style={styles.stepRow}>
-                                        <View style={styles.stepColumn}>
-                                            <View style={[styles.stepCircle, { backgroundColor: theme.colors.outlineVariant }]}>
-                                                <Text style={[styles.stepNumber, { color: '#6b7280' }]}>{i + 1}</Text>
-                                            </View>
-                                            {i < test.procedure!.length - 1 && (
-                                                <View style={[styles.stepLine, { backgroundColor: theme.colors.outlineVariant }]} />
-                                            )}
-                                        </View>
-                                        <Text style={styles.stepText}>{renderRichText(step)}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                    </Pressable>
+                    />
                 )}
 
                 {test.safetyTips && test.safetyTips.length > 0 && (
-                    <Pressable
-                        style={[styles.safetyCard, { borderColor: theme.colors.outlineVariant }]}
-                        onPress={() => setSafetyExpanded((prev) => !prev)}
-                        accessibilityRole="button"
+                    <ExpandableInfoCard
+                        title="Normas de seguridad"
+                        icon="shield-check-outline"
+                        items={test.safetyTips}
+                        expanded={safetyExpanded}
+                        onToggle={toggleSafety}
                         accessibilityLabel="Normas de seguridad"
-                    >
-                        <View style={styles.safetyHeader}>
-                            <View style={styles.safetyTitleRow}>
-                                <MaterialCommunityIcons name="shield-check-outline" size={18} color={theme.colors.primary} />
-                                <Text style={styles.safetyTitle}>Normas de seguridad</Text>
-                            </View>
-                            <MaterialCommunityIcons
-                                name={safetyExpanded ? 'chevron-up' : 'chevron-down'}
-                                size={20}
-                                color="#6b7280"
-                            />
-                        </View>
-                        {!safetyExpanded && test.safetyTips.length > 0 && (
-                            <Text style={styles.safetyPreview} numberOfLines={1}>
-                                {test.safetyTips[0].replace(/\*\*/g, '')}
-                            </Text>
-                        )}
-                        {safetyExpanded && (
-                            <View style={styles.stepContainer}>
-                                {test.safetyTips.map((tip, i) => (
-                                    <View key={i} style={styles.stepRow}>
-                                        <View style={styles.stepColumn}>
-                                            <View style={[styles.stepCircle, { backgroundColor: theme.colors.outlineVariant }]}>
-                                                <Text style={[styles.stepNumber, { color: '#6b7280' }]}>{i + 1}</Text>
-                                            </View>
-                                            {i < test.safetyTips.length - 1 && (
-                                                <View style={[styles.stepLine, { backgroundColor: theme.colors.outlineVariant }]} />
-                                            )}
-                                        </View>
-                                        <Text style={styles.stepText}>{renderRichText(tip)}</Text>
-                                    </View>
-                                ))}
-                            </View>
-                        )}
-                    </Pressable>
+                    />
                 )}
 
                 {test.timerMode !== 'none' && (
@@ -290,6 +303,7 @@ export default function ActiveTestScreen() {
                 {test.counterMode === 'increment' && (
                     <RepCounter
                         mode="increment"
+                        value={value}
                         allowNegative={test.allowNegative}
                         onValueChange={handleValueChange}
                         label={test.inputLabel}
@@ -306,9 +320,13 @@ export default function ActiveTestScreen() {
                 {test.counterMode === 'manual_input' && !test.lapTracking && (
                     <RepCounter
                         mode="manual_input"
+                        value={value}
                         allowNegative={test.allowNegative}
                         onValueChange={handleValueChange}
                         label={test.inputLabel}
+                        unit={test.unit}
+                        min={test.unit === 'cm' ? DISTANCE_MIN : undefined}
+                        max={test.unit === 'cm' ? DISTANCE_MAX : undefined}
                     />
                 )}
 
@@ -331,9 +349,10 @@ export default function ActiveTestScreen() {
                 )}
 
                 <Pressable
-                    onPress={() => setNotesExpanded((prev) => !prev)}
+                    onPress={toggleNotes}
                     style={styles.notesToggle}
                     accessibilityRole="button"
+                    accessibilityState={{ expanded: notesExpanded }}
                     accessibilityLabel={notesExpanded ? 'Ocultar observaciones' : 'Agregar observaciones'}
                 >
                     <MaterialCommunityIcons name="note-text-outline" size={18} color={theme.colors.outline} />

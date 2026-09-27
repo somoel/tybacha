@@ -5,33 +5,52 @@ import { Pressable, StyleSheet, TextInput, TouchableOpacity, View } from 'react-
 import { Text, TextInput as PaperTextInput, useTheme } from 'react-native-paper';
 
 interface RepCounterProps {
-    value?: number;
-    initialValue?: number;
+    value: number;
     allowNegative?: boolean;
     onValueChange: (value: number) => void;
     label?: string;
     mode: 'increment' | 'manual_input';
+    min?: number;
+    max?: number;
+    unit?: string;
     disabled?: boolean;
 }
 
 const LONG_PRESS_DELTA = 5;
+const DEFAULT_MIN = -100;
+const DEFAULT_MAX = 1000;
+const DEFAULT_REP_MAX = 999;
 
+function clamp(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
+}
+
+/**
+ * Contador de repeticiones o de distancia con pasos fijos.
+ * Controlado por el padre y acotado: cualquier valor fuera de rango o no
+ * numérico se descarta, nunca se propaga al estado de la pantalla.
+ */
 export function RepCounter({
     value,
-    initialValue = 0,
     allowNegative = false,
     onValueChange,
     label = 'Valor',
     mode,
+    min,
+    max,
+    unit,
     disabled = false,
 }: RepCounterProps) {
     const theme = useTheme();
-    const isControlled = value !== undefined;
-    const [internalValue, setInternalValue] = useState(initialValue);
-    const currentValue = isControlled ? value : internalValue;
+    const lowerBound = min ?? (allowNegative ? DEFAULT_MIN : 0);
+    const upperBound = max ?? (unit ? DEFAULT_MAX : DEFAULT_REP_MAX);
     const [editing, setEditing] = useState(false);
-    const [editText, setEditText] = useState(String(initialValue));
-    const [textValue, setTextValue] = useState(Math.abs(initialValue).toString());
+    const [editText, setEditText] = useState(String(value ?? 0));
+    const [textValue, setTextValue] = useState(() => Math.abs(value ?? 0).toString());
+
+    const currentValue = Number.isFinite(value) ? value : 0;
+    const canDecrease = currentValue > lowerBound;
+    const canIncrease = currentValue < upperBound;
 
     const triggerHaptic = (style: 'selection' | 'medium' = 'selection') => {
         if (disabled) return;
@@ -42,36 +61,39 @@ export function RepCounter({
         }
     };
 
-    const applyValue = (newValue: number) => {
-        const rounded = Math.round(newValue * 10) / 10;
-        if (!isControlled) setInternalValue(rounded);
-        onValueChange(rounded);
+    const applyValue = (next: number) => {
+        if (!Number.isFinite(next)) return;
+        const rounded = Math.round(next * 10) / 10;
+        const bounded = clamp(rounded, lowerBound, upperBound);
+        if (bounded === currentValue) return;
+        onValueChange(bounded);
+    };
+
+    const step = (amount: number) => {
+        if (disabled) return;
+        applyValue(currentValue + amount);
     };
 
     const handleIncrement = () => {
-        if (disabled) return;
+        if (disabled || !canIncrease) return;
         triggerHaptic('selection');
-        applyValue(currentValue + 1);
+        step(1);
     };
 
     const handleIncrementLong = () => {
-        if (disabled) return;
+        if (disabled || !canIncrease) return;
         triggerHaptic('medium');
-        applyValue(currentValue + LONG_PRESS_DELTA);
+        step(LONG_PRESS_DELTA);
     };
 
     const handleDecrement = () => {
-        if (disabled) return;
-        if (!allowNegative && currentValue <= 0) return;
-        triggerHaptic('selection');
-        applyValue(currentValue - 1);
+        if (disabled || !canDecrease) return;
+        step(-1);
     };
 
     const handleDecrementLong = () => {
-        if (disabled) return;
-        if (!allowNegative && currentValue - LONG_PRESS_DELTA < 0) return;
-        triggerHaptic('medium');
-        applyValue(currentValue - LONG_PRESS_DELTA);
+        if (disabled || !canDecrease) return;
+        step(-LONG_PRESS_DELTA);
     };
 
     const startEditing = () => {
@@ -82,9 +104,8 @@ export function RepCounter({
 
     const commitEdit = () => {
         setEditing(false);
-        const parsed = parseInt(editText, 10);
-        if (!isNaN(parsed)) {
-            if (!allowNegative && parsed < 0) return;
+        const parsed = parseFloat(editText);
+        if (Number.isFinite(parsed)) {
             applyValue(parsed);
         }
     };
@@ -93,14 +114,9 @@ export function RepCounter({
         if (disabled) return;
         setTextValue(text);
         const parsed = parseFloat(text);
-        if (!isNaN(parsed)) {
+        if (Number.isFinite(parsed)) {
             applyValue(parsed);
         }
-    };
-
-    const step = (amount: number) => {
-        if (disabled) return;
-        applyValue(currentValue + amount);
     };
 
     if (mode === 'manual_input') {
@@ -111,8 +127,8 @@ export function RepCounter({
                     <View style={styles.stepperRow}>
                         <Pressable
                             onPress={() => step(-1)}
-                            disabled={disabled}
-                            style={[styles.stepperBtn, { backgroundColor: theme.colors.errorContainer, opacity: disabled ? 0.5 : 1 }]}
+                            disabled={disabled || !canDecrease}
+                            style={[styles.stepperBtn, { backgroundColor: theme.colors.errorContainer }, (disabled || !canDecrease) && styles.disabledBtn]}
                             accessibilityLabel="Restar 1"
                             accessibilityRole="button"
                         >
@@ -120,8 +136,13 @@ export function RepCounter({
                         </Pressable>
                         <Pressable
                             onPress={() => step(-0.1)}
-                            disabled={disabled}
-                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant, opacity: disabled ? 0.5 : 1 }]}
+                            disabled={disabled || !canDecrease}
+                            style={[
+                                styles.stepperBtn,
+                                styles.stepperBtnSmall,
+                                { backgroundColor: theme.colors.surfaceVariant },
+                                (disabled || !canDecrease) && styles.disabledBtn,
+                            ]}
                             accessibilityLabel="Restar 0.1"
                             accessibilityRole="button"
                         >
@@ -136,12 +157,17 @@ export function RepCounter({
                             >
                                 {currentValue < 0 ? '\u2212' : currentValue > 0 ? '+' : ''}{Math.abs(currentValue).toFixed(1)}
                             </Text>
-                            <Text style={[styles.stepperUnit, { color: theme.colors.outline }]}> cm</Text>
+                            <Text style={[styles.stepperUnit, { color: theme.colors.outline }]}> {unit ?? 'cm'}</Text>
                         </View>
                         <Pressable
                             onPress={() => step(0.1)}
-                            disabled={disabled}
-                            style={[styles.stepperBtn, styles.stepperBtnSmall, { backgroundColor: theme.colors.surfaceVariant, opacity: disabled ? 0.5 : 1 }]}
+                            disabled={disabled || !canIncrease}
+                            style={[
+                                styles.stepperBtn,
+                                styles.stepperBtnSmall,
+                                { backgroundColor: theme.colors.surfaceVariant },
+                                (disabled || !canIncrease) && styles.disabledBtn,
+                            ]}
                             accessibilityLabel="Sumar 0.1"
                             accessibilityRole="button"
                         >
@@ -149,8 +175,8 @@ export function RepCounter({
                         </Pressable>
                         <Pressable
                             onPress={() => step(1)}
-                            disabled={disabled}
-                            style={[styles.stepperBtn, { backgroundColor: theme.colors.primaryContainer, opacity: disabled ? 0.5 : 1 }]}
+                            disabled={disabled || !canIncrease}
+                            style={[styles.stepperBtn, { backgroundColor: theme.colors.primaryContainer }, (disabled || !canIncrease) && styles.disabledBtn]}
                             accessibilityLabel="Sumar 1"
                             accessibilityRole="button"
                         >
@@ -185,12 +211,12 @@ export function RepCounter({
                 <Pressable
                     onPress={handleDecrement}
                     onLongPress={handleDecrementLong}
-                    disabled={disabled || (!allowNegative && currentValue <= 0)}
+                    disabled={disabled || !canDecrease}
                     delayLongPress={350}
                     style={[
                         styles.counterBtn,
                         { backgroundColor: theme.colors.surfaceVariant },
-                        (disabled || (!allowNegative && currentValue <= 0)) && { opacity: 0.4 },
+                        (disabled || !canDecrease) && styles.disabledBtn,
                     ]}
                     accessibilityLabel="Disminuir (mantener para -5)"
                     accessibilityRole="button"
@@ -227,12 +253,12 @@ export function RepCounter({
                 <Pressable
                     onPress={handleIncrement}
                     onLongPress={handleIncrementLong}
-                    disabled={disabled}
+                    disabled={disabled || !canIncrease}
                     delayLongPress={350}
                     style={[
                         styles.counterBtn,
                         { backgroundColor: theme.colors.primaryContainer },
-                        disabled && { opacity: 0.4 },
+                        (disabled || !canIncrease) && styles.disabledBtn,
                     ]}
                     accessibilityLabel="Incrementar (mantener para +5)"
                     accessibilityRole="button"
@@ -366,5 +392,8 @@ const styles = StyleSheet.create({
     stepperUnit: {
         fontFamily: 'Montserrat_400Regular',
         fontSize: 14,
+    },
+    disabledBtn: {
+        opacity: 0.4,
     },
 });
