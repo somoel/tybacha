@@ -42,6 +42,27 @@ export async function clearAuthTokens(): Promise<void> {
     ]);
 }
 
+type AuthExpiredListener = () => void;
+
+let authExpiredListener: AuthExpiredListener | null = null;
+
+/**
+ * Registers a listener fired when the refresh token is rejected (4xx).
+ * Lets the auth store clear its state so route guards can bounce to login
+ * instead of leaving a "logged in" shell with no tokens.
+ */
+export function setOnAuthExpired(listener: AuthExpiredListener | null): void {
+    authExpiredListener = listener;
+}
+
+function notifyAuthExpired(): void {
+    try {
+        authExpiredListener?.();
+    } catch (error) {
+        console.error('Error en listener de sesion expirada:', error);
+    }
+}
+
 export async function getAccessToken(): Promise<string | null> {
     return getStoredItem(ACCESS_TOKEN_KEY);
 }
@@ -73,12 +94,21 @@ async function refreshAccessToken(): Promise<string | null> {
     });
 
     if (!response.ok) {
-        await clearAuthTokens();
+        // 4xx => the refresh token was rejected: session is dead.
+        // 5xx / transient errors: keep the tokens so a retry is possible.
+        if (response.status >= 400 && response.status < 500) {
+            await clearAuthTokens();
+            notifyAuthExpired();
+        }
         return null;
     }
 
     const payload = await response.json() as { accessToken?: string };
-    if (!payload.accessToken) return null;
+    if (!payload.accessToken) {
+        await clearAuthTokens();
+        notifyAuthExpired();
+        return null;
+    }
     await setStoredItem(ACCESS_TOKEN_KEY, payload.accessToken);
     return payload.accessToken;
 }

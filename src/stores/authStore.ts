@@ -14,7 +14,7 @@ interface AuthState {
     setSession: (session: AuthSession | null) => void;
     setUser: (user: AuthUser | null) => void;
     setProfile: (profile: Profile | null) => void;
-    setRole: (role: UserRole) => void;
+    setRole: (role: UserRole | null) => void;
     setLoading: (loading: boolean) => void;
     updateProfile: (input: UpdateMeInput) => Promise<void>;
     changeEmail: (input: ChangeEmailInput) => Promise<void>;

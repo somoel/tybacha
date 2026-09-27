@@ -1,8 +1,10 @@
+import { AppLoader } from '@/src/components/ui/AppLoader';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
+import { useAuthGuard } from '@/src/hooks/useAuthGuard';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncStore } from '@/src/stores/syncStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Tabs, usePathname } from 'expo-router';
+import { Redirect, Tabs, usePathname } from 'expo-router';
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
@@ -11,12 +13,23 @@ import { useTheme } from 'react-native-paper';
 /**
  * App layout with Bottom Navigation Bar (5 tabs).
  * Shows offline banner when disconnected.
+ * Guards every route in the group: without a valid session it bounces to login.
  */
 export default function AppLayout() {
+    const { isLoading, isAuthenticated } = useAuthGuard();
     const theme = useTheme();
     const pathname = usePathname();
     const { isCaregiver, isProfessional } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
+
+    if (isLoading) {
+        return <AppLoader message="Cargando Tybacha..." />;
+    }
+
+    if (!isAuthenticated) {
+        return <Redirect href={'/(auth)/login' as never} />;
+    }
+
     const isHome = pathname === '/home' || pathname === '/';
     const hideTabBar =
         /\/patients\/[^/]+/.test(pathname) ||

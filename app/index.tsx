@@ -1,5 +1,5 @@
 import { AppLoader } from '@/src/components/ui/AppLoader';
-import { useAuthStore } from '@/src/stores/authStore';
+import { useAuthGuard } from '@/src/hooks/useAuthGuard';
 import { Redirect } from 'expo-router';
 
 /**
@@ -7,13 +7,13 @@ import { Redirect } from 'expo-router';
  * If session exists → app home, otherwise → login.
  */
 export default function IndexScreen() {
-    const { user, isLoading } = useAuthStore();
+    const { isLoading, isAuthenticated } = useAuthGuard();
 
     if (isLoading) {
         return <AppLoader message="Cargando Tybacha..." />;
     }
 
-    if (user) {
+    if (isAuthenticated) {
         return <Redirect href={'/(app)/home' as never} />;
     }
 

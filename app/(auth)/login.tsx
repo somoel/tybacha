@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
-import { fetchApiMe, loginWithApi } from '@/src/api/authApi';
+import { fetchApiMe, loginWithApi, logoutFromApi } from '@/src/api/authApi';
 import { registerPushNotifications } from '@/src/services/pushNotificationService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -53,10 +53,18 @@ export default function LoginScreen() {
                 refreshToken: authData.refreshToken,
             });
 
-            const { user, profile } = await fetchApiMe();
-            setUser(user);
-            setProfile(profile);
-            setRole(user.rol);
+            let me: Awaited<ReturnType<typeof fetchApiMe>>;
+            try {
+                me = await fetchApiMe();
+            } catch (error) {
+                // Tokens already stored: roll back so no half-open session is left behind.
+                await logoutFromApi();
+                setSession(null);
+                throw error;
+            }
+            setUser(me.user);
+            setProfile(me.profile);
+            setRole(me.user.rol);
             registerPushNotifications().catch(console.error);
 
             router.replace('/(app)/home' as never);
