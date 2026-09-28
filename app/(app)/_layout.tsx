@@ -1,26 +1,98 @@
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
+import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useAuthGuard } from '@/src/hooks/useAuthGuard';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { useSyncQueue } from '@/src/hooks/useSyncQueue';
+import { fetchPatientById } from '@/src/services/patientService';
+import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useSyncStore } from '@/src/stores/syncStore';
+import type { Patient } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Redirect, Tabs, usePathname } from 'expo-router';
-import React from 'react';
+import { Redirect, Tabs, usePathname, useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
-import { useTheme } from 'react-native-paper';
+import { Button as PaperButton, Dialog, Portal, Text, useTheme } from 'react-native-paper';
 
 /**
  * App layout with Bottom Navigation Bar (5 tabs).
  * Shows offline banner when disconnected.
  * Guards every route in the group: without a valid session it bounces to login.
+ * Offers to resume an unfinished SFT battery draft after a reload/restart.
  */
 export default function AppLayout() {
     const { isLoading, isAuthenticated } = useAuthGuard();
     const theme = useTheme();
     const pathname = usePathname();
-    const { isCaregiver, isProfessional } = usePermissions();
+    const router = useRouter();
+    const { isAdmin, isCaregiver, isProfessional } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
+
+    // Auto-sincroniza la cola offline al recuperar conexión desde cualquier pantalla.
+    useSyncQueue();
+
+    const activeBatteryId = useBatteryStore((s) => s.activeBatteryId);
+    const patientId = useBatteryStore((s) => s.patientId);
+    const completedTests = useBatteryStore((s) => s.completedTests);
+    const clearSession = useBatteryStore((s) => s.clearSession);
+
+    const [batteryHydrated, setBatteryHydrated] = useState(() =>
+        useBatteryStore.persist.hasHydrated(),
+    );
+    const [patient, setPatient] = useState<Patient | null>(null);
+
+    useEffect(() => {
+        const unsubscribe = useBatteryStore.persist.onFinishHydration(() => {
+            setBatteryHydrated(true);
+        });
+        if (useBatteryStore.persist.hasHydrated()) {
+            setBatteryHydrated(true);
+        }
+        return unsubscribe;
+    }, []);
+
+    const isBatteryFlowRoute =
+        pathname.includes('/tests/') ||
+        pathname.endsWith('/batteries/new') ||
+        pathname.endsWith('/batteries/summary');
+    // Solo quien puede registrar SFT retoma borradores (los cuidadores no).
+    const canRegisterSft = isAdmin || isProfessional;
+    const showResumeDialog = Boolean(
+        batteryHydrated && activeBatteryId && patientId && canRegisterSft && !isBatteryFlowRoute,
+    );
+
+    // Best-effort: si no hay red o falla, el dialogo usa "este adulto mayor".
+    const fetchedPatientRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!showResumeDialog || !patientId) return;
+        if (fetchedPatientRef.current === patientId) return;
+        fetchedPatientRef.current = patientId;
+        let cancelled = false;
+        setPatient(null);
+        fetchPatientById(patientId)
+            .then((fetched) => {
+                if (!cancelled) setPatient(fetched);
+            })
+            .catch((error) => {
+                console.error('No se pudo cargar el nombre del adulto mayor:', error);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [showResumeDialog, patientId]);
+
+    const patientName =
+        patient == null
+            ? null
+            : [
+                patient.first_name,
+                patient.second_name,
+                patient.first_lastname,
+                patient.second_lastname,
+            ]
+                .filter(Boolean)
+                .join(' ') || null;
 
     if (isLoading) {
         return <AppLoader message="Cargando Tybacha..." />;
@@ -187,6 +259,28 @@ export default function AppLayout() {
                     }}
                 />
             </Tabs>
+            {showResumeDialog && patientId && (
+                <Portal>
+                    <Dialog visible>
+                        <Dialog.Title>Batería SFT sin terminar</Dialog.Title>
+                        <Dialog.Content>
+                            <Text variant="bodyMedium">
+                                {`Tienes una batería sin finalizar para ${patientName ?? 'este adulto mayor'} (${completedTests.length} de ${SFT_TESTS.length} pruebas completadas). El borrador está guardado en este dispositivo.`}
+                            </Text>
+                        </Dialog.Content>
+                        <Dialog.Actions>
+                            <PaperButton onPress={clearSession}>Descartar batería</PaperButton>
+                            <PaperButton
+                                onPress={() =>
+                                    router.replace(`/(app)/patients/${patientId}/batteries/new` as never)
+                                }
+                            >
+                                Retomar batería
+                            </PaperButton>
+                        </Dialog.Actions>
+                    </Dialog>
+                </Portal>
+            )}
         </View>
     );
 }

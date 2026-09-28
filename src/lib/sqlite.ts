@@ -152,50 +152,6 @@ export async function addToSyncQueue(
     );
 }
 
-export async function addOfflineOperation(
-    entidad: 'adulto_mayor' | 'registro_ejercicio_plan' | 'patologia_adulto_mayor' | 'medicamento_adulto_mayor' | 'nota_historial_medico',
-    accion: 'crear' | 'actualizar',
-    payload: Record<string, unknown>
-): Promise<string> {
-    const database = await getDatabase();
-    if (!database) return '';
-    const idLocal = generateUUID();
-    await database.runAsync(
-        `INSERT INTO offline_operation_queue
-          (id_local, entidad, accion, payload, creado_en_local)
-         VALUES (?, ?, ?, ?, ?)`,
-        [idLocal, entidad, accion, JSON.stringify(payload), new Date().toISOString()]
-    );
-    return idLocal;
-}
-
-export async function getPendingOfflineOperations(): Promise<OfflineOperationItem[]> {
-    const database = await getDatabase();
-    if (!database) return [];
-    return database.getAllAsync<OfflineOperationItem>(
-        `SELECT id_local, entidad, accion, payload, creado_en_local, estado, id_remoto, detalle
-         FROM offline_operation_queue
-         WHERE estado = 'pendiente'
-         ORDER BY creado_en_local ASC`
-    );
-}
-
-export async function markOfflineOperationResult(
-    idLocal: string,
-    estado: 'aplicada' | 'conflicto' | 'rechazada',
-    idRemoto: number | null,
-    detalle: unknown
-): Promise<void> {
-    const database = await getDatabase();
-    if (!database) return;
-    await database.runAsync(
-        `UPDATE offline_operation_queue
-         SET estado = ?, id_remoto = ?, detalle = ?
-         WHERE id_local = ?`,
-        [estado, idRemoto, JSON.stringify(detalle ?? null), idLocal]
-    );
-}
-
 /**
  * Retrieves all pending items from the sync queue.
  */
@@ -223,17 +179,6 @@ export interface SyncQueueItem {
     operation: string;
     payload: string;
     created_at: string;
-}
-
-export interface OfflineOperationItem {
-    id_local: string;
-    entidad: 'adulto_mayor' | 'registro_ejercicio_plan';
-    accion: 'crear' | 'actualizar';
-    payload: string;
-    creado_en_local: string;
-    estado: 'pendiente' | 'aplicada' | 'conflicto' | 'rechazada';
-    id_remoto: number | null;
-    detalle: string | null;
 }
 
 /** Simple UUID v4 generator */

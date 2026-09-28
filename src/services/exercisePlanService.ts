@@ -7,7 +7,7 @@ import {
     updateApiExercisePlanStatus,
 } from '@/src/api/exercisePlansApi';
 import { createApiExerciseRecord } from '@/src/api/trackingApi';
-import { addOfflineOperation } from '@/src/lib/sqlite';
+import { enqueueOfflineOperation } from '@/src/lib/offlineQueue';
 import type { ApiExerciseRecordStatus } from '@/src/types/apiTracking.types';
 import type { ApiCreateExercisePlanInput, ApiExercisePlan, ApiExercisePlanSummary, ApiPlanStatus } from '@/src/types/apiExercisePlan.types';
 import type { SFTResult } from '@/src/types/battery.types';
@@ -145,7 +145,7 @@ export async function logExerciseCompletion(
     try {
         record = await createApiExerciseRecord(payload);
     } catch {
-        await addOfflineOperation('registro_ejercicio_plan', 'crear', payload);
+        await enqueueOfflineOperation('registro_ejercicio_plan', 'crear', payload);
         return {
             id: `${planId}-${exerciseIndex}-${today}`,
             plan_id: planId,

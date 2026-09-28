@@ -104,7 +104,7 @@ export default function ActiveTestScreen() {
     const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
-    const { activeBatteryId, completedTests, patientId, resetBattery, saveResult } = useBatteryStore();
+    const { activeBatteryId, completedTests, patientId, saveResult } = useBatteryStore();
 
     const test = getSFTTest(testType ?? '');
     const [value, setValue] = useState(0);
@@ -144,7 +144,7 @@ export default function ActiveTestScreen() {
         });
 
         return unsubscribe;
-    }, [hasActiveSession, navigation, resetBattery]);
+    }, [hasActiveSession, navigation]);
 
     const handleRequestExit = () => {
         pendingNavigationActionRef.current = null;
@@ -158,7 +158,6 @@ export default function ActiveTestScreen() {
 
     const handleConfirmExit = () => {
         allowExitRef.current = true;
-        resetBattery();
         setExitDialogVisible(false);
 
         if (pendingNavigationActionRef.current) {
@@ -405,7 +404,7 @@ export default function ActiveTestScreen() {
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
                     <Dialog.Title>Salir de la batería</Dialog.Title>
                     <Dialog.Content>
-                        <Text>Si sales ahora se perderán los resultados no guardados. ¿Desea salir?</Text>
+                        <Text>Tu progreso queda guardado en este dispositivo y podrás retomar esta batería después.</Text>
                     </Dialog.Content>
                     <Dialog.Actions>
                         <PaperButton onPress={handleCancelExit}>Continuar batería</PaperButton>
