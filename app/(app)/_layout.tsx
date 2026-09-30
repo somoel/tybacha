@@ -228,22 +228,6 @@ export default function AppLayout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="results/index"
-                    options={{
-                        title: 'Resultados',
-                        headerTitle: 'Resultados',
-                        href: null,
-                        tabBarIcon: ({ color, focused }) => (
-                            <MaterialCommunityIcons
-                                name={focused ? 'chart-bar' : 'chart-line'}
-                                size={24}
-                                color={color}
-                            />
-                        ),
-                        tabBarAccessibilityLabel: 'Resultados',
-                    }}
-                />
-                <Tabs.Screen
                     name="profile/index"
                     options={{
                         title: 'Perfil',
