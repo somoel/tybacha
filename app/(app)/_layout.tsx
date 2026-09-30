@@ -259,10 +259,10 @@ export default function AppLayout() {
                     }}
                 />
                 <Tabs.Screen
-                    name="admin/index"
+                    name="admin"
                     options={{
                         title: 'Administración',
-                        headerTitle: 'Administración',
+                        headerShown: false,
                         href: isCaregiver || isProfessional ? null : undefined,
                         tabBarIcon: ({ color, focused }) => (
                             <MaterialCommunityIcons
