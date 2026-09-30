@@ -9,10 +9,10 @@ import { useBatteryStore } from '@/src/stores/batteryStore';
 import type { SFTTestType } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
+import { Text, TextInput, useTheme } from 'react-native-paper';
 
 function renderRichText(text: string, color = '#4b5563'): ReactNode {
     const parts = text.split(/\*\*(.+?)\*\*/g);
@@ -104,25 +104,21 @@ export default function ActiveTestScreen() {
     const navigation = useNavigation();
     const router = useRouter();
     const theme = useTheme();
-    const { activeBatteryId, completedTests, patientId, saveResult } = useBatteryStore();
+    const { completedTests, patientId, saveResult } = useBatteryStore();
 
     const test = getSFTTest(testType ?? '');
     const [value, setValue] = useState(0);
     const [testNotes, setTestNotes] = useState('');
     const [timerCompleted, setTimerCompleted] = useState(false);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
-    const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const [safetyExpanded, setSafetyExpanded] = useState(false);
     const [procedureExpanded, setProcedureExpanded] = useState(false);
     const [notesExpanded, setNotesExpanded] = useState(false);
-    const allowExitRef = useRef(false);
-    const pendingNavigationActionRef = useRef<unknown>(null);
 
     const currentIndex = SFT_TESTS.findIndex((t) => t.type === testType);
     const totalTests = SFT_TESTS.length;
     const currentIsAlreadyComplete = completedTests.includes(testType as SFTTestType);
     const progress = currentIndex >= 0 ? (completedTests.length + (currentIsAlreadyComplete ? 0 : 1)) / totalTests : 0;
-    const hasActiveSession = Boolean(activeBatteryId);
 
     useEffect(() => {
         setValue(0);
@@ -132,42 +128,17 @@ export default function ActiveTestScreen() {
         setNotesExpanded(false);
     }, [testType]);
 
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-            if (!hasActiveSession || allowExitRef.current) {
-                return;
-            }
-
-            event.preventDefault();
-            pendingNavigationActionRef.current = event.data.action;
-            setExitDialogVisible(true);
-        });
-
-        return unsubscribe;
-    }, [hasActiveSession, navigation]);
-
-    const handleRequestExit = () => {
-        pendingNavigationActionRef.current = null;
-        setExitDialogVisible(true);
-    };
-
-    const handleCancelExit = () => {
-        pendingNavigationActionRef.current = null;
-        setExitDialogVisible(false);
-    };
-
-    const handleConfirmExit = () => {
-        allowExitRef.current = true;
-        setExitDialogVisible(false);
-
-        if (pendingNavigationActionRef.current) {
-            navigation.dispatch(pendingNavigationActionRef.current as never);
-            pendingNavigationActionRef.current = null;
+    /** Back: siempre al overview de la batería (/new) sin alertas. */
+    const handleBackPress = () => {
+        if (patientId) {
+            router.replace(`/(app)/patients/${patientId}/batteries/new` as never);
             return;
         }
-
-        const destination = patientId ? `/(app)/patients/${patientId}` : '/(app)/patients';
-        router.replace(destination as never);
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+            return;
+        }
+        router.replace('/(app)/tests' as never);
     };
 
     const handleTimerComplete = useCallback((elapsed: number) => {
@@ -190,7 +161,6 @@ export default function ActiveTestScreen() {
         saveResult(test.type as SFTTestType, value, testNotes || undefined);
         const unitLabel = test.unit === 'meters' ? 'm' : test.unit;
         setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${unitLabel} guardado` });
-        allowExitRef.current = true;
         const completedAfterSave = new Set([...completedTests, test.type]);
         const nextTest =
             SFT_TESTS.slice(currentIndex + 1).find((candidate) => !completedAfterSave.has(candidate.type)) ??
@@ -204,12 +174,6 @@ export default function ActiveTestScreen() {
 
             router.replace(`/(app)/patients/${patientId}/batteries/summary` as never);
         }, 700);
-    };
-
-    const handleGoToBatteryOverview = () => {
-        if (!patientId) return;
-        allowExitRef.current = true;
-        router.replace(`/(app)/patients/${patientId}/batteries/new` as never);
     };
 
     if (!test) {
@@ -230,15 +194,10 @@ export default function ActiveTestScreen() {
                 options={{
                     title: 'Realizar batería SFT',
                     animation: 'slide_from_right',
-                    headerRight: () => (
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <IconButton
-                                icon="format-list-bulleted"
-                                size={24}
-                                onPress={handleGoToBatteryOverview}
-                            />
-                            <IconButton icon="close" size={24} onPress={handleRequestExit} />
-                        </View>
+                    headerLeft: () => (
+                        <Pressable onPress={handleBackPress} hitSlop={8} style={{ paddingHorizontal: 12 }}>
+                            <MaterialCommunityIcons name="arrow-left" size={26} color={theme.colors.primary} />
+                        </Pressable>
                     ),
                 }}
             />
@@ -400,18 +359,6 @@ export default function ActiveTestScreen() {
                 type="success"
                 onDismiss={() => setSnackbar({ visible: false, message: '' })}
             />
-            <Portal>
-                <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
-                    <Dialog.Title>Salir de la batería</Dialog.Title>
-                    <Dialog.Content>
-                        <Text>Tu progreso queda guardado en este dispositivo y podrás retomar esta batería después.</Text>
-                    </Dialog.Content>
-                    <Dialog.Actions>
-                        <PaperButton onPress={handleCancelExit}>Continuar batería</PaperButton>
-                        <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
-                    </Dialog.Actions>
-                </Dialog>
-            </Portal>
         </View>
     );
 }

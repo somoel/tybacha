@@ -149,6 +149,7 @@ export default function NewBatteryScreen() {
             <Stack.Screen
                 options={{
                     title: patientName ? `${patientName} — Batería SFT` : 'Realizar batería SFT',
+                    headerLeft: () => null,
                     headerRight: () => (
                         conflict ? null : <IconButton icon="close" size={24} onPress={handleRequestExit} />
                     ),
