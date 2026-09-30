@@ -47,8 +47,12 @@ export default function NewBatteryScreen() {
 
     // Solo arranca sesión cuando esta pantalla está enfocada. Si queda montada en el stack
     // detrás del resumen/plan, un clearSession() no debe resucitar una batería fantasma.
+    // Tras descartar/salir (allowExitRef), resetBattery() deja activeBatteryId en null
+    // mientras la pantalla sigue enfocada: sin este guard, este efecto crearía una
+    // sesión nueva vacía (0 de 6) que haría reaparecer el aviso de retomar.
     useFocusEffect(
         useCallback(() => {
+            if (allowExitRef.current) return;
             if (hydrated && !activeBatteryId && id) {
                 startBattery(id);
             }
