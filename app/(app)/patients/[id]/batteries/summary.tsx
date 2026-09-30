@@ -1,10 +1,13 @@
+import { ApiError, isNetworkError } from '@/src/api/httpClient';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
+import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
-import { createBattery, saveBatteryWithResults } from '@/src/services/batteryService';
+import { enqueueOfflineOperation } from '@/src/lib/offlineQueue';
+import { buildSftApplicationPayload, submitSftApplication } from '@/src/services/batteryService';
 import { generateExercisePlan } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -14,9 +17,9 @@ import type { Patient } from '@/src/types/patient.types';
 import { calculateAgeBand, getNormativeRange, getPerformanceCategory } from '@/shared/constants/normativeRanges';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button as PaperButton, Dialog, IconButton, Portal, Text, TextInput, useTheme } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Button as PaperButton, Dialog, Portal, Text, TextInput, useTheme } from 'react-native-paper';
 
 type FinalAction = 'patient' | 'plan';
 
@@ -28,14 +31,23 @@ export default function BatterySummaryScreen() {
     const { user } = useAuthStore();
     const { isAdmin, isProfessional } = usePermissions();
     const isOnline = useSyncStore((s) => s.isOnline);
-    const { activeBatteryId, clearSession, completedTests, notes: generalNotes, resultNotes, results, setNotes } = useBatteryStore();
+    const {
+        activeBatteryId,
+        clearSession,
+        completedTests,
+        estaturaCm,
+        imc,
+        notes: generalNotes,
+        pesoKg,
+        resultNotes,
+        results,
+        setNotes,
+    } = useBatteryStore();
     const [savingAction, setSavingAction] = useState<FinalAction | null>(null);
     const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [patient, setPatient] = useState<Patient | null>(null);
-    const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
     const [pendingAction, setPendingAction] = useState<FinalAction | null>(null);
-    const allowExitRef = useRef(false);
 
     const canCreatePlan = isAdmin || isProfessional;
     const hasAllResults = SFT_TESTS.every((test) => results[test.type] !== undefined);
@@ -47,18 +59,19 @@ export default function BatterySummaryScreen() {
         }
     }, [id]);
 
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('beforeRemove', (event) => {
-            if (allowExitRef.current || !activeBatteryId) return;
-            event.preventDefault();
-            setExitDialogVisible(true);
-        });
-        return unsubscribe;
-    }, [navigation, activeBatteryId]);
-
     const handleBackToCorrect = (testType?: string) => {
-        allowExitRef.current = true;
         router.replace(`/(app)/tests/${testType ?? SFT_TESTS[SFT_TESTS.length - 1].type}/active` as never);
+    };
+
+    /** Back: siempre al overview de la batería (/new), sin alertas. */
+    const handleBackPress = () => {
+        const state = navigation.getState();
+        const previous = state && state.index > 0 ? state.routes[state.index - 1] : null;
+        if (previous?.name.endsWith('batteries/new')) {
+            navigation.goBack();
+            return;
+        }
+        router.replace(`/(app)/patients/${id}/batteries/new` as never);
     };
 
     /**
@@ -70,16 +83,6 @@ export default function BatterySummaryScreen() {
         router.dismissTo(`/(app)/patients/${id}` as never);
         if (next) {
             router.push(next as never);
-        }
-    };
-
-    const handleClose = () => {
-        if (isComplete) {
-            handleConfirmFinalize('patient');
-        } else {
-            allowExitRef.current = true;
-            clearSession();
-            leaveBatteryFlow();
         }
     };
 
@@ -96,6 +99,22 @@ export default function BatterySummaryScreen() {
         }
     };
 
+    /** Encola el payload en almacenamiento local. Devuelve false si el storage falló. */
+    const queueBattery = async (
+        payload: ReturnType<typeof buildSftApplicationPayload>,
+        idLocal: string,
+    ): Promise<boolean> => {
+        try {
+            await enqueueOfflineOperation('aplicacion_sft', 'crear', { ...payload }, idLocal);
+            return true;
+        } catch (error) {
+            console.error('Error al encolar la batería en el dispositivo:', error);
+            setSnackbar({ visible: true, message: 'No se pudo guardar la batería en este dispositivo. Reintenta.', type: 'error' });
+            setSavingAction(null);
+            return false;
+        }
+    };
+
     const finalizeAndNavigate = async (action: FinalAction) => {
         if (!user || !id || !activeBatteryId || !isComplete) {
             setSnackbar({ visible: true, message: 'Completa y guarda un valor para cada prueba antes de finalizar.', type: 'error' });
@@ -103,25 +122,66 @@ export default function BatterySummaryScreen() {
         }
 
         setSavingAction(action);
-        let batteryPersisted = false;
-        try {
-            const battery = await createBattery(id, user.id, generalNotes || undefined, isOnline);
-            const savedBattery = await saveBatteryWithResults(battery.id, results, resultNotes, isOnline);
-            batteryPersisted = true;
 
-            if (action === 'plan') {
-                await generateExercisePlan({ id } as any, [], '', savedBattery.batteryId);
+        const payload = buildSftApplicationPayload({
+            patientId: id,
+            results,
+            resultNotes,
+            notes: generalNotes || undefined,
+            pesoKg,
+            estaturaCm,
+            imc,
+        });
+
+        let queued = false;
+        let savedBatteryId: string | null = null;
+
+        if (!isOnline) {
+            // Sin conexión: va directo a la cola, sin intentar la red.
+            queued = await queueBattery(payload, activeBatteryId);
+            if (!queued) return;
+        } else {
+            try {
+                // activeBatteryId actúa como clave de idempotencia: si el POST
+                // se aplicó pero se perdió la respuesta, el reintento (por
+                // encolado o por la cola offline) no duplica la batería.
+                const saved = await submitSftApplication(payload, activeBatteryId);
+                savedBatteryId = saved.batteryId;
+            } catch (error) {
+                const isTransient =
+                    isNetworkError(error) || (error instanceof ApiError && error.status >= 500);
+
+                if (!isTransient) {
+                    // 4xx = validación/permiso: no se encola y la sesión queda intacta.
+                    const message = error instanceof Error ? error.message : 'Error al guardar la batería.';
+                    setSnackbar({ visible: true, message, type: 'error' });
+                    setSavingAction(null);
+                    return;
+                }
+
+                queued = await queueBattery(payload, activeBatteryId);
+                if (!queued) return;
             }
+        }
 
+        // Éxito: la batería quedó persistida (online o en la cola offline).
+        if (queued) {
+            const message = action === 'plan'
+                ? 'Batería guardada en este dispositivo. Sin conexión: el plan de ejercicios podrás generarlo después desde el detalle del adulto mayor.'
+                : 'Batería guardada en este dispositivo. Se sincronizará automáticamente al recuperar la conexión.';
+            setSnackbar({ visible: true, message, type: 'success' });
             clearSession();
-            allowExitRef.current = true;
-            leaveBatteryFlow(
-                action === 'plan' ? `/(app)/patients/${id}/progress/edit-plan?from=battery` : undefined,
-            );
-        } catch (error) {
-            if (batteryPersisted) {
+            setTimeout(() => {
+                leaveBatteryFlow();
+            }, 2000);
+            return;
+        }
+
+        if (action === 'plan') {
+            try {
+                await generateExercisePlan({ id } as any, [], '', savedBatteryId ?? '');
+            } catch (error) {
                 clearSession();
-                allowExitRef.current = true;
                 const message = error instanceof Error
                     ? `Batería guardada. La generación del plan falló: ${error.message}. Reintenta desde el detalle.`
                     : 'Batería guardada. La generación del plan falló. Reintenta desde el detalle.';
@@ -130,12 +190,14 @@ export default function BatterySummaryScreen() {
                 setTimeout(() => {
                     leaveBatteryFlow();
                 }, 2000);
-            } else {
-                const message = error instanceof Error ? error.message : 'Error al guardar la batería.';
-                setSnackbar({ visible: true, message, type: 'error' });
-                setSavingAction(null);
+                return;
             }
         }
+
+        clearSession();
+        leaveBatteryFlow(
+            action === 'plan' ? `/(app)/patients/${id}/progress/edit-plan?from=battery` : undefined,
+        );
     };
 
     const ageBand = patient ? calculateAgeBand(patient.birth_date) : null;
@@ -163,13 +225,10 @@ export default function BatterySummaryScreen() {
                 options={{
                     title: 'Resumen batería SFT',
                     animation: 'fade',
-                    headerRight: () => (
-                        <IconButton
-                            icon="close"
-                            size={24}
-                            onPress={handleClose}
-                            disabled={savingAction !== null}
-                        />
+                    headerLeft: () => (
+                        <Pressable onPress={handleBackPress} hitSlop={8} style={{ paddingHorizontal: 12 }}>
+                            <MaterialCommunityIcons name="arrow-left" size={26} color={theme.colors.primary} />
+                        </Pressable>
                     ),
                 }}
             />
@@ -256,26 +315,15 @@ export default function BatterySummaryScreen() {
             />
 
             <Portal>
-                <Dialog visible={exitDialogVisible} onDismiss={() => setExitDialogVisible(false)}>
-                    <Dialog.Title>Salir del resumen</Dialog.Title>
-                    <Dialog.Content>
-                        <Text>Si sales ahora, la batería no se guardará. ¿Desea salir?</Text>
-                    </Dialog.Content>
-                    <Dialog.Actions>
-                        <PaperButton onPress={() => setExitDialogVisible(false)}>Quedarse</PaperButton>
-                        <PaperButton onPress={() => { allowExitRef.current = true; setExitDialogVisible(false); clearSession(); leaveBatteryFlow(); }}>Salir</PaperButton>
-                    </Dialog.Actions>
-                </Dialog>
-
                 <Dialog visible={confirmDialogVisible} onDismiss={() => setConfirmDialogVisible(false)}>
                     <Dialog.Title>Guardar batería</Dialog.Title>
                     <Dialog.Content>
                         <Text>Se guardarán los {SFT_TESTS.length} resultados de la batería SFT. ¿Continuar?</Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={() => setConfirmDialogVisible(false)}>Cancelar</PaperButton>
                         <PaperButton onPress={handleConfirmDialogYes}>Guardar</PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
             </Portal>
         </View>

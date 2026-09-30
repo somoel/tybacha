@@ -5,12 +5,16 @@ import { ExerciseHistoryItem } from '@/src/components/exercises/ExerciseHistoryI
 import { AppCard } from '@/src/components/ui/AppCard';
 import { PatientDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
+import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { listPendingOfflineOperations } from '@/src/lib/offlineQueue';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans, generateExercisePlan } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
+import { useBatteryStore } from '@/src/stores/batteryStore';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
+import { useSyncStore } from '@/src/stores/syncStore';
 import type { SFTBattery } from '@/src/types/battery.types';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import type { Patient } from '@/src/types/patient.types';
@@ -19,7 +23,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useFocusEffect, useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { IconButton, Menu, Text, useTheme } from 'react-native-paper';
 
@@ -48,6 +52,38 @@ export default function PatientDetailScreen() {
     const theme = useTheme();
     const router = useRouter();
     const { isAdmin, isProfessional, isCaregiver } = usePermissions();
+
+    // Borrador de batería SFT sin finalizar (solo cuenta si es de ESTE paciente).
+    const draftBatteryId = useBatteryStore((s) => s.activeBatteryId);
+    const draftPatientId = useBatteryStore((s) => s.patientId);
+    const draftCompleted = useBatteryStore((s) => s.completedTests);
+    const hasBatteryDraft = Boolean(
+        draftBatteryId && draftPatientId && id && draftPatientId === id,
+    );
+
+    // Baterías de ESTE paciente esperando subida a la red (cola offline).
+    const globalPendingCount = useSyncStore((s) => s.pendingCount);
+    const [pendingBatteryCount, setPendingBatteryCount] = useState(0);
+
+    const refreshPendingBatteryUpload = useCallback(async () => {
+        if (!id) return;
+        try {
+            const queue = await listPendingOfflineOperations();
+            const count = queue.filter(
+                (operation) =>
+                    operation.entidad === 'aplicacion_sft' &&
+                    Number(operation.payload.idAdultoMayor) === Number(id),
+            ).length;
+            setPendingBatteryCount(count);
+        } catch {
+            setPendingBatteryCount(0);
+        }
+    }, [id]);
+
+    // Refresco cuando cambia el contador global (sync automática / poll de 30s).
+    useEffect(() => {
+        refreshPendingBatteryUpload();
+    }, [refreshPendingBatteryUpload, globalPendingCount]);
 
     const { pathologies, medications, medicalNotes, loadAll: loadMedicalHistory } = useMedicalHistoryStore();
 
@@ -140,10 +176,11 @@ export default function PatientDetailScreen() {
             }
         };
         load();
+        refreshPendingBatteryUpload();
         return () => {
             isActive = false;
         };
-    }, [id, hasStaffAccess, loadMedicalHistory]));
+    }, [id, hasStaffAccess, loadMedicalHistory, refreshPendingBatteryUpload]));
 
     if (isLoading) return <PatientDetailSkeleton />;
     if (!patient) return <PatientDetailSkeleton />;
@@ -456,6 +493,55 @@ export default function PatientDetailScreen() {
             />
 
             <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+                {/* Borrador de batería SFT sin finalizar para este paciente */}
+                {hasBatteryDraft && (
+                    <AppCard style={styles.draftCard}>
+                        <View style={styles.infoRow}>
+                            <MaterialCommunityIcons
+                                name="clipboard-clock-outline"
+                                size={22}
+                                color="#d97706"
+                            />
+                            <View style={styles.draftInfo}>
+                                <Text style={styles.draftTitle}>Batería sin finalizar</Text>
+                                <Text style={styles.draftSubtitle}>
+                                    {`${draftCompleted.length} de ${SFT_TESTS.length} pruebas completadas · guardada en este dispositivo`}
+                                </Text>
+                            </View>
+                            <Pressable
+                                onPress={() => router.push({ pathname: `/(app)/patients/${id}/batteries/new`, params: { patientName: fullName } } as never)}
+                                accessibilityLabel="Continuar batería sin finalizar"
+                                accessibilityRole="button"
+                            >
+                                <Text style={styles.caregiverAction}>Continuar</Text>
+                            </Pressable>
+                        </View>
+                    </AppCard>
+                )}
+
+                {/* Batería(s) guardada(s) sin conexión, pendiente de subir a la red */}
+                {pendingBatteryCount > 0 && (
+                    <AppCard style={styles.pendingCard}>
+                        <View style={styles.infoRow}>
+                            <MaterialCommunityIcons
+                                name="cloud-sync-outline"
+                                size={22}
+                                color="#2563eb"
+                            />
+                            <View style={styles.draftInfo}>
+                                <Text style={styles.pendingTitle}>
+                                    {pendingBatteryCount === 1
+                                        ? 'Batería pendiente de subir'
+                                        : `${pendingBatteryCount} baterías pendientes de subir`}
+                                </Text>
+                                <Text style={styles.pendingSubtitle}>
+                                    Guardada en este dispositivo · se subirá sola al recuperar conexión
+                                </Text>
+                            </View>
+                        </View>
+                    </AppCard>
+                )}
+
                 {/* Patient info card with caregiver */}
                 <AppCard style={styles.infoCard}>
                     <View style={styles.header}>
@@ -736,7 +822,17 @@ export default function PatientDetailScreen() {
             </ScrollView>
 
             {/* Contextual FAB */}
-            {batteries.length === 0 ? (
+            {hasBatteryDraft ? (
+                <Pressable
+                    style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+                    onPress={() => router.push({ pathname: `/(app)/patients/${id}/batteries/new`, params: { patientName: fullName } } as never)}
+                    accessibilityLabel="Continuar batería SFT sin finalizar"
+                    accessibilityRole="button"
+                >
+                    <MaterialCommunityIcons name="clipboard-arrow-right-outline" size={20} color={theme.colors.onPrimary} />
+                    <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>Continuar batería</Text>
+                </Pressable>
+            ) : batteries.length === 0 ? (
                 <Pressable
                     style={[styles.fab, { backgroundColor: theme.colors.primary }]}
                     onPress={() => router.push({ pathname: `/(app)/patients/${id}/batteries/new`, params: { patientName: fullName } } as never)}
@@ -779,6 +875,23 @@ export default function PatientDetailScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#f8fafc', paddingHorizontal: 16, paddingTop: 16 },
     infoCard: { marginBottom: 12 },
+    draftCard: {
+        marginBottom: 4,
+        borderLeftWidth: 4,
+        borderLeftColor: '#d97706',
+        backgroundColor: '#fffbeb',
+    },
+    draftInfo: { flex: 1, gap: 2 },
+    draftTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#92400e' },
+    draftSubtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#b45309' },
+    pendingCard: {
+        marginBottom: 4,
+        borderLeftWidth: 4,
+        borderLeftColor: '#2563eb',
+        backgroundColor: '#eff6ff',
+    },
+    pendingTitle: { fontFamily: 'Montserrat_600SemiBold', fontSize: 14, color: '#1e3a8a' },
+    pendingSubtitle: { fontFamily: 'Montserrat_400Regular', fontSize: 12, color: '#1d4ed8' },
     header: { flexDirection: 'row', gap: 14, alignItems: 'center' },
     headerInfo: { flex: 1, gap: 2 },
     headerActions: { flexDirection: 'row', alignItems: 'center' },

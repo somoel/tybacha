@@ -1,8 +1,9 @@
 import { apiRequest } from '@/src/api/httpClient';
+import type { OfflineEntity } from '@/src/lib/offlineQueue';
 
 export interface ApiSyncOperation {
     idLocal: string;
-    entidad: 'adulto_mayor' | 'registro_ejercicio_plan';
+    entidad: OfflineEntity;
     accion: 'crear' | 'actualizar';
     creadoEnLocal: string;
     payload: Record<string, unknown>;

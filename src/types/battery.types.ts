@@ -91,11 +91,13 @@ export interface BatteryState {
     pesoKg: number | null;
     estaturaCm: number | null;
     imc: number | null;
+    isLoading: boolean;
+    ownerUserId: string | null;
     startBattery: (patientId: string) => void;
     saveResult: (testType: SFTTestType, value: number, notes?: string) => void;
     setNotes: (notes: string) => void;
     setBodyMetrics: (pesoKg: number, estaturaCm: number) => void;
-    finalizeBattery: () => Promise<void>;
     clearSession: () => void;
     resetBattery: () => void;
+    setLoading: (loading: boolean) => void;
 }

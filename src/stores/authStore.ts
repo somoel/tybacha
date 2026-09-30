@@ -69,6 +69,14 @@ export const useAuthStore = create<AuthState>()(
                         role: null,
                         isLoading: false,
                     });
+                    // Import dinamico: batteryStore importa estaticamente este store,
+                    // un import sincronico aqui crearia un ciclo ESM.
+                    try {
+                        const { useBatteryStore } = await import('@/src/stores/batteryStore');
+                        useBatteryStore.getState().clearSession();
+                    } catch (error) {
+                        console.error('Error limpiando la sesion de bateria:', error);
+                    }
                 }
             },
         }),

@@ -12,7 +12,7 @@ import {
   updateApiMedication,
   updateApiPathology,
 } from '@/src/api/medicalHistoryApi';
-import { addOfflineOperation } from '@/src/lib/sqlite';
+import { enqueueOfflineOperation } from '@/src/lib/offlineQueue';
 import type {
   ApiCreateMedicalNoteInput,
   ApiCreateMedicationInput,
@@ -89,7 +89,7 @@ export async function createPathology(
   isOnline = true,
 ): Promise<Pathology> {
   if (!isOnline) {
-    const idLocal = await addOfflineOperation('patologia_adulto_mayor', 'crear', {
+    const idLocal = await enqueueOfflineOperation('patologia_adulto_mayor', 'crear', {
       ...formData,
       idAdultoMayor: olderAdultId,
     });
@@ -138,7 +138,7 @@ export async function createMedication(
   isOnline = true,
 ): Promise<Medication> {
   if (!isOnline) {
-    const idLocal = await addOfflineOperation('medicamento_adulto_mayor', 'crear', {
+    const idLocal = await enqueueOfflineOperation('medicamento_adulto_mayor', 'crear', {
       ...formData,
       idAdultoMayor: olderAdultId,
     });
@@ -191,7 +191,7 @@ export async function createMedicalNote(
   isOnline = true,
 ): Promise<MedicalNote> {
   if (!isOnline) {
-    const idLocal = await addOfflineOperation('nota_historial_medico', 'crear', {
+    const idLocal = await enqueueOfflineOperation('nota_historial_medico', 'crear', {
       ...formData,
       idAdultoMayor: olderAdultId,
     });

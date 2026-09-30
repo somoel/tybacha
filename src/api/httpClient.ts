@@ -81,6 +81,27 @@ export class ApiError extends Error {
     }
 }
 
+/**
+ * Indica si un error es un fallo de transporte de red (no hubo respuesta HTTP):
+ * `TypeError: Network request failed`, `fetch failed` o una peticion abortada.
+ * Los `ApiError` (el servidor respondio) y cualquier otro error dan `false`.
+ */
+export function isNetworkError(error: unknown): boolean {
+    if (error instanceof ApiError) return false;
+    if (error instanceof TypeError) return true;
+    if (typeof error !== 'object' || error === null) return false;
+
+    const { name, message } = error as { name?: unknown; message?: unknown };
+    if (name === 'AbortError' || name === 'TypeError') return true;
+
+    const text = typeof message === 'string' ? message.toLowerCase() : '';
+    return (
+        text.includes('network request failed') ||
+        text.includes('fetch failed') ||
+        text.includes('failed to fetch')
+    );
+}
+
 async function refreshAccessToken(): Promise<string | null> {
     const refreshToken = await getRefreshToken();
     if (!refreshToken) return null;

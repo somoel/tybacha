@@ -11,7 +11,7 @@ import {
     uploadPatientPhotoApi,
 } from '@/src/api/olderAdultsApi';
 import { fetchApiUsers } from '@/src/api/usersApi';
-import { addOfflineOperation } from '@/src/lib/sqlite';
+import { enqueueOfflineOperation } from '@/src/lib/offlineQueue';
 import type { ApiGender, ApiOlderAdult } from '@/src/types/apiOlderAdult.types';
 import type { Patient, PatientFormData } from '@/src/types/patient.types';
 import { format } from 'date-fns';
@@ -75,7 +75,7 @@ export async function createPatient(
     };
 
     if (!isOnline) {
-        const idLocal = await addOfflineOperation('adulto_mayor', 'crear', payload);
+        const idLocal = await enqueueOfflineOperation('adulto_mayor', 'crear', payload);
         return {
             id: idLocal,
             created_by: _createdBy ?? '',
@@ -111,7 +111,7 @@ export async function updatePatient(
     };
 
     if (!isOnline) {
-        await addOfflineOperation('adulto_mayor', 'actualizar', payload);
+        await enqueueOfflineOperation('adulto_mayor', 'actualizar', payload);
         return {
             id: patientId,
             created_by: '',

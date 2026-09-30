@@ -2,6 +2,7 @@ import { ExerciseActiveSkeleton } from '@/src/components/exercises/ExerciseActiv
 import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
+import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { EffortPainScale } from '@/src/components/ui/EffortPainScale';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
@@ -684,10 +685,10 @@ export default function ActiveExerciseScreen() {
                     <Dialog.Content>
                         <Text>Tienes cambios sin guardar. ¿Deseas salir de todos modos?</Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={handleCancelExit}>Continuar aquí</PaperButton>
                         <PaperButton onPress={confirmExit} textColor={theme.colors.error}>Salir</PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
 
                 <Dialog visible={skipDialogVisible} onDismiss={() => setSkipDialogVisible(false)}>
@@ -698,7 +699,7 @@ export default function ActiveExerciseScreen() {
                             tiempo ni métricas. ¿Confirmas?
                         </Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={() => setSkipDialogVisible(false)}>Cancelar</PaperButton>
                         <PaperButton
                             onPress={() => {
@@ -709,7 +710,7 @@ export default function ActiveExerciseScreen() {
                         >
                             Sí, omitir
                         </PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
             </Portal>
         </View>

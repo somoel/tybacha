@@ -44,6 +44,8 @@ export interface ApiSftApplicationDetail extends ApiSftApplication {
 export interface ApiCreateSftApplicationInput {
     idBateriaSft?: number;
     fechaAplicacion?: string;
+    /** Clave de idempotencia: reutiliza la sesión de batería actual. */
+    idLocalSincronizacion?: string;
     observaciones?: string;
     pesoKg?: number;
     estaturaCm?: number;

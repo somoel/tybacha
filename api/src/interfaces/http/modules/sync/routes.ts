@@ -3,16 +3,38 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
-import { badRequest, forbidden } from '../../httpErrors.js';
+import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
+import { getActiveSftBatteryId, ORDER_TO_TEST_TYPE } from '../sft/routes.js';
 import { recalculateWeeklyStats } from '../tracking/routes.js';
+import type { SFTTestType } from '../../../../../../shared/constants/normativeRanges.js';
+
+const SFT_TEST_TYPES = Object.values(ORDER_TO_TEST_TYPE) as [SFTTestType, ...SFTTestType[]];
 
 const syncOperationSchema = z.object({
   idLocal: z.string().uuid(),
-  entidad: z.enum(['adulto_mayor', 'registro_ejercicio_plan']),
+  entidad: z.enum(['adulto_mayor', 'registro_ejercicio_plan', 'aplicacion_sft']),
   accion: z.enum(['crear', 'actualizar']),
   creadoEnLocal: z.string().datetime(),
   payload: z.record(z.string(), z.unknown()),
+});
+
+const sftApplicationPayloadSchema = z.object({
+  idAdultoMayor: z.number().int().positive(),
+  fechaAplicacion: z.string().datetime(),
+  observaciones: z.string().optional(),
+  pesoKg: z.number().positive().optional(),
+  estaturaCm: z.number().positive().optional(),
+  imc: z.number().positive().optional(),
+  resultados: z
+    .array(
+      z.object({
+        testType: z.enum(SFT_TEST_TYPES),
+        valorNumerico: z.number(),
+        observaciones: z.string().optional(),
+      }),
+    )
+    .min(1),
 });
 
 const syncRequestSchema = z.object({
@@ -71,6 +93,14 @@ function optionalNumber(payload: Record<string, unknown>, key: string): number |
     throw badRequest(`Campo numerico invalido: ${key}`);
   }
   return number;
+}
+
+function toMysqlDatetime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    throw badRequest('Campo invalido: fechaAplicacion');
+  }
+  return date.toISOString().replace('T', ' ').replace('Z', '');
 }
 
 async function applyOlderAdultCreate(
@@ -299,6 +329,102 @@ async function applyExerciseRecord(
   return record?.id_registro_ejercicio_plan ?? null;
 }
 
+async function applySftApplicationCreate(
+  connection: Awaited<ReturnType<typeof pool.getConnection>>,
+  operation: SyncOperation,
+  actor: { idUsuario: number; rol: string },
+) {
+  const parsed = sftApplicationPayloadSchema.safeParse(operation.payload);
+  if (!parsed.success) {
+    const detail = parsed.error.issues
+      .map((issue) => `${issue.path.join('.') || 'payload'}: ${issue.message}`)
+      .join('; ');
+    throw badRequest(`Payload de aplicacion_sft invalido — ${detail}`);
+  }
+  const payload = parsed.data;
+
+  if (actor.rol === 'cuidador') {
+    throw forbidden('Solo profesionales o administradores registran SFT');
+  }
+
+  await assertCanAccessOlderAdult(payload.idAdultoMayor, actor.idUsuario, actor.rol);
+  const idBateriaSft = await getActiveSftBatteryId();
+
+  try {
+    const [testRows] = await connection.query<RowDataPacket[]>(
+      `select id_prueba_sft, orden
+       from prueba_sft
+       where id_bateria_sft = :idBateriaSft and activa = 1`,
+      { idBateriaSft },
+    );
+
+    const idPruebaByTestType = new Map<SFTTestType, number>();
+    for (const row of testRows) {
+      const testType = ORDER_TO_TEST_TYPE[Number(row.orden)];
+      if (testType) idPruebaByTestType.set(testType, Number(row.id_prueba_sft));
+    }
+
+    const resolveIdPrueba = (testType: SFTTestType): number => {
+      const idPruebaSft = idPruebaByTestType.get(testType);
+      if (!idPruebaSft) {
+        throw badRequest(`La prueba "${testType}" no existe o no esta activa en la bateria SFT activa`);
+      }
+      return idPruebaSft;
+    };
+
+    for (const result of payload.resultados) resolveIdPrueba(result.testType);
+
+    const [insertResult] = await connection.query<ResultSetHeader>(
+      `insert into aplicacion_sft
+        (id_adulto_mayor, id_bateria_sft, responsable, fecha_aplicacion, estado, observaciones, peso_kg, estatura_cm, imc)
+       values
+        (:idAdultoMayor, :idBateriaSft, :responsable, coalesce(:fechaAplicacion, current_timestamp(3)), 'finalizada', :observaciones, :pesoKg, :estaturaCm, :imc)`,
+      {
+        idAdultoMayor: payload.idAdultoMayor,
+        idBateriaSft,
+        responsable: actor.idUsuario,
+        fechaAplicacion: payload.fechaAplicacion ? toMysqlDatetime(payload.fechaAplicacion) : null,
+        observaciones: payload.observaciones ?? null,
+        pesoKg: payload.pesoKg ?? null,
+        estaturaCm: payload.estaturaCm ?? null,
+        imc: payload.imc ?? null,
+      },
+    );
+
+    const idAplicacionSft = insertResult.insertId;
+
+    for (const result of payload.resultados) {
+      await connection.query(
+        `insert into resultado_sft
+          (id_aplicacion_sft, id_prueba_sft, valor_numerico, valor_texto, clasificacion, observaciones)
+         values
+          (:idAplicacionSft, :idPruebaSft, :valorNumerico, null, null, :observaciones)`,
+        {
+          idAplicacionSft,
+          idPruebaSft: resolveIdPrueba(result.testType),
+          valorNumerico: result.valorNumerico,
+          observaciones: result.observaciones ?? null,
+        },
+      );
+    }
+
+    await insertChangeAudit(connection, {
+      tabla: 'aplicacion_sft',
+      registroId: idAplicacionSft,
+      accion: 'crear',
+      nuevos: payload,
+      context: { userId: actor.idUsuario },
+    });
+
+    return idAplicacionSft;
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ER_NO_REFERENCED_ROW_2') {
+      throw notFound('La bateria o prueba SFT indicada no existe');
+    }
+    throw error;
+  }
+}
+
 async function applyOperation(
   connection: Awaited<ReturnType<typeof pool.getConnection>>,
   operation: SyncOperation,
@@ -312,6 +438,9 @@ async function applyOperation(
   }
   if (operation.entidad === 'registro_ejercicio_plan') {
     return applyExerciseRecord(connection, operation, actor);
+  }
+  if (operation.entidad === 'aplicacion_sft') {
+    return applySftApplicationCreate(connection, operation, actor);
   }
 
   throw badRequest('Operacion de sincronizacion no soportada');

@@ -37,6 +37,11 @@ function clearAuthState(): void {
     setUser(null);
     setProfile(null);
     setRole(null);
+    // Import dinamico para no romper el ciclo ESM authStore <-> batteryStore;
+    // sin await para conservar la firma sincrona de clearAuthState.
+    void import('@/src/stores/batteryStore')
+        .then(({ useBatteryStore }) => useBatteryStore.getState().clearSession())
+        .catch((error) => console.error('Error limpiando la sesion de bateria:', error));
 }
 
 /**

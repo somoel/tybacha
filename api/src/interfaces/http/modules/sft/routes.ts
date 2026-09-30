@@ -34,12 +34,18 @@ const resultSchema = z.object({
 const createApplicationSchema = z.object({
   idBateriaSft: z.number().int().positive().optional(),
   fechaAplicacion: z.string().datetime().optional(),
+  idLocalSincronizacion: z.string().uuid().optional(),
   observaciones: z.string().optional(),
   pesoKg: z.number().positive().optional(),
   estaturaCm: z.number().positive().optional(),
   imc: z.number().positive().optional(),
   resultados: z.array(resultSchema).min(1),
 });
+
+interface SyncOperationRow extends RowDataPacket {
+  estado: 'aplicada' | 'conflicto' | 'rechazada';
+  id_remoto: number | null;
+}
 
 interface BatteryRow extends RowDataPacket {
   id_bateria_sft: number;
@@ -100,7 +106,7 @@ interface AdultRow extends RowDataPacket {
   genero: string;
 }
 
-async function getActiveSftBatteryId(): Promise<number> {
+export async function getActiveSftBatteryId(): Promise<number> {
   const [rows] = await pool.query<BatteryRow[]>(
     `select id_bateria_sft, nombre, descripcion, version
      from bateria_sft
@@ -139,7 +145,7 @@ async function assertCanAccessOlderAdult(
  * Map test order (1-7) to SFTTestType.
  * This matches the order in the database.
  */
-const ORDER_TO_TEST_TYPE: Record<number, SFTTestType> = {
+export const ORDER_TO_TEST_TYPE: Record<number, SFTTestType> = {
   1: 'chair_stand',
   2: 'arm_curl',
   3: 'six_min_walk',
@@ -372,6 +378,15 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
     };
   });
 
+  // MySQL en modo estricto rechaza ISO con sufijo 'Z'/'T' en datetime(3).
+  function toMysqlDatetime(iso: string): string {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      throw badRequest('Campo invalido: fechaAplicacion');
+    }
+    return date.toISOString().replace('T', ' ').replace('Z', '');
+  }
+
   app.post('/older-adults/:id/sft-applications', { preHandler: requireAuth(app) }, async (request) => {
     const actor = request.authUser!;
     const params = z.object({ id: z.coerce.number().int().positive() }).parse(request.params);
@@ -383,6 +398,27 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
 
     await assertCanAccessOlderAdult(params.id, actor);
     const idBateriaSft = body.idBateriaSft ?? await getActiveSftBatteryId();
+
+    // Idempotencia: si el cliente reenvía tras perder la respuesta del POST,
+    // se devuelve la bateria ya creada en lugar de duplicarla.
+    if (body.idLocalSincronizacion) {
+      const [existingRows] = await pool.query<SyncOperationRow[]>(
+        `select estado, id_remoto
+         from operacion_sincronizacion
+         where id_local = :idLocal and id_usuario = :idUsuario
+         limit 1`,
+        { idLocal: body.idLocalSincronizacion, idUsuario: actor.idUsuario },
+      );
+      const existing = existingRows[0];
+      if (existing?.estado === 'aplicada' && existing.id_remoto !== null) {
+        return {
+          idAplicacionSft: Number(existing.id_remoto),
+          idAdultoMayor: params.id,
+          idBateriaSft,
+          resultadosRegistrados: body.resultados.length,
+        };
+      }
+    }
 
     const connection = await pool.getConnection();
     try {
@@ -397,7 +433,7 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
           idAdultoMayor: params.id,
           idBateriaSft,
           responsable: actor.idUsuario,
-          fechaAplicacion: body.fechaAplicacion ?? null,
+          fechaAplicacion: body.fechaAplicacion ? toMysqlDatetime(body.fechaAplicacion) : null,
           observaciones: body.observaciones ?? null,
           pesoKg: body.pesoKg ?? null,
           estaturaCm: body.estaturaCm ?? null,
@@ -435,6 +471,30 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
           userAgent: request.headers['user-agent'] ?? null,
         },
       });
+
+      // Registra la operacion en la tabla de sincronizacion para que un
+      // reintento del POST (o la cola offline) no duplique la bateria.
+      if (body.idLocalSincronizacion) {
+        await connection.query(
+          `insert into operacion_sincronizacion
+            (id_local, id_usuario, entidad, accion, estado, id_remoto, detalle, creado_en_local)
+           values
+            (:idLocal, :idUsuario, 'aplicacion_sft', 'crear', 'aplicada', :idRemoto, :detalle, :creadoEnLocal)
+           on duplicate key update
+            estado = 'aplicada', id_remoto = values(id_remoto), detalle = values(detalle)`,
+          {
+            idLocal: body.idLocalSincronizacion,
+            idUsuario: actor.idUsuario,
+            idRemoto: idAplicacionSft,
+            detalle: JSON.stringify({
+              entidad: 'aplicacion_sft',
+              accion: 'crear',
+              origen: 'POST /older-adults/:id/sft-applications',
+            }),
+            creadoEnLocal: toMysqlDatetime(body.fechaAplicacion ?? new Date().toISOString()),
+          },
+        );
+      }
 
       await connection.commit();
 
