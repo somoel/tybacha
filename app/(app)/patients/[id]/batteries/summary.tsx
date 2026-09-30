@@ -1,6 +1,7 @@
 import { ApiError, isNetworkError } from '@/src/api/httpClient';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
+import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
@@ -319,10 +320,10 @@ export default function BatterySummaryScreen() {
                     <Dialog.Content>
                         <Text>Se guardarán los {SFT_TESTS.length} resultados de la batería SFT. ¿Continuar?</Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={() => setConfirmDialogVisible(false)}>Cancelar</PaperButton>
                         <PaperButton onPress={handleConfirmDialogYes}>Guardar</PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
             </Portal>
         </View>

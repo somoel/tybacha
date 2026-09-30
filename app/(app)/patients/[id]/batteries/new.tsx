@@ -1,6 +1,7 @@
 import { BodyMetricsInput } from '@/src/components/battery/BodyMetricsInput';
 import { TestCard } from '@/src/components/tests/TestCard';
 import { AppButton } from '@/src/components/ui/AppButton';
+import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
@@ -233,10 +234,10 @@ export default function NewBatteryScreen() {
                             Hay una batería sin terminar para otro adulto mayor ({completedTests.length} de {SFT_TESTS.length} pruebas). ¿Qué deseas hacer?
                         </Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={handleResumeOtherBattery}>Retomar esa batería</PaperButton>
                         <PaperButton onPress={handleStartNewBatteryHere}>Empezar nueva aquí</PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
 
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>
@@ -244,11 +245,11 @@ export default function NewBatteryScreen() {
                     <Dialog.Content>
                         <Text>Tu progreso queda guardado en este dispositivo. Podrás retomar esta batería desde el adulto mayor.</Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={handleCancelExit}>Continuar batería</PaperButton>
                         <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
                         <PaperButton onPress={handleDiscardBattery}>Descartar batería</PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
             </Portal>
         </View>

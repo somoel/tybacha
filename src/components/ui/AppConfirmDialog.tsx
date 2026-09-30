@@ -1,4 +1,5 @@
 import React from 'react';
+import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { useTheme, Dialog, Portal, Text, Button as PaperButton } from 'react-native-paper';
 
 interface AppConfirmDialogProps {
@@ -33,7 +34,7 @@ export function AppConfirmDialog({
         <Dialog.Content>
           <Text>{message}</Text>
         </Dialog.Content>
-        <Dialog.Actions>
+        <AppDialogActions>
           <PaperButton disabled={loading} onPress={onCancel}>
             {cancelLabel}
           </PaperButton>
@@ -44,7 +45,7 @@ export function AppConfirmDialog({
           >
             {confirmLabel}
           </PaperButton>
-        </Dialog.Actions>
+        </AppDialogActions>
       </Dialog>
     </Portal>
   );

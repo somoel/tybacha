@@ -1,3 +1,4 @@
+import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { SFT_TESTS } from '@/src/constants/sftTests';
@@ -295,7 +296,7 @@ export default function AppLayout() {
                             {`Tienes una batería sin finalizar para ${patientName ?? 'este adulto mayor'} (${completedTests.length} de ${SFT_TESTS.length} pruebas completadas). El borrador está guardado en este dispositivo.`}
                         </Text>
                     </Dialog.Content>
-                    <Dialog.Actions>
+                    <AppDialogActions>
                         <PaperButton onPress={clearSession}>Descartar batería</PaperButton>
                         <PaperButton
                             onPress={() => {
@@ -305,7 +306,7 @@ export default function AppLayout() {
                         >
                             Retomar batería
                         </PaperButton>
-                    </Dialog.Actions>
+                    </AppDialogActions>
                 </Dialog>
             </Portal>
         </View>
