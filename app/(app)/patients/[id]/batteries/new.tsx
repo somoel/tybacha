@@ -250,9 +250,11 @@ export default function NewBatteryScreen() {
                         <Text>Tu progreso queda guardado en este dispositivo. Podrás retomar esta batería desde el adulto mayor.</Text>
                     </Dialog.Content>
                     <AppDialogActions>
-                        <PaperButton onPress={handleCancelExit}>Continuar batería</PaperButton>
-                        <PaperButton onPress={handleConfirmExit}>Salir</PaperButton>
-                        <PaperButton onPress={handleDiscardBattery}>Descartar batería</PaperButton>
+                        <PaperButton onPress={handleCancelExit}>Continuar</PaperButton>
+                        <PaperButton onPress={handleConfirmExit}>Guardar borrador</PaperButton>
+                        <PaperButton onPress={handleDiscardBattery} textColor={theme.colors.error}>
+                            Descartar
+                        </PaperButton>
                     </AppDialogActions>
                 </Dialog>
             </Portal>
