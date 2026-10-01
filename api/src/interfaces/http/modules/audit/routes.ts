@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { requireRoles } from '../../requireAuth.js';
 
 export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
@@ -32,7 +33,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       },
     );
 
-    return rows;
+    return rows.map((row) => ({ ...row, creadoEn: toUtcIso(row.creadoEn) }));
   });
 
   app.get('/audit/data-access', { preHandler: requireRoles(app, ['administrador']) }, async (request) => {
@@ -62,7 +63,7 @@ export async function registerAuditRoutes(app: FastifyInstance): Promise<void> {
       },
     );
 
-    return rows;
+    return rows.map((row) => ({ ...row, creadoEn: toUtcIso(row.creadoEn) }));
   });
 }
 

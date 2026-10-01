@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { toUtcIso, toMysqlDatetime } from '../../../../infrastructure/db/datetime.js';
 import { createAndSendPushNotification, sendPushToCaregivers } from '../../../../infrastructure/push/notifications.js';
 import { badRequest, notFound } from '../../httpErrors.js';
 import { requireAuth, requireRoles } from '../../requireAuth.js';
@@ -35,13 +36,13 @@ function mapAlert(row: AlertRow) {
     titulo: row.titulo,
     mensaje: row.mensaje,
     canal: row.canal,
-    fechaProgramada: row.fecha_programada,
+    fechaProgramada: toUtcIso(row.fecha_programada),
     reglaProgramacion: row.regla_programacion ? JSON.parse(row.regla_programacion) : null,
     condicionDisparo: row.condicion_disparo ? JSON.parse(row.condicion_disparo) : null,
     estado: row.estado,
     creadaPor: row.creada_por,
-    creadoEn: row.creado_en,
-    actualizadoEn: row.actualizado_en,
+    creadoEn: toUtcIso(row.creado_en),
+    actualizadoEn: toUtcIso(row.actualizado_en),
   };
 }
 
@@ -71,7 +72,7 @@ export async function registerAlertRoutes(app: FastifyInstance): Promise<void> {
         titulo: body.titulo,
         mensaje: body.mensaje,
         canal: body.canal,
-        fechaProgramada: body.fechaProgramada ?? null,
+        fechaProgramada: body.fechaProgramada ? toMysqlDatetime(body.fechaProgramada) : null,
         reglaProgramacion: body.reglaProgramacion ? JSON.stringify(body.reglaProgramacion) : null,
         condicionDisparo: body.condicionDisparo ? JSON.stringify(body.condicionDisparo) : null,
         creadaPor: actor.idUsuario,

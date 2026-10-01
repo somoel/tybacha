@@ -1,6 +1,7 @@
 import { TodayExerciseCard } from '@/src/components/exercises/TodayExerciseCard';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { parseApiDate } from '@/src/lib/dates';
 import type { Exercise, ExercisePlan } from '@/src/types/exercise.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
@@ -113,7 +114,7 @@ export function PlanOverviewSection({ patientId, plan, exerciseRecords, onEdit }
                         </View>
                         <View style={styles.headerText}>
                             <Text style={styles.planTitle}>{plan.titulo}</Text>
-                            <Text style={styles.planDate}>{format(new Date(plan.generated_at), "dd MMM yyyy", { locale: es })}</Text>
+                            <Text style={styles.planDate}>{format(parseApiDate(plan.generated_at), "dd MMM yyyy", { locale: es })}</Text>
                         </View>
                         <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
                     </View>

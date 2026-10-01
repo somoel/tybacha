@@ -9,6 +9,7 @@ import {
 } from '../../../../infrastructure/reports/progressReport.js';
 import { insertAccessAuditWithPool } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { formatFechaColombia, toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -93,7 +94,7 @@ async function buildProgressReportData(idAdultoMayor: number, actorId: number, r
       estado: adult.estado,
     },
     sft: sftRows.map((row) => ({
-      fechaAplicacion: String(row.fechaAplicacion),
+      fechaAplicacion: formatFechaColombia(String(row.fechaAplicacion), true),
       prueba: String(row.prueba),
       valor: String(row.valor),
       unidad: row.unidad ? String(row.unidad) : null,
@@ -102,7 +103,7 @@ async function buildProgressReportData(idAdultoMayor: number, actorId: number, r
       titulo: String(row.titulo),
       estado: String(row.estado),
       nivelDificultad: String(row.nivelDificultad),
-      creadoEn: String(row.creadoEn),
+      creadoEn: formatFechaColombia(String(row.creadoEn), true),
     })),
     progreso: progressRows.map((row) => ({
       periodo: String(row.periodo),
@@ -237,7 +238,7 @@ export async function registerReportRoutes(app: FastifyInstance): Promise<void> 
        limit 50`,
       { actorId: actor.idUsuario },
     );
-    return rows;
+    return rows.map((row) => ({ ...row, creadoEn: toUtcIso(row.creadoEn) }));
   });
 
   app.get('/reports/files/:id', { preHandler: requireAuth(app) }, async (request, reply) => {

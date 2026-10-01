@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { OptionSelector } from '@/src/components/ui/OptionSelector';
+import { formatDateOnly, parseApiDate } from '@/src/lib/dates';
 import { Text } from 'react-native-paper';
 import { z } from 'zod';
 
@@ -52,7 +53,7 @@ export default function AddPathologyScreen() {
         estado: existingItem.estado,
       });
       if (existingItem.fechaDiagnostico) {
-        setDiagnosisDate(new Date(existingItem.fechaDiagnostico));
+        setDiagnosisDate(parseApiDate(existingItem.fechaDiagnostico));
       }
       navigation.setOptions({ title: 'Editar patología' });
     } else {
@@ -66,7 +67,7 @@ export default function AddPathologyScreen() {
     try {
       const formData: PathologyFormData = {
         ...data,
-        fechaDiagnostico: diagnosisDate ? diagnosisDate.toISOString().slice(0, 10) : undefined,
+        fechaDiagnostico: diagnosisDate ? formatDateOnly(diagnosisDate) : undefined,
       };
       if (isEditing && pathologyId) {
         const ok = await updatePathology(Number(id), Number(pathologyId), formData);

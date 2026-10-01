@@ -1,6 +1,7 @@
 import { StatusChip } from '@/src/components/medical/StatusChip';
 import { AppCard } from '@/src/components/ui/AppCard';
 import type { Pathology } from '@/src/types/medicalHistory.types';
+import { parseApiDate } from '@/src/lib/dates';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -56,7 +57,7 @@ export function PathologyCard({ pathology, canEdit, onPress, onEdit, onDelete }:
       )}
       {pathology.fechaDiagnostico && (
         <Text style={styles.date}>
-          Diagnóstico: {format(new Date(pathology.fechaDiagnostico), 'dd MMM yyyy', { locale: es })}
+          Diagnóstico: {format(parseApiDate(pathology.fechaDiagnostico), 'dd MMM yyyy', { locale: es })}
         </Text>
       )}
       {pathology.registradoPorNombre && (

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { hoyEnColombia, toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { notFound } from '../../httpErrors.js';
 import { requireRoles } from '../../requireAuth.js';
 
@@ -40,8 +41,8 @@ function mapCaregiver(row: CaregiverRow) {
     apellidos: row.apellidos,
     telefono: row.telefono,
     ciudad: row.ciudad,
-    creadoEn: row.creado_en,
-    ultimoAccesoEn: row.ultimo_acceso_en,
+    creadoEn: toUtcIso(row.creado_en),
+    ultimoAccesoEn: toUtcIso(row.ultimo_acceso_en),
     cantidadPacientes: row.cantidad_pacientes,
     pacientesConPlanActivo: row.pacientes_con_plan_activo,
     cumplimientoSemanalPromedio: row.cumplimiento_semanal_promedio,
@@ -73,6 +74,7 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
     const params: Record<string, string | number> = {
       actorRol: actor.rol,
       actorId: actor.idUsuario,
+      hoy: hoyEnColombia(),
     };
 
     if (search.length >= 2) {
@@ -131,7 +133,7 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
           inner join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
           left join registro_ejercicio_plan rep
             on rep.id_ejercicio_plan = ep.id_ejercicio_plan
-            and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
+            and rep.fecha_programada >= date_sub(:hoy, interval 7 day)
           group by pe.id_adulto_mayor
         ) comp_per_patient on comp_per_patient.id_adulto_mayor = ac.id_adulto_mayor
         where ac.estado = 'activa'
@@ -212,10 +214,10 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         inner join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
         left join registro_ejercicio_plan rep
           on rep.id_ejercicio_plan = ep.id_ejercicio_plan
-          and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
+          and rep.fecha_programada >= date_sub(:hoy, interval 7 day)
         where pe.id_adulto_mayor in (:patientIds)
         group by pe.id_adulto_mayor`,
-        { patientIds },
+        { patientIds, hoy: hoyEnColombia() },
       );
       for (const row of compRows) {
         complianceMap[row.id_adulto_mayor] = row.ratio;
@@ -282,10 +284,10 @@ export async function registerCaregiverRoutes(app: FastifyInstance): Promise<voi
         inner join plan_ejercicio pe on pe.id_plan_ejercicio = ep.id_plan_ejercicio
         left join registro_ejercicio_plan rep
           on rep.id_ejercicio_plan = ep.id_ejercicio_plan
-          and rep.fecha_programada >= date_sub(current_date(), interval 7 day)
+          and rep.fecha_programada >= date_sub(:hoy, interval 7 day)
         where pe.id_adulto_mayor in (:patientIds)
         group by pe.id_adulto_mayor`,
-        { patientIds },
+        { patientIds, hoy: hoyEnColombia() },
       );
       for (const row of compRows) {
         complianceMap[row.id_adulto_mayor] = row.ratio;

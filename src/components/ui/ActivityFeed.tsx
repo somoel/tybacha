@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { parseApiDate } from '@/src/lib/dates';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import React from 'react';
@@ -42,7 +43,7 @@ export function ActivityFeed({ items, maxItems = 5 }: ActivityFeedProps) {
                         <Text style={styles.action} numberOfLines={1}>{item.action}</Text>
                     </View>
                     <Text style={styles.time}>
-                        {formatDistanceToNow(new Date(item.date), { addSuffix: true, locale: es })}
+                        {formatDistanceToNow(parseApiDate(item.date), { addSuffix: true, locale: es })}
                     </Text>
                 </View>
             ))}

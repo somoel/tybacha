@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { createAndSendPushNotification } from '../../../../infrastructure/push/notifications.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -43,11 +44,11 @@ function mapNotification(row: NotificationRow) {
     mensaje: row.mensaje,
     canal: row.canal,
     estado: row.estado,
-    enviadaEn: row.enviada_en,
-    recibidaEn: row.recibida_en,
-    leidaEn: row.leida_en,
+    enviadaEn: toUtcIso(row.enviada_en),
+    recibidaEn: toUtcIso(row.recibida_en),
+    leidaEn: toUtcIso(row.leida_en),
     errorEnvio: row.error_envio,
-    creadoEn: row.creado_en,
+    creadoEn: toUtcIso(row.creado_en),
   };
 }
 

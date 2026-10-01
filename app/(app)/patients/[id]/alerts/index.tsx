@@ -3,6 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { fetchApiAlerts, deleteApiAlert } from '@/src/api/alertsApi';
+import { parseApiDate } from '@/src/lib/dates';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AlertsListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
@@ -81,7 +82,7 @@ export default function AlertsScreen() {
                         <Text style={styles.alertMessage}>{item.mensaje}</Text>
                         {item.fechaProgramada && (
                             <Text style={styles.alertDate}>
-                                Programada: {new Date(item.fechaProgramada).toLocaleDateString('es-CO', {
+                                Programada: {parseApiDate(item.fechaProgramada).toLocaleDateString('es-CO', {
                                     day: 'numeric',
                                     month: 'short',
                                     hour: '2-digit',

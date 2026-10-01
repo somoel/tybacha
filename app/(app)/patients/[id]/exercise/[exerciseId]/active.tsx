@@ -9,6 +9,7 @@ import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { borderRadius, spacing } from '@/src/constants/theme';
 import { createApiExerciseRecord, fetchApiExerciseRecords } from '@/src/api/trackingApi';
+import { formatDateOnly } from '@/src/lib/dates';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { useSyncStore } from '@/src/stores/syncStore';
 import type { Exercise } from '@/src/types/exercise.types';
@@ -126,7 +127,7 @@ export default function ActiveExerciseScreen() {
             setExercise(foundExercise);
 
             try {
-                const today = new Date().toISOString().slice(0, 10);
+                const today = formatDateOnly(new Date());
                 const records = await fetchApiExerciseRecords(Number(id), today, today);
                 const existing = records.find((r) => r.idEjercicioPlan === Number(exerciseId)) ?? null;
                 setExistingRecord(existing);
@@ -277,7 +278,7 @@ export default function ActiveExerciseScreen() {
         setSaveMode(mode);
 
         try {
-            const today = new Date().toISOString().slice(0, 10);
+            const today = formatDateOnly(new Date());
             const payload = {
                 idEjercicioPlan: exercise.id_ejercicio_plan!,
                 idAdultoMayor: Number(id),

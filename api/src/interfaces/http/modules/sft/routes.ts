@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { TokenUser } from '../../../../infrastructure/auth/tokens.js';
 import { insertAccessAuditWithPool, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { toMysqlDatetime, toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import {
   renderBatteryXlsx,
   type BatteryReportData,
@@ -319,7 +320,7 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       idAdultoMayor: row.id_adulto_mayor,
       idBateriaSft: row.id_bateria_sft,
       responsable: row.responsable,
-      fechaAplicacion: row.fecha_aplicacion,
+      fechaAplicacion: toUtcIso(row.fecha_aplicacion),
       estado: row.estado,
       observaciones: row.observaciones,
       pesoKg: row.peso_kg,
@@ -356,7 +357,7 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
       idAdultoMayor: first.id_adulto_mayor,
       idBateriaSft: first.id_bateria_sft,
       responsable: first.responsable,
-      fechaAplicacion: first.fecha_aplicacion,
+      fechaAplicacion: toUtcIso(first.fecha_aplicacion),
       estado: first.estado,
       observaciones: first.observaciones,
       pesoKg: first.peso_kg,
@@ -377,15 +378,6 @@ export async function registerSftRoutes(app: FastifyInstance): Promise<void> {
         })),
     };
   });
-
-  // MySQL en modo estricto rechaza ISO con sufijo 'Z'/'T' en datetime(3).
-  function toMysqlDatetime(iso: string): string {
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) {
-      throw badRequest('Campo invalido: fechaAplicacion');
-    }
-    return date.toISOString().replace('T', ' ').replace('Z', '');
-  }
 
   app.post('/older-adults/:id/sft-applications', { preHandler: requireAuth(app) }, async (request) => {
     const actor = request.authUser!;

@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertAccessAuditWithPool, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { diaDeSemanaEnColombia, hoyEnColombia, toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth, requireRoles } from '../../requireAuth.js';
 
@@ -230,7 +231,8 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
     const scope = buildOlderAdultScope(actor);
     const params: Record<string, string | number | number[]> = {
       ...scope.params,
-      diaHoy: WEEKDAY_KEYS[new Date().getDay()],
+      diaHoy: WEEKDAY_KEYS[diaDeSemanaEnColombia()],
+      hoyColombia: hoyEnColombia(),
     };
     if (ids) params.ids = ids;
 
@@ -260,7 +262,7 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
                 where pe.id_adulto_mayor = a.id_adulto_mayor
                   and pe.estado not in ('borrador', 'finalizado', 'cancelado')
                   and ep.activo = 1 and ep.dia_semana = :diaHoy
-                  and rep.fecha_programada = current_date() and rep.estado = 'completado'), 0) as today_completed,
+                  and rep.fecha_programada = :hoyColombia and rep.estado = 'completado'), 0) as today_completed,
               (select max(rep.fecha_realizacion) from registro_ejercicio_plan rep
                 where rep.id_adulto_mayor = a.id_adulto_mayor and rep.estado = 'completado') as last_exercise_date,
               coalesce((select est.porcentaje_cumplimiento from estadistica_progreso est
@@ -282,7 +284,7 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
         todayTotal: row.today_total ?? 0,
         todayCompleted: row.today_completed ?? 0,
         weeklyCompliance: row.weekly_compliance ?? 0,
-        lastExerciseDate: row.last_exercise_date ? row.last_exercise_date.replace(' ', 'T') : null,
+        lastExerciseDate: toUtcIso(row.last_exercise_date),
       })),
     };
   });
@@ -414,11 +416,12 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
           `insert into asignacion_cuidador_adulto_mayor
             (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
            values
-            (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
+            (:idAdultoMayor, :idCuidador, :asignadoPor, :hoy)`,
           {
             idAdultoMayor,
             idCuidador,
             asignadoPor: actor.idUsuario,
+            hoy: hoyEnColombia(),
           },
         );
       }
@@ -728,9 +731,9 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
 
       await connection.query(
         `update asignacion_cuidador_adulto_mayor
-         set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Transferencia de profesional'
+         set estado = 'finalizada', fecha_fin = :hoy, motivo_finalizacion = 'Transferencia de profesional'
          where id_adulto_mayor = :idAdultoMayor and estado = 'activa'`,
-        { idAdultoMayor: params.id },
+        { idAdultoMayor: params.id, hoy: hoyEnColombia() },
       );
 
       await insertChangeAudit(connection, {
@@ -802,9 +805,9 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
       if (currentAssignment[0]) {
         await connection.query(
           `update asignacion_cuidador_adulto_mayor
-           set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Reasignacion'
+           set estado = 'finalizada', fecha_fin = :hoy, motivo_finalizacion = 'Reasignacion'
            where id_asignacion_cuidador_adulto_mayor = :id`,
-          { id: currentAssignment[0].id_asignacion_cuidador_adulto_mayor },
+          { id: currentAssignment[0].id_asignacion_cuidador_adulto_mayor, hoy: hoyEnColombia() },
         );
       }
 
@@ -815,11 +818,12 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
           `insert into asignacion_cuidador_adulto_mayor
             (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
            values
-            (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
+            (:idAdultoMayor, :idCuidador, :asignadoPor, :hoy)`,
           {
             idAdultoMayor: params.id,
             idCuidador: body.idCuidador,
             asignadoPor: actor.idUsuario,
+            hoy: hoyEnColombia(),
           },
         );
       }
@@ -860,9 +864,9 @@ export async function registerOlderAdultRoutes(app: FastifyInstance): Promise<vo
 
       const [result] = await connection.query<ResultSetHeader>(
         `update asignacion_cuidador_adulto_mayor
-         set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Desasignacion'
+         set estado = 'finalizada', fecha_fin = :hoy, motivo_finalizacion = 'Desasignacion'
          where id_adulto_mayor = :idAdultoMayor and estado = 'activa'`,
-        { idAdultoMayor: params.id },
+        { idAdultoMayor: params.id, hoy: hoyEnColombia() },
       );
 
       if (result.affectedRows === 0) {

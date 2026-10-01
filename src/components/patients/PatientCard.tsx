@@ -4,6 +4,7 @@ import { StatusBadge } from '@/src/components/ui/StatusBadge';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import type { Patient } from '@/src/types/patient.types';
 import type { WeeklyExerciseData } from '@/src/services/batteryService';
+import { parseApiDate } from '@/src/lib/dates';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { differenceInYears, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -61,7 +62,7 @@ export function PatientCard({
 }: PatientCardProps) {
     const theme = useTheme();
     const photoThumbnails = usePatientsStore((s) => s.photoThumbnails);
-    const age = differenceInYears(new Date(), new Date(patient.birth_date));
+    const age = differenceInYears(new Date(), parseApiDate(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
         .filter(Boolean)
         .join(' ');
@@ -135,7 +136,7 @@ export function PatientCard({
                         <View style={styles.detailRow}>
                             <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.onSurfaceVariant} />
                             <Text style={styles.detail}>
-                                Último ejercicio: {formatDistanceToNow(new Date(lastExercise), { addSuffix: true, locale: es })}
+                                Último ejercicio: {formatDistanceToNow(parseApiDate(lastExercise), { addSuffix: true, locale: es })}
                             </Text>
                         </View>
                     )}

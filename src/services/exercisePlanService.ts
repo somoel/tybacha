@@ -8,6 +8,7 @@ import {
 } from '@/src/api/exercisePlansApi';
 import { createApiExerciseRecord } from '@/src/api/trackingApi';
 import { enqueueOfflineOperation } from '@/src/lib/offlineQueue';
+import { formatDateOnly } from '@/src/lib/dates';
 import type { ApiExerciseRecordStatus } from '@/src/types/apiTracking.types';
 import type { ApiCreateExercisePlanInput, ApiExercisePlan, ApiExercisePlanSummary, ApiPlanStatus } from '@/src/types/apiExercisePlan.types';
 import type { SFTResult } from '@/src/types/battery.types';
@@ -124,7 +125,7 @@ export async function logExerciseCompletion(
         throw new Error('Ejercicio no encontrado en el plan.');
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = formatDateOnly(new Date());
     const estado: ApiExerciseRecordStatus = input.completed ? 'completado' : 'omitido';
     const payload = {
         idEjercicioPlan: exercise.idEjercicioPlan,

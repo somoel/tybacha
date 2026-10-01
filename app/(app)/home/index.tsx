@@ -4,6 +4,7 @@ import { HomeSkeleton } from '@/src/components/ui/HomeSkeleton';
 import { ActivityFeed } from '@/src/components/ui/ActivityFeed';
 import type { ActivityItem } from '@/src/components/ui/ActivityFeed';
 import { usePermissions } from '@/src/hooks/usePermissions';
+import { parseApiDate } from '@/src/lib/dates';
 import { useNotificationStore } from '@/src/stores/notificationStore';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -62,7 +63,7 @@ export default function HomeScreen() {
                 });
             }
         }
-        activity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        activity.sort((a, b) => parseApiDate(b.date).getTime() - parseApiDate(a.date).getTime());
         setRecentActivity(activity);
     }, [patients, exerciseData]);
 

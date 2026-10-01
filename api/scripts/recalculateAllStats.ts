@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
+import { hoyEnColombia } from '../src/infrastructure/db/datetime.js';
 
 const pool = mysql.createPool({
   host: process.env.TIDB_HOST,
@@ -62,8 +63,8 @@ async function recalculateWeeklyStats(
      left join registro_ejercicio_plan rep
        on rep.fecha_programada = s.expected_date
       and rep.id_adulto_mayor = :idAdultoMayor
-     where s.expected_date <= current_date`,
-    { idAdultoMayor },
+     where s.expected_date <= :hoy`,
+    { idAdultoMayor, hoy: hoyEnColombia() },
   );
 
   const stats = rows[0] ?? {
@@ -148,16 +149,16 @@ async function main() {
       }
 
       // Generate all weeks between min and max fecha
-      const minDate = new Date(week.min_fecha);
-      const maxDate = new Date(week.max_fecha);
+      const minDate = new Date(`${week.min_fecha}T00:00:00Z`);
+      const maxDate = new Date(`${week.max_fecha}T00:00:00Z`);
       const current = new Date(minDate);
       // Go back to Monday of the min week
-      current.setDate(current.getDate() - current.getDay() + 1);
+      current.setUTCDate(current.getUTCDate() - current.getUTCDay() + 1);
 
       while (current <= maxDate) {
         const weekStart = new Date(current);
         const weekEnd = new Date(current);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+        weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
         const fecha = weekStart.toISOString().slice(0, 10);
 
         // Get current stats for comparison
@@ -222,8 +223,8 @@ async function main() {
              left join registro_ejercicio_plan rep
                on rep.fecha_programada = s.expected_date
               and rep.id_adulto_mayor = :idAdultoMayor
-             where s.expected_date <= current_date`,
-            { idAdultoMayor, weekStart: fecha },
+             where s.expected_date <= :hoy`,
+            { idAdultoMayor, weekStart: fecha, hoy: hoyEnColombia() },
           );
 
           const simStats = simRows[0];
@@ -242,7 +243,7 @@ async function main() {
         }
 
         // Move to next week
-        current.setDate(current.getDate() + 7);
+        current.setUTCDate(current.getUTCDate() + 7);
       }
     }
 

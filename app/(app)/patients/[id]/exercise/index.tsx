@@ -3,6 +3,7 @@ import { ExerciseDayGroup } from '@/src/components/exercises/ExerciseDayGroup';
 import { WeeklyProgressCard } from '@/src/components/exercises/WeeklyProgressCard';
 import { ExerciseSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchApiExerciseRecords } from '@/src/api/trackingApi';
+import { formatDateOnly } from '@/src/lib/dates';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import type { Exercise, ExercisePlan } from '@/src/types/exercise.types';
@@ -30,8 +31,8 @@ function getWeekRange(): { from: string; to: string } {
     const friday = new Date(monday);
     friday.setDate(monday.getDate() + 4);
     return {
-        from: monday.toISOString().slice(0, 10),
-        to: friday.toISOString().slice(0, 10),
+        from: formatDateOnly(monday),
+        to: formatDateOnly(friday),
     };
 }
 

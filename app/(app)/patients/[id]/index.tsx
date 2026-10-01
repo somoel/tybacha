@@ -8,6 +8,7 @@ import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { listPendingOfflineOperations } from '@/src/lib/offlineQueue';
+import { parseApiDate } from '@/src/lib/dates';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
 import { fetchBatteries } from '@/src/services/batteryService';
 import { fetchExercisePlans, generateExercisePlan } from '@/src/services/exercisePlanService';
@@ -185,7 +186,7 @@ export default function PatientDetailScreen() {
     if (isLoading) return <PatientDetailSkeleton />;
     if (!patient) return <PatientDetailSkeleton />;
 
-    const age = differenceInYears(new Date(), new Date(patient.birth_date));
+    const age = differenceInYears(new Date(), parseApiDate(patient.birth_date));
     const fullName = [patient.first_name, patient.second_name, patient.first_lastname, patient.second_lastname]
         .filter(Boolean).join(' ');
     const genderLabel = patient.gender === 'male' ? 'Masculino' : 'Femenino';
@@ -251,7 +252,7 @@ export default function PatientDetailScreen() {
                             <Text style={styles.fullName}>{fullName}</Text>
                             <Text style={styles.detailText}>{genderLabel} · {age} años</Text>
                             <Text style={styles.detailText}>
-                                Nacimiento: {format(new Date(patient.birth_date), 'dd MMM yyyy', { locale: es })}
+                                Nacimiento: {format(parseApiDate(patient.birth_date), 'dd MMM yyyy', { locale: es })}
                             </Text>
                         </View>
                     </View>
@@ -555,7 +556,7 @@ export default function PatientDetailScreen() {
                             <Text style={styles.fullName}>{fullName}</Text>
                             <Text style={styles.detailText}>{genderLabel} · {age} años</Text>
                             <Text style={styles.detailText}>
-                                Nacimiento: {format(new Date(patient.birth_date), 'dd MMM yyyy', { locale: es })}
+                                Nacimiento: {format(parseApiDate(patient.birth_date), 'dd MMM yyyy', { locale: es })}
                             </Text>
                         </View>
                     </View>
@@ -808,7 +809,7 @@ export default function PatientDetailScreen() {
                                 <MaterialCommunityIcons name="clipboard-check" size={22} color={theme.colors.primary} />
                                 <View style={styles.infoRowContent}>
                                     <Text style={styles.infoRowTitle}>
-                                        {format(new Date(battery.performed_at), 'dd MMM yyyy, HH:mm', { locale: es })}
+                                        {format(parseApiDate(battery.performed_at), 'dd MMM yyyy, HH:mm', { locale: es })}
                                     </Text>
                                     {battery.notes && <Text style={styles.infoRowEmpty}>{battery.notes}</Text>}
                                 </View>

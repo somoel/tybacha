@@ -10,6 +10,7 @@ import {
     updatePatient,
 } from '@/src/services/patientService';
 import { create } from 'zustand';
+import { parseApiDate } from '@/src/lib/dates';
 
 /** Cadena de cada recurso del panel (lista, resumen, miniaturas). */
 const DASHBOARD_TTL_MS = 60_000;
@@ -231,7 +232,7 @@ export const usePatientsStore = create<PatientsState>()((set, get) => ({
                 second_name: patientData.second_name ?? current.second_name,
                 first_lastname: patientData.first_lastname ?? current.first_lastname,
                 second_lastname: patientData.second_lastname ?? current.second_lastname,
-                birth_date: patientData.birth_date ?? new Date(current.birth_date),
+                birth_date: patientData.birth_date ?? parseApiDate(current.birth_date),
                 gender: patientData.gender ?? current.gender,
                 id_cuidador: patientData.id_cuidador ?? current.id_cuidador,
             });

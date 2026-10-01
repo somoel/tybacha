@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { hoyEnColombia, toMysqlDatetime } from '../../../../infrastructure/db/datetime.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 import { getActiveSftBatteryId, ORDER_TO_TEST_TYPE } from '../sft/routes.js';
@@ -95,14 +96,6 @@ function optionalNumber(payload: Record<string, unknown>, key: string): number |
   return number;
 }
 
-function toMysqlDatetime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) {
-    throw badRequest('Campo invalido: fechaAplicacion');
-  }
-  return date.toISOString().replace('T', ' ').replace('Z', '');
-}
-
 async function applyOlderAdultCreate(
   connection: Awaited<ReturnType<typeof pool.getConnection>>,
   operation: SyncOperation,
@@ -160,8 +153,8 @@ async function applyOlderAdultCreate(
       `insert into asignacion_cuidador_adulto_mayor
         (id_adulto_mayor, id_cuidador, asignado_por, fecha_inicio)
        values
-        (:idAdultoMayor, :idCuidador, :asignadoPor, current_date())`,
-      { idAdultoMayor, idCuidador, asignadoPor: actor.idUsuario },
+        (:idAdultoMayor, :idCuidador, :asignadoPor, :hoy)`,
+      { idAdultoMayor, idCuidador, asignadoPor: actor.idUsuario, hoy: hoyEnColombia() },
     );
   }
 
@@ -496,7 +489,7 @@ export async function registerSyncRoutes(app: FastifyInstance): Promise<void> {
             accion: operation.accion,
             idRemoto,
             detalle: JSON.stringify(detail),
-            creadoEnLocal: operation.creadoEnLocal,
+            creadoEnLocal: toMysqlDatetime(operation.creadoEnLocal),
           },
         );
 
@@ -528,7 +521,7 @@ export async function registerSyncRoutes(app: FastifyInstance): Promise<void> {
             entidad: operation.entidad,
             accion: operation.accion,
             detalle: JSON.stringify(detail),
-            creadoEnLocal: operation.creadoEnLocal,
+            creadoEnLocal: toMysqlDatetime(operation.creadoEnLocal),
           },
         );
 

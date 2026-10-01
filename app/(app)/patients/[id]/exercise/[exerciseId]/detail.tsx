@@ -1,5 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { fetchApiExerciseRecords } from '@/src/api/trackingApi';
+import { formatDateOnly, parseApiDate } from '@/src/lib/dates';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import type { Exercise } from '@/src/types/exercise.types';
 import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
@@ -47,8 +48,8 @@ export default function ExerciseDetailScreen() {
                     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
                     const monday = new Date(now);
                     monday.setDate(now.getDate() + mondayOffset);
-                    const weekFrom = monday.toISOString().slice(0, 10);
-                    const weekTo = now.toISOString().slice(0, 10);
+                    const weekFrom = formatDateOnly(monday);
+                    const weekTo = formatDateOnly(now);
                     const records = await fetchApiExerciseRecords(Number(id), weekFrom, weekTo);
                     if (!isActive) return;
                     const existing = records.find(
@@ -200,7 +201,7 @@ export default function ExerciseDetailScreen() {
                                 <MaterialCommunityIcons name="calendar" size={18} color="#6b7280" />
                                 <Text style={styles.resultLabel}>Fecha de realización</Text>
                                 <Text style={[styles.resultValue, { color: '#6b7280' }]}>
-                                    {new Date(record.fechaRealizacion).toLocaleDateString('es-ES', {
+                                    {parseApiDate(record.fechaRealizacion).toLocaleDateString('es-ES', {
                                         day: 'numeric',
                                         month: 'short',
                                         year: 'numeric',

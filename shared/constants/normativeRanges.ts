@@ -215,7 +215,8 @@ export function getNormativeRange(
 
 /** Calculate the 5-year age band string from a birth date. Returns null if outside 60-94. */
 export function calculateAgeBand(birthDate: string): AgeBand | null {
-    const birth = new Date(birthDate);
+    const [year, month, day] = birthDate.slice(0, 10).split('-').map(Number);
+    const birth = new Date(year, month - 1, day);
     if (isNaN(birth.getTime())) return null;
 
     const now = Date.now();

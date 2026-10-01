@@ -1,5 +1,6 @@
 import type { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { pool } from '../db/pool.js';
+import { ahoraEnColombia, hoyEnColombia } from '../db/datetime.js';
 import { sendPushToUser } from '../push/expoPush.js';
 
 interface PendingAlertRow extends RowDataPacket {
@@ -161,7 +162,7 @@ export async function processPendingAlerts(): Promise<{ processed: number; error
 export async function processExerciseReminders(): Promise<{ sent: number }> {
   let sent = 0;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyEnColombia();
 
   const [patientsWithPlans] = await pool.query<PlanPatientRow[]>(
     `select am.id_adulto_mayor, am.id_profesional_responsable,
@@ -173,7 +174,7 @@ export async function processExerciseReminders(): Promise<{ sent: number }> {
          select 1 from notificacion n
          where n.id_adulto_mayor = am.id_adulto_mayor
            and n.tipo_notificacion = 'recordatorio_ejercicio'
-           and date(n.creado_en) = :today
+           and date(n.creado_en - interval 5 hour) = :today
        )
      limit 100`,
     { today },
@@ -221,13 +222,11 @@ export async function processProgressAlerts(): Promise<{ alerts: number }> {
      limit 100`,
   );
 
-  const today = new Date();
-  const twoDaysAgo = new Date(today);
-  twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+  const today = ahoraEnColombia();
+  const twoDaysAgo = new Date(today.getTime() - 2 * 86400000);
   const twoDaysAgoStr = twoDaysAgo.toISOString().slice(0, 10);
 
-  const weekStart = new Date(today);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const weekStart = new Date(today.getTime() - today.getUTCDay() * 86400000);
   const weekStartStr = weekStart.toISOString().slice(0, 10);
   const weekEndStr = today.toISOString().slice(0, 10);
 
@@ -241,7 +240,7 @@ export async function processProgressAlerts(): Promise<{ alerts: number }> {
                 THEN (sum(case when estado = 'completado' then 1 else 0 end) / count(*)) * 100
                 ELSE 100
               END as porcentaje,
-              DATEDIFF(:today, COALESCE(max(fecha_realizacion), :twoDaysAgo)) as dias_sin_ejercicio
+              DATEDIFF(:today, COALESCE(date(max(fecha_realizacion) - interval 5 hour), :twoDaysAgo)) as dias_sin_ejercicio
        from registro_ejercicio_plan
        where id_adulto_mayor = :idAdultoMayor
          and fecha_programada between :weekStart and :weekEnd`,
@@ -261,7 +260,7 @@ export async function processProgressAlerts(): Promise<{ alerts: number }> {
       `select 1 as exists_flag from notificacion
        where id_adulto_mayor = :idAdultoMayor
          and tipo_notificacion = 'progreso'
-         and date(creado_en) = :today
+         and date(creado_en - interval 5 hour) = :today
        limit 1`,
       { idAdultoMayor: patient.id_adulto_mayor, today: weekEndStr },
     );

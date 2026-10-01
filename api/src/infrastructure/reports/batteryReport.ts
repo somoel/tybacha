@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { formatFechaColombia } from '../db/datetime.js';
 
 const TEAL = 'FF006D77';
 const TEAL_LIGHT = 'FFE0F2F1';
@@ -46,17 +47,6 @@ function formatDate(raw: string): string {
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const yyyy = d.getUTCFullYear();
   return `${dd}/${mm}/${yyyy}`;
-}
-
-function formatDateTime(raw: string): string {
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return raw;
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = d.getUTCFullYear();
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const mi = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
 }
 
 function perfColor(porcentaje: number): string {
@@ -169,7 +159,7 @@ export async function renderBatteryXlsx(data: BatteryReportData): Promise<Buffer
   sectionHeader(summary, r, 'Datos de la evaluación', 2);
   r++;
   const batteryFields: [string, string | number | null][] = [
-    ['Fecha de aplicación', formatDateTime(data.bateria.fechaAplicacion)],
+    ['Fecha de aplicación', formatFechaColombia(data.bateria.fechaAplicacion, true)],
     ['Estado', estadoLabel],
     ['Peso (kg)', data.bateria.pesoKg ?? '—'],
     ['Estatura (cm)', data.bateria.estaturaCm ?? '—'],

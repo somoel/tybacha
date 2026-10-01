@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { hoyEnColombia, toMysqlDatetime, toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { sendPushToUser } from '../../../../infrastructure/push/expoPush.js';
 import { createAndSendPushNotification } from '../../../../infrastructure/push/notifications.js';
 import { forbidden, notFound } from '../../httpErrors.js';
@@ -161,16 +162,6 @@ async function upsertDailyActivity(
   );
 
   return insertResult.insertId;
-}
-
-// ponytail: MySQL DATETIME has no timezone marker, and the driver returns it
-// as a naive string (dateStrings: true). Treat it as UTC (the MySQL session
-// timezone on TiDB/Vercel) and emit a proper ISO string so clients can parse
-// it with `new Date(...)` without shifting to the device's local timezone.
-function toUtcIso(value: string | null): string | null {
-  if (!value) return null;
-  if (value.endsWith('Z') || /[+-]\d{2}:?\d{2}$/.test(value)) return value;
-  return `${value.replace(' ', 'T')}Z`;
 }
 
 function mapExerciseRecord(row: ExerciseRecordRow) {
@@ -360,8 +351,8 @@ export async function recalculateWeeklyStats(connection: Awaited<ReturnType<type
      left join registro_ejercicio_plan rep
        on rep.fecha_programada = s.expected_date
       and rep.id_adulto_mayor = :idAdultoMayor
-     where s.expected_date <= current_date`,
-    { idAdultoMayor: input.idAdultoMayor },
+     where s.expected_date <= :hoy`,
+    { idAdultoMayor: input.idAdultoMayor, hoy: hoyEnColombia() },
   );
 
   const stats = rows[0] ?? {
@@ -490,7 +481,7 @@ export async function registerTrackingRoutes(app: FastifyInstance): Promise<void
           idAdultoMayor: body.idAdultoMayor,
           idRegistroActividadDiaria,
           fechaProgramada: body.fechaProgramada,
-          fechaRealizacion: body.fechaRealizacion ?? new Date().toISOString(),
+          fechaRealizacion: toMysqlDatetime(body.fechaRealizacion ?? new Date().toISOString()),
           estado: body.estado,
           duracionRealSegundos: body.duracionRealSegundos ?? null,
           repeticionesRealizadas: body.repeticionesRealizadas ?? null,
@@ -622,6 +613,6 @@ export async function registerTrackingRoutes(app: FastifyInstance): Promise<void
       { idAdultoMayor: params.id },
     );
 
-    return rows;
+    return rows.map((row) => ({ ...row, calculado_en: toUtcIso(row.calculado_en) }));
   });
 }

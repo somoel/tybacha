@@ -6,6 +6,7 @@ import { MonthlyCalendar, type DayState } from '@/src/components/exercises/Month
 import { AppCard } from '@/src/components/ui/AppCard';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { fetchApiExerciseRecords, fetchApiProgressStats } from '@/src/api/trackingApi';
+import { parseApiDate } from '@/src/lib/dates';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
 import { fetchPatientById } from '@/src/services/patientService';
 import type { ExercisePlan } from '@/src/types/exercise.types';
@@ -300,7 +301,7 @@ export default function ProgressScreen() {
                     <MaterialCommunityIcons name="calendar-week" size={16} color={theme.colors.primary} />
                     <Text style={styles.summaryDate}>
                         {isShowingCurrentWeek ? 'Esta semana · ' : 'Semana del '}
-                        {format(new Date(weekRange.from), 'dd MMM', { locale: es })} – {format(new Date(weekRange.to), 'dd MMM yyyy', { locale: es })}
+                        {format(parseApiDate(weekRange.from), 'dd MMM', { locale: es })} – {format(parseApiDate(weekRange.to), 'dd MMM yyyy', { locale: es })}
                     </Text>
                 </View>
 

@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertAccessAudit, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -111,8 +112,8 @@ function mapPathology(row: PathologyRow) {
     estado: row.estado,
     registradoPor: row.registrado_por,
     registradoPorNombre: row.registrado_por_nombre,
-    creadoEn: row.creado_en,
-    actualizadoEn: row.actualizado_en,
+    creadoEn: toUtcIso(row.creado_en),
+    actualizadoEn: toUtcIso(row.actualizado_en),
   };
 }
 
@@ -130,8 +131,8 @@ function mapMedication(row: MedicationRow) {
     observaciones: row.observaciones,
     registradoPor: row.registrado_por,
     registradoPorNombre: row.registrado_por_nombre,
-    creadoEn: row.creado_en,
-    actualizadoEn: row.actualizado_en,
+    creadoEn: toUtcIso(row.creado_en),
+    actualizadoEn: toUtcIso(row.actualizado_en),
   };
 }
 
@@ -143,7 +144,7 @@ function mapMedicalNote(row: MedicalNoteRow) {
     contenido: row.contenido,
     registradoPor: row.registrado_por,
     registradoPorNombre: row.registrado_por_nombre,
-    creadoEn: row.creado_en,
+    creadoEn: toUtcIso(row.creado_en),
   };
 }
 

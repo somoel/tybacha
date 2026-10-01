@@ -5,6 +5,7 @@ import { AppInput } from '@/src/components/ui/AppInput';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
 import { deletePatient, deletePatientPhoto, fetchPatientById, updatePatient, uploadPatientPhoto } from '@/src/services/patientService';
+import { parseApiDate } from '@/src/lib/dates';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import type { Patient } from '@/src/types/patient.types';
@@ -58,7 +59,7 @@ export default function EditPatientScreen() {
             const p = await fetchPatientById(id);
             if (p) {
                 setPatient(p);
-                setBirthDate(new Date(p.birth_date));
+                setBirthDate(parseApiDate(p.birth_date));
                 setCurrentPhotoData(p.photo_data ?? null);
                 reset({
                     first_name: p.first_name,

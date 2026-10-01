@@ -2,6 +2,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import type { ExercisePlan } from '@/src/types/exercise.types';
 import { fetchExercisePlans } from '@/src/services/exercisePlanService';
+import { parseApiDate } from '@/src/lib/dates';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -90,7 +91,7 @@ export default function PlanDetailScreen() {
                             <View style={styles.headerText}>
                                 <Text style={styles.planTitle}>{plan.titulo}</Text>
                                 <Text style={styles.planDate}>
-                                    {format(new Date(plan.generated_at), "dd MMM yyyy", { locale: es })}
+                                    {format(parseApiDate(plan.generated_at), "dd MMM yyyy", { locale: es })}
                                 </Text>
                             </View>
                         </View>

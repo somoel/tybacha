@@ -1,4 +1,5 @@
 import { AppCard } from '@/src/components/ui/AppCard';
+import { parseApiDate } from '@/src/lib/dates';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, isToday, isYesterday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -15,7 +16,7 @@ interface ExerciseHistoryItemProps {
 }
 
 export function ExerciseHistoryItem({ exerciseName, completedAt, status, reps, duration }: ExerciseHistoryItemProps) {
-    const date = new Date(completedAt);
+    const date = parseApiDate(completedAt);
 
     let dateLabel: string;
     if (isToday(date)) {

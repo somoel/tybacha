@@ -5,6 +5,7 @@ import { canCreateRole, type UserRole } from '../../../../domain/roles.js';
 import { hashPassword, verifyPassword } from '../../../../infrastructure/auth/passwords.js';
 import { createAccessToken, createRefreshToken, hashToken } from '../../../../infrastructure/auth/tokens.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { hoyEnColombia } from '../../../../infrastructure/db/datetime.js';
 import { badRequest, forbidden, notFound, unauthorized } from '../../httpErrors.js';
 import { requireAuth, requireRoles } from '../../requireAuth.js';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
@@ -432,16 +433,16 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
       if (toRemove.length > 0) {
         await connection.query(
           `update profesional_cuidador
-           set estado = 'finalizada', fecha_fin = current_date(), motivo_finalizacion = 'Actualización administrativa', id_cuidador_activo = null
-           where id_profesional = :id and id_cuidador in (:toRemove) and estado = 'activa'`, { id, toRemove },
+           set estado = 'finalizada', fecha_fin = :hoy, motivo_finalizacion = 'Actualización administrativa', id_cuidador_activo = null
+           where id_profesional = :id and id_cuidador in (:toRemove) and estado = 'activa'`, { id, toRemove, hoy: hoyEnColombia() },
         );
       }
       for (const caregiverId of toAdd) {
         await connection.query(
           `insert into profesional_cuidador
              (id_profesional, id_cuidador, asignado_por, estado, fecha_inicio, id_cuidador_activo)
-           values (:id, :caregiverId, :assignedBy, 'activa', current_date(), :caregiverId)`,
-          { id, caregiverId, assignedBy: request.authUser!.idUsuario },
+           values (:id, :caregiverId, :assignedBy, 'activa', :hoy, :caregiverId)`,
+          { id, caregiverId, assignedBy: request.authUser!.idUsuario, hoy: hoyEnColombia() },
         );
       }
       await insertChangeAudit(connection, {
@@ -521,11 +522,12 @@ export async function registerUserRoutes(app: FastifyInstance): Promise<void> {
           `insert into profesional_cuidador
             (id_profesional, id_cuidador, asignado_por, estado, fecha_inicio, id_cuidador_activo)
            values
-            (:idProfesional, :idCuidador, :asignadoPor, 'activa', current_date(), :idCuidador)`,
+            (:idProfesional, :idCuidador, :asignadoPor, 'activa', :hoy, :idCuidador)`,
           {
             idProfesional: actor.idUsuario,
             idCuidador: idUsuario,
             asignadoPor: actor.idUsuario,
+            hoy: hoyEnColombia(),
           },
         );
       }

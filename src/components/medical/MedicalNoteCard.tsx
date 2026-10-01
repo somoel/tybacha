@@ -1,4 +1,5 @@
 import { AppCard } from '@/src/components/ui/AppCard';
+import { parseApiDate } from '@/src/lib/dates';
 import type { MedicalNoteType } from '@/src/types/medicalHistory.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
@@ -38,7 +39,7 @@ export function MedicalNoteCard({ tipoNota, contenido, creadoEn, registradoPorNo
           <Text style={[styles.typeLabel, { color: config.color }]}>{config.label}</Text>
         </View>
         <Text style={styles.date}>
-          {format(new Date(creadoEn), 'dd MMM yyyy', { locale: es })}
+          {format(parseApiDate(creadoEn), 'dd MMM yyyy', { locale: es })}
         </Text>
         {canEdit && (
           <Menu

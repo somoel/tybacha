@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { generateWithOpenRouter } from '../../../../infrastructure/ai/openrouter.js';
 import { insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { badRequest, forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -328,7 +329,7 @@ async function fetchPlanWithExercises(idPlanEjercicio: number) {
         ? JSON.parse(plan.datos_personalizacion)
         : plan.datos_personalizacion
       : null,
-    creadoEn: plan.creado_en,
+    creadoEn: toUtcIso(plan.creado_en),
     ejercicios: exerciseRows.map((exercise) => ({
       idEjercicioPlan: exercise.id_ejercicio_plan,
       idPlanEjercicio: exercise.id_plan_ejercicio,
@@ -371,7 +372,7 @@ export async function registerExercisePlanRoutes(app: FastifyInstance): Promise<
       nivelDificultad: plan.nivel_dificultad,
       fechaInicio: plan.fecha_inicio,
       fechaFin: plan.fecha_fin,
-      creadoEn: plan.creado_en,
+      creadoEn: toUtcIso(plan.creado_en),
     }));
   });
 

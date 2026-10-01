@@ -1,5 +1,6 @@
 import { AppCard } from '@/src/components/ui/AppCard';
 import type { ApiExerciseRecord } from '@/src/types/apiTracking.types';
+import { parseApiDate } from '@/src/lib/dates';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -154,7 +155,7 @@ export function MetricDetailCard({ records }: MetricDetailCardProps) {
                                     textAnchor="middle"
                                     fontFamily="Montserrat_500Medium"
                                 >
-                                    {format(new Date(d.date), 'dd MMM', { locale: es })}
+                                    {format(parseApiDate(d.date), 'dd MMM', { locale: es })}
                                 </SvgText>
                             );
                         })}

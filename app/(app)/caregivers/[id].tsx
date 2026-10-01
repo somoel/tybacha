@@ -3,6 +3,7 @@ import { CaregiverStats } from '@/src/components/caregivers/CaregiverStats';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { showSnackbar } from '@/src/stores/snackbarStore';
+import { parseApiDate } from '@/src/lib/dates';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { fetchApiPatientsSummary } from '@/src/api/olderAdultsApi';
 import { fetchPatientThumbnails } from '@/src/services/patientService';
@@ -143,7 +144,7 @@ export default function CaregiverDetailScreen() {
                                 <View style={styles.detailRow}>
                                     <MaterialCommunityIcons name="calendar-plus" size={18} color="#6b7280" />
                                     <Text style={styles.detailValue}>
-                                        Creado: {format(new Date(caregiver.creadoEn), 'dd MMM yyyy', { locale: es })}
+                                        Creado: {format(parseApiDate(caregiver.creadoEn), 'dd MMM yyyy', { locale: es })}
                                     </Text>
                                 </View>
                             )}
@@ -151,7 +152,7 @@ export default function CaregiverDetailScreen() {
                                 <View style={styles.detailRow}>
                                     <MaterialCommunityIcons name="clock-outline" size={18} color="#6b7280" />
                                     <Text style={styles.detailValue}>
-                                        Último acceso: {format(new Date(caregiver.ultimoAccesoEn), 'dd MMM yyyy', { locale: es })}
+                                        Último acceso: {format(parseApiDate(caregiver.ultimoAccesoEn), 'dd MMM yyyy', { locale: es })}
                                     </Text>
                                 </View>
                             )}

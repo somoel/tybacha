@@ -1,6 +1,7 @@
 import { AppCard } from '@/src/components/ui/AppCard';
 import { BatteryListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { listPendingOfflineOperations, type OfflineOperation } from '@/src/lib/offlineQueue';
+import { parseApiDate } from '@/src/lib/dates';
 import { fetchBatteries } from '@/src/services/batteryService';
 import type { SFTBattery } from '@/src/types/battery.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -76,7 +77,7 @@ export default function BatteriesListScreen() {
                 .filter((operation) => isPendingBatteryForPatient(operation, id))
                 .map((operation) => toLocalPendingItem(operation, id))
                 .sort((left, right) =>
-                    new Date(right.performed_at).getTime() - new Date(left.performed_at).getTime(),
+                    parseApiDate(right.performed_at).getTime() - parseApiDate(left.performed_at).getTime(),
                 );
 
             setBatteries([...localPending, ...remote]);
@@ -108,7 +109,7 @@ export default function BatteriesListScreen() {
                                     <MaterialCommunityIcons name="clipboard-clock" size={28} color={theme.colors.primary} />
                                     <View style={styles.info}>
                                         <Text style={styles.date}>
-                                            {format(new Date(item.performed_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
+                                            {format(parseApiDate(item.performed_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
                                         </Text>
                                         {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
                                         <View style={styles.syncBadge}>
@@ -125,7 +126,7 @@ export default function BatteriesListScreen() {
                                     <MaterialCommunityIcons name="clipboard-check" size={28} color={theme.colors.primary} />
                                     <View style={styles.info}>
                                         <Text style={styles.date}>
-                                            {format(new Date(item.performed_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
+                                            {format(parseApiDate(item.performed_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
                                         </Text>
                                         {item.notes && <Text style={styles.notes}>{item.notes}</Text>}
                                         {!item.is_synced && (

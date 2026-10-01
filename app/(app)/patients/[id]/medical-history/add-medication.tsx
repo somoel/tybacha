@@ -11,6 +11,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { OptionSelector } from '@/src/components/ui/OptionSelector';
+import { formatDateOnly, parseApiDate } from '@/src/lib/dates';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -58,8 +59,8 @@ export default function AddMedicationScreen() {
         estado: existingItem.estado,
         observaciones: existingItem.observaciones ?? '',
       });
-      if (existingItem.fechaInicio) setStartDate(new Date(existingItem.fechaInicio));
-      if (existingItem.fechaFin) setEndDate(new Date(existingItem.fechaFin));
+      if (existingItem.fechaInicio) setStartDate(parseApiDate(existingItem.fechaInicio));
+      if (existingItem.fechaFin) setEndDate(parseApiDate(existingItem.fechaFin));
       navigation.setOptions({ title: 'Editar medicamento' });
     } else {
       navigation.setOptions({ title: 'Agregar medicamento' });
@@ -72,8 +73,8 @@ export default function AddMedicationScreen() {
     try {
       const formData: MedicationFormData = {
         ...data,
-        fechaInicio: startDate ? startDate.toISOString().slice(0, 10) : undefined,
-        fechaFin: endDate ? endDate.toISOString().slice(0, 10) : undefined,
+        fechaInicio: startDate ? formatDateOnly(startDate) : undefined,
+        fechaFin: endDate ? formatDateOnly(endDate) : undefined,
       };
       if (isEditing && medicationId) {
         const ok = await updateMedication(Number(id), Number(medicationId), formData);

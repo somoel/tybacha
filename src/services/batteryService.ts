@@ -6,6 +6,7 @@ import {
     fetchSftBatteryTests,
 } from '@/src/api/sftApi';
 import { SFT_TESTS } from '@/src/constants/sftTests';
+import { parseApiDate } from '@/src/lib/dates';
 import type { BatteryWithResults, SFTBattery, SFTResult, SFTTestType } from '@/src/types/battery.types';
 
 const TEST_TYPE_BY_ORDER: Record<number, SFTTestType> = {
@@ -169,7 +170,7 @@ export async function fetchBatteries(patientId: string): Promise<SFTBattery[]> {
 
     return applications
         .filter((application) => application.estado === 'finalizada')
-        .sort((left, right) => new Date(right.fechaAplicacion).getTime() - new Date(left.fechaAplicacion).getTime())
+        .sort((left, right) => parseApiDate(right.fechaAplicacion).getTime() - parseApiDate(left.fechaAplicacion).getTime())
         .map((application) => ({
             id: String(application.idAplicacionSft),
             patient_id: String(application.idAdultoMayor),

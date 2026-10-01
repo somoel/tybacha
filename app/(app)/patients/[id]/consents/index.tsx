@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { fetchApiConsents, fetchApiConsentStatus, revokeApiConsent } from '@/src/api/consentsApi';
+import { parseApiDate } from '@/src/lib/dates';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { ConsentsListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
@@ -154,13 +155,13 @@ export default function ConsentsScreen() {
 
                             {item.fechaOtorgamiento && (
                                 <Text style={styles.consentDate}>
-                                    Otorgado: {format(new Date(item.fechaOtorgamiento), 'dd MMM yyyy', { locale: es })}
+                                    Otorgado: {format(parseApiDate(item.fechaOtorgamiento), 'dd MMM yyyy', { locale: es })}
                                 </Text>
                             )}
 
                             {item.fechaVencimiento && (
                                 <Text style={styles.consentDate}>
-                                    Vence: {format(new Date(item.fechaVencimiento), 'dd MMM yyyy', { locale: es })}
+                                    Vence: {format(parseApiDate(item.fechaVencimiento), 'dd MMM yyyy', { locale: es })}
                                 </Text>
                             )}
 

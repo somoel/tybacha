@@ -12,6 +12,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { showSnackbar } from '@/src/stores/snackbarStore';
 import { DateField } from '@/src/components/ui/DateField';
+import { formatDateOnly } from '@/src/lib/dates';
 import type { ApiConsentType } from '@/src/types/apiConsent.types';
 
 const consentSchema = z.object({
@@ -56,8 +57,8 @@ export default function NewConsentScreen() {
                 tipoConsentimiento,
                 otorgadoPorNombre: data.otorgadoPorNombre,
                 otorgadoPorDocumento: data.otorgadoPorDocumento || undefined,
-                fechaOtorgamiento: fechaOtorgamiento.toISOString().slice(0, 10),
-                fechaVencimiento: fechaVencimiento?.toISOString().slice(0, 10),
+                fechaOtorgamiento: formatDateOnly(fechaOtorgamiento),
+                fechaVencimiento: fechaVencimiento ? formatDateOnly(fechaVencimiento) : undefined,
                 observaciones: data.observaciones || undefined,
             });
             router.back();

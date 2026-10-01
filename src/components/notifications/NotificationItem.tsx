@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { parseApiDate } from '@/src/lib/dates';
 import type { ApiNotification } from '@/src/types/apiNotification.types';
 
 interface NotificationItemProps {
@@ -17,7 +18,7 @@ const TYPE_CONFIG: Record<string, { icon: string; color: string }> = {
 };
 
 function formatRelativeTime(dateStr: string): string {
-    const date = new Date(dateStr);
+    const date = parseApiDate(dateStr);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMin = Math.floor(diffMs / 60000);

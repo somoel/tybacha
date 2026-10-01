@@ -4,6 +4,7 @@ import { AppCard } from '@/src/components/ui/AppCard';
 import { BatteryDetailSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { exportBatteryXlsx } from '@/src/api/reportsApi';
 import { fetchBatteryWithResults } from '@/src/services/batteryService';
+import { parseApiDate } from '@/src/lib/dates';
 import { fetchPatientById } from '@/src/services/patientService';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import type { BatteryWithResults } from '@/src/types/battery.types';
@@ -102,7 +103,7 @@ export default function BatteryDetailScreen() {
                 {/* Header card: fecha + métricas + notes */}
                 <AppCard style={styles.headerCard}>
                     <Text style={styles.date}>
-                        {format(new Date(battery.performed_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
+                        {format(parseApiDate(battery.performed_at), "dd 'de' MMMM yyyy, HH:mm", { locale: es })}
                     </Text>
 
                     {battery.notes && <Text style={styles.notes}>{battery.notes}</Text>}

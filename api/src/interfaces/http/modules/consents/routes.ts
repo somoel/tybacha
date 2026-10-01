@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { z } from 'zod';
 import { insertAccessAudit, insertChangeAudit } from '../../../../infrastructure/db/audit.js';
 import { pool } from '../../../../infrastructure/db/pool.js';
+import { hoyEnColombia, toUtcIso } from '../../../../infrastructure/db/datetime.js';
 import { forbidden, notFound } from '../../httpErrors.js';
 import { requireAuth } from '../../requireAuth.js';
 
@@ -66,8 +67,8 @@ function mapConsent(row: ConsentRow) {
     fechaVencimiento: row.fecha_vencimiento,
     observaciones: row.observaciones,
     registradoPor: row.registrado_por,
-    creadoEn: row.creado_en,
-    actualizadoEn: row.actualizado_en,
+    creadoEn: toUtcIso(row.creado_en),
+    actualizadoEn: toUtcIso(row.actualizado_en),
   };
 }
 
@@ -121,9 +122,9 @@ export async function registerConsentRoutes(app: FastifyInstance): Promise<void>
        from consentimiento_adulto_mayor
        where id_adulto_mayor = :idAdultoMayor
          and estado = 'vigente'
-         and (fecha_vencimiento is null or fecha_vencimiento >= current_date())
+         and (fecha_vencimiento is null or fecha_vencimiento >= :hoy)
        order by actualizado_en desc`,
-      { idAdultoMayor: params.id },
+      { idAdultoMayor: params.id, hoy: hoyEnColombia() },
     );
 
     return {

@@ -1,5 +1,6 @@
 import { AppCard } from '@/src/components/ui/AppCard';
 import type { ApiProgressStats } from '@/src/types/apiTracking.types';
+import { parseApiDate } from '@/src/lib/dates';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import React from 'react';
@@ -19,7 +20,7 @@ function getComplianceColor(percent: number): string {
 
 export function ComplianceTrendChart({ stats, maxWeeks = 8 }: ComplianceTrendChartProps) {
     const sortedStats = [...stats]
-        .sort((a, b) => new Date(b.fecha_inicio).getTime() - new Date(a.fecha_inicio).getTime())
+        .sort((a, b) => parseApiDate(b.fecha_inicio).getTime() - parseApiDate(a.fecha_inicio).getTime())
         .slice(0, maxWeeks)
         .reverse();
 
@@ -43,7 +44,7 @@ export function ComplianceTrendChart({ stats, maxWeeks = 8 }: ComplianceTrendCha
                 {sortedStats.map((stat, index) => {
                     const barWidth = (stat.porcentaje_cumplimiento / maxCompliance) * 100;
                     const color = getComplianceColor(stat.porcentaje_cumplimiento);
-                    const weekStart = format(new Date(stat.fecha_inicio), 'dd MMM', { locale: es });
+                    const weekStart = format(parseApiDate(stat.fecha_inicio), 'dd MMM', { locale: es });
 
                     return (
                         <View key={stat.id_estadistica_progreso} style={styles.barRow}>

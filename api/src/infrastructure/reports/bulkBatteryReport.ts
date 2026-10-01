@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { formatFechaColombia } from '../db/datetime.js';
 
 const TEAL = 'FF006D77';
 const TEAL_LIGHT = 'FFE0F2F1';
@@ -35,17 +36,6 @@ function formatDate(raw: string): string {
   const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
   const yyyy = d.getUTCFullYear();
   return `${dd}/${mm}/${yyyy}`;
-}
-
-function formatDateTime(raw: string): string {
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return raw;
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = d.getUTCFullYear();
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const mi = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
 }
 
 function perfColor(porcentaje: number | null): string | undefined {
@@ -97,12 +87,7 @@ export async function renderBulkBatteryXlsx(
   setMergedTitle(ws, 1, 'Exportación masiva — Resultados SFT', COL_COUNT);
 
   // Row 2: info
-  const dd = String(exportDate.getUTCDate()).padStart(2, '0');
-  const mm = String(exportDate.getUTCMonth() + 1).padStart(2, '0');
-  const yyyy = exportDate.getUTCFullYear();
-  const hh = String(exportDate.getUTCHours()).padStart(2, '0');
-  const mi = String(exportDate.getUTCMinutes()).padStart(2, '0');
-  const dateStr = `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+  const dateStr = formatFechaColombia(exportDate.toISOString(), true);
   ws.mergeCells(2, 1, 2, COL_COUNT);
   const infoCell = ws.getCell(2, 1);
   infoCell.value = `${rows.length} paciente${rows.length !== 1 ? 's' : ''} · Fecha de exportación: ${dateStr}`;
@@ -138,7 +123,7 @@ export async function renderBulkBatteryXlsx(
     ws.getCell(r, 1).value = `${row.paciente.nombres} ${row.paciente.apellidos}`;
     ws.getCell(r, 2).value = formatDate(row.paciente.fechaNacimiento);
     ws.getCell(r, 3).value = genderLabel;
-    ws.getCell(r, 4).value = formatDateTime(row.bateria.fechaAplicacion);
+    ws.getCell(r, 4).value = formatFechaColombia(row.bateria.fechaAplicacion, true);
     ws.getCell(r, 5).value = row.bateria.pesoKg ?? '—';
     ws.getCell(r, 6).value = row.bateria.estaturaCm ?? '—';
     ws.getCell(r, 7).value = row.bateria.imc ?? '—';
