@@ -4,7 +4,7 @@ import { testExercisePlanAiApi } from '@/src/api/exercisePlansApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import type { ApiUserRole } from '@/src/types/apiAuth.types';
 import type { ApiUserSummary } from '@/src/types/apiUser.types';
 import type { ApiAiTestResult } from '@/src/types/apiExercisePlan.types';
@@ -35,7 +35,6 @@ export default function AdminScreen() {
     const [accessCount, setAccessCount] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [isTestingAi, setIsTestingAi] = useState(false);
     const [aiTestResult, setAiTestResult] = useState<ApiAiTestResult | null>(null);
     const [aiTestError, setAiTestError] = useState<string | null>(null);
@@ -63,11 +62,7 @@ export default function AdminScreen() {
             setAuditCount(changes.length);
             setAccessCount(access.length);
         } catch (error) {
-            setSnackbar({
-                visible: true,
-                message: error instanceof Error ? error.message : 'Error cargando administracion',
-                type: 'error',
-            });
+            showSnackbar(error instanceof Error ? error.message : 'Error cargando administracion', 'error', 8000);
         } finally {
             setIsLoading(false);
         }
@@ -95,13 +90,9 @@ export default function AdminScreen() {
             reset({ correo: '', contrasena: '', rol: 'profesional', nombres: '', apellidos: '' });
             setShowCreateForm(false);
             await load();
-            setSnackbar({ visible: true, message: 'Usuario creado', type: 'success' });
+            showSnackbar('Usuario creado', 'success');
         } catch (error) {
-            setSnackbar({
-                visible: true,
-                message: error instanceof Error ? error.message : 'Error creando usuario',
-                type: 'error',
-            });
+            showSnackbar(error instanceof Error ? error.message : 'Error creando usuario', 'error', 8000);
         } finally {
             setIsLoading(false);
         }
@@ -114,17 +105,13 @@ export default function AdminScreen() {
         try {
             const result = await testExercisePlanAiApi();
             setAiTestResult(result);
-            setSnackbar({ visible: true, message: `API respondió en ${result.durationMs}ms con ${result.model}`, type: 'success' });
+            showSnackbar(`API respondió en ${result.durationMs}ms con ${result.model}`, 'success');
         } catch (error) {
             const message = error instanceof Error && error.name === 'AbortError'
                 ? 'La prueba de IA excedio 55 segundos. Intenta de nuevo.'
                 : error instanceof Error ? error.message : 'Error probando la API de IA';
             setAiTestError(message);
-            setSnackbar({
-                visible: true,
-                message,
-                type: 'error',
-            });
+            showSnackbar(message, 'error', 8000);
         } finally {
             setIsTestingAi(false);
         }
@@ -279,13 +266,6 @@ export default function AdminScreen() {
                 <Text style={styles.empty}>No se encontraron profesionales.</Text>
             )}
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                duration={snackbar.type === 'error' ? 8000 : 3000}
-                onDismiss={() => setSnackbar((state) => ({ ...state, visible: false }))}
-            />
         </ScrollView>
     );
 }

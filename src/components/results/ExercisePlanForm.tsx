@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { createExercisePlan, updateExercisePlan } from '@/src/services/exercisePlanService';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -101,7 +101,6 @@ export const ExercisePlanForm = forwardRef<ExercisePlanFormHandle, ExercisePlanF
 ) {
     const theme = useTheme();
     const [isSaving, setIsSaving] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const { control, handleSubmit, reset } = useForm<PlanFormValues>({
         resolver: zodResolver(planFormSchema),
@@ -159,11 +158,11 @@ export const ExercisePlanForm = forwardRef<ExercisePlanFormHandle, ExercisePlanF
                 });
             }
 
-            setSnackbar({ visible: true, message: editMode ? 'Plan actualizado exitosamente' : 'Plan guardado exitosamente', type: 'success' });
-            setTimeout(() => onSuccess?.(), 1000);
+            showSnackbar(editMode ? 'Plan actualizado exitosamente' : 'Plan guardado exitosamente', 'success');
+            onSuccess?.();
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Error al guardar el plan.';
-            setSnackbar({ visible: true, message, type: 'error' });
+            showSnackbar(message, 'error');
         } finally {
             setIsSaving(false);
         }
@@ -330,12 +329,6 @@ export const ExercisePlanForm = forwardRef<ExercisePlanFormHandle, ExercisePlanF
                 </View>
             )}
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
         </View>
     );
 });

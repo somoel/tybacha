@@ -1,5 +1,6 @@
 import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
 import { AppLoader } from '@/src/components/ui/AppLoader';
+import { GlobalSnackbar } from '@/src/components/ui/GlobalSnackbar';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useAuthGuard } from '@/src/hooks/useAuthGuard';
@@ -133,6 +134,12 @@ export default function AppLayout() {
             paddingTop: 4,
         };
 
+    // El snackbar vive en este layout (no en cada pantalla) para sobrevivir a
+    // la navegación. Se posiciona al borde inferior del contenedor, que incluye
+    // la tab bar: con 64 (su altura) queda justo encima, igual que antes, cuando
+    // el snackbar estaba al final de cada pantalla.
+    const snackbarBottomOffset = hideTabBar ? 0 : 64;
+
     return (
         <View style={styles.container}>
             <StatusBar style={isHome ? 'light' : 'dark'} />
@@ -259,6 +266,7 @@ export default function AppLayout() {
                     }}
                 />
             </Tabs>
+            <GlobalSnackbar bottomOffset={snackbarBottomOffset} />
             <Portal>
                 <Dialog visible={showResumeDialog} onDismiss={dismissResumeDialog}>
                     <View style={styles.titleRow}>

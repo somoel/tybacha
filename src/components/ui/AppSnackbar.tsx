@@ -8,6 +8,12 @@ interface AppSnackbarProps {
     type?: 'success' | 'error' | 'info';
     onDismiss: () => void;
     duration?: number;
+    /**
+     * Distancia desde el borde inferior del contenedor hasta el snackbar.
+     * Sirve para saltarse la tab bar (64) cuando esta es visible. El padding
+     * de safe area lo sigue sumando Paper; aquí solo se mueve el `bottom`.
+     */
+    bottomOffset?: number;
     action?: {
         label: string;
         onPress: () => void;
@@ -23,6 +29,7 @@ export function AppSnackbar({
     type = 'info',
     onDismiss,
     duration = 3000,
+    bottomOffset,
     action,
 }: AppSnackbarProps) {
     const getBackgroundColor = useCallback(() => {
@@ -42,6 +49,7 @@ export function AppSnackbar({
             onDismiss={onDismiss}
             duration={duration}
             action={action}
+            wrapperStyle={bottomOffset === undefined ? undefined : { bottom: bottomOffset }}
             style={[styles.snackbar, { backgroundColor: getBackgroundColor() }]}
         >
             <Text style={styles.text}>{message}</Text>

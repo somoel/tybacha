@@ -1,10 +1,10 @@
 import { AppButton } from '@/src/components/ui/AppButton';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { ExercisePlanForm, type ExercisePlanFormHandle, type ExercisePlanFormData } from '@/src/components/results/ExercisePlanForm';
 import { ProgressSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { ShimmerOverlay } from '@/src/components/ui/ShimmerOverlay';
 import { fetchOlderAdultSftApplications } from '@/src/api/sftApi';
 import { fetchExercisePlans, generateExercisePlan } from '@/src/services/exercisePlanService';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -18,7 +18,6 @@ export default function EditPlanSheet() {
     const [initialData, setInitialData] = useState<ExercisePlanFormData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isRegenerating, setIsRegenerating] = useState(false);
-    const [showRegeneratedSnackbar, setShowRegeneratedSnackbar] = useState(false);
     const formRef = useRef<ExercisePlanFormHandle>(null);
 
     const formOpacity = useSharedValue(1);
@@ -118,7 +117,7 @@ export default function EditPlanSheet() {
             console.error('Error regenerando plan:', error);
         } finally {
             setIsRegenerating(false);
-            setShowRegeneratedSnackbar(true);
+            showSnackbar('Plan regenerado. Puedes editarlo antes de guardar.', 'success');
         }
     };
 
@@ -186,12 +185,6 @@ export default function EditPlanSheet() {
                 />
             </View>
 
-            <AppSnackbar
-                visible={showRegeneratedSnackbar}
-                message="Plan regenerado. Puedes editarlo antes de guardar."
-                type="success"
-                onDismiss={() => setShowRegeneratedSnackbar(false)}
-            />
         </View>
     );
 }

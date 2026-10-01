@@ -2,7 +2,7 @@ import { LapDistanceCalculator } from '@/src/components/tests/LapDistanceCalcula
 import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { getSFTTest, SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
@@ -110,7 +110,6 @@ export default function ActiveTestScreen() {
     const [value, setValue] = useState(0);
     const [testNotes, setTestNotes] = useState('');
     const [timerCompleted, setTimerCompleted] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '' });
     const [safetyExpanded, setSafetyExpanded] = useState(false);
     const [procedureExpanded, setProcedureExpanded] = useState(false);
     const [notesExpanded, setNotesExpanded] = useState(false);
@@ -160,20 +159,18 @@ export default function ActiveTestScreen() {
         if (!test || !patientId) return;
         saveResult(test.type as SFTTestType, value, testNotes || undefined);
         const unitLabel = test.unit === 'meters' ? 'm' : test.unit;
-        setSnackbar({ visible: true, message: `${test.shortName}: ${value} ${unitLabel} guardado` });
+        showSnackbar(`${test.shortName}: ${value} ${unitLabel} guardado`, 'success');
         const completedAfterSave = new Set([...completedTests, test.type]);
         const nextTest =
             SFT_TESTS.slice(currentIndex + 1).find((candidate) => !completedAfterSave.has(candidate.type)) ??
             SFT_TESTS.find((candidate) => !completedAfterSave.has(candidate.type));
 
-        setTimeout(() => {
-            if (nextTest) {
-                router.replace(`/(app)/tests/${nextTest.type}/active` as never);
-                return;
-            }
+        if (nextTest) {
+            router.replace(`/(app)/tests/${nextTest.type}/active` as never);
+            return;
+        }
 
-            router.replace(`/(app)/patients/${patientId}/batteries/summary` as never);
-        }, 700);
+        router.replace(`/(app)/patients/${patientId}/batteries/summary` as never);
     };
 
     if (!test) {
@@ -353,12 +350,6 @@ export default function ActiveTestScreen() {
                 )}
             </StickyBottomBar>
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type="success"
-                onDismiss={() => setSnackbar({ visible: false, message: '' })}
-            />
         </View>
     );
 }

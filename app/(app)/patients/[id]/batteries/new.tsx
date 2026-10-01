@@ -2,7 +2,6 @@ import { BodyMetricsInput } from '@/src/components/battery/BodyMetricsInput';
 import { TestCard } from '@/src/components/tests/TestCard';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { useBatteryStore } from '@/src/stores/batteryStore';
@@ -24,7 +23,6 @@ export default function NewBatteryScreen() {
     const theme = useTheme();
     const isOnline = useSyncStore((s) => s.isOnline);
     const { startBattery, results, completedTests, activeBatteryId, patientId, resetBattery, setBodyMetrics, pesoKg } = useBatteryStore();
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const [hydrated, setHydrated] = useState(() => useBatteryStore.persist.hasHydrated());
     const allowExitRef = useRef(false);
@@ -224,12 +222,6 @@ export default function NewBatteryScreen() {
                 </Animated.View>
             )}
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
             <Portal>
                 <Dialog visible={conflict} onDismiss={() => {}}>
                     <Dialog.Title>Batería en curso</Dialog.Title>

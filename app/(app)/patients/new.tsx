@@ -4,7 +4,6 @@ import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
 import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { fetchApiUsers } from '@/src/api/usersApi';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { usePermissions } from '@/src/hooks/usePermissions';
@@ -12,6 +11,7 @@ import { createPatient, uploadPatientPhoto } from '@/src/services/patientService
 import { useAuthStore } from '@/src/stores/authStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { useSyncStore } from '@/src/stores/syncStore';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -63,7 +63,6 @@ export default function NewPatientScreen() {
     const [caregivers, setCaregivers] = useState<ApiUserSummary[]>([]);
     const [birthDate, setBirthDate] = useState(new Date(1950, 0, 1));
     const [photoUri, setPhotoUri] = useState<string | null>(null);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [showRemovePhotoDialog, setShowRemovePhotoDialog] = useState(false);
     const [showAgeWarning, setShowAgeWarning] = useState(false);
     const [pendingFormData, setPendingFormData] = useState<PatientFormValues | null>(null);
@@ -89,8 +88,10 @@ export default function NewPatientScreen() {
                 const users = await fetchApiUsers();
                 setCaregivers(users.filter((item) => item.rol === 'cuidador' && item.estado === 'activo'));
             } catch (error) {
-                const message = error instanceof Error ? error.message : 'Error cargando cuidadores.';
-                setSnackbar({ visible: true, message, type: 'error' });
+                showSnackbar(
+                    error instanceof Error ? error.message : 'Error cargando cuidadores.',
+                    'error',
+                );
             } finally {
                 setIsLoadingCaregivers(false);
             }
@@ -105,7 +106,7 @@ export default function NewPatientScreen() {
     const handlePickPhoto = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            setSnackbar({ visible: true, message: 'Se necesita permiso para acceder a las fotos.', type: 'error' });
+            showSnackbar('Se necesita permiso para acceder a las fotos.', 'error');
             return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -147,14 +148,14 @@ export default function NewPatientScreen() {
                 }
             }
             await waitForMinimumSubmitLoading(startedAt);
-            setSnackbar({ visible: true, message: 'Adulto mayor registrado exitosamente ✓', type: 'success' });
-            setTimeout(() => {
-                router.replace(`/(app)/patients/${patient.id}` as never);
-            }, 1500);
+            showSnackbar('Adulto mayor registrado exitosamente ✓', 'success');
+            router.replace(`/(app)/patients/${patient.id}` as never);
         } catch (error) {
             await waitForMinimumSubmitLoading(startedAt);
-            const message = error instanceof Error ? error.message : 'Error al registrar adulto mayor.';
-            setSnackbar({ visible: true, message, type: 'error' });
+            showSnackbar(
+                error instanceof Error ? error.message : 'Error al registrar adulto mayor.',
+                'error',
+            );
         } finally {
             setIsLoading(false);
         }
@@ -337,12 +338,6 @@ export default function NewPatientScreen() {
                 destructive={false}
                 onConfirm={handleAgeWarningConfirm}
                 onCancel={handleAgeWarningCancel}
-            />
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
             />
         </KeyboardAvoidingView>
     );

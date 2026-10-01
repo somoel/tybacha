@@ -8,7 +8,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppLoader } from '@/src/components/ui/AppLoader';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import type { ApiAdminUserDetail, ApiUserSummary } from '@/src/types/apiUser.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -55,7 +55,6 @@ export default function AdminUserDetailScreen() {
     const [isSavingCaregivers, setIsSavingCaregivers] = useState(false);
     const [showAvailableCaregivers, setShowAvailableCaregivers] = useState(false);
     const [caregiverSearchQuery, setCaregiverSearchQuery] = useState('');
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const { control, handleSubmit, reset } = useForm<EditForm>({
         resolver: zodResolver(editSchema),
@@ -88,7 +87,7 @@ export default function AdminUserDetailScreen() {
                 estado: detail.estado,
             });
         } catch (error) {
-            setSnackbar({ visible: true, message: error instanceof Error ? error.message : 'Error cargando usuario', type: 'error' });
+            showSnackbar(error instanceof Error ? error.message : 'Error cargando usuario', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -141,9 +140,9 @@ export default function AdminUserDetailScreen() {
             });
             setUser(updated);
             reset({ ...data, contrasena: '' });
-            setSnackbar({ visible: true, message: 'Usuario actualizado correctamente', type: 'success' });
+            showSnackbar('Usuario actualizado correctamente', 'success');
         } catch (error) {
-            setSnackbar({ visible: true, message: error instanceof Error ? error.message : 'Error actualizando usuario', type: 'error' });
+            showSnackbar(error instanceof Error ? error.message : 'Error actualizando usuario', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -162,9 +161,9 @@ export default function AdminUserDetailScreen() {
             const updated = await updateApiProfessionalCaregivers(user.idUsuario, selectedCaregiverIds);
             setUser(updated);
             setSelectedCaregiverIds(updated.cuidadores.map((caregiver) => caregiver.idUsuario));
-            setSnackbar({ visible: true, message: 'Cuidadores asignados correctamente', type: 'success' });
+            showSnackbar('Cuidadores asignados correctamente', 'success');
         } catch (error) {
-            setSnackbar({ visible: true, message: error instanceof Error ? error.message : 'Error actualizando cuidadores', type: 'error' });
+            showSnackbar(error instanceof Error ? error.message : 'Error actualizando cuidadores', 'error');
             await load();
         } finally {
             setIsSavingCaregivers(false);
@@ -297,7 +296,6 @@ export default function AdminUserDetailScreen() {
                 </AppCard>
             )}
 
-            <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((state) => ({ ...state, visible: false }))} />
         </ScrollView>
     );
 }

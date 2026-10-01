@@ -2,7 +2,7 @@ import { createApiUser } from '@/src/api/usersApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
@@ -34,7 +34,6 @@ type CaregiverForm = z.infer<typeof caregiverSchema>;
 export default function NewCaregiverScreen() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [showOptional, setShowOptional] = useState(false);
 
     const { control, handleSubmit, reset } = useForm<CaregiverForm>({
@@ -71,15 +70,14 @@ export default function NewCaregiverScreen() {
                 genero: data.genero || undefined,
                 fechaNacimiento: data.fechaNacimiento || undefined,
             });
-            setSnackbar({ visible: true, message: 'Cuidador creado correctamente', type: 'success' });
+            showSnackbar('Cuidador creado correctamente', 'success');
             reset();
-            setTimeout(() => router.back(), 1200);
+            router.back();
         } catch (error) {
-            setSnackbar({
-                visible: true,
-                message: error instanceof Error ? error.message : 'Error creando cuidador',
-                type: 'error',
-            });
+            showSnackbar(
+                error instanceof Error ? error.message : 'Error creando cuidador',
+                'error',
+            );
         } finally {
             setIsLoading(false);
         }
@@ -143,13 +141,6 @@ export default function NewCaregiverScreen() {
                     style={styles.submit}
                 />
             </AppCard>
-
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
         </ScrollView>
     );
 }

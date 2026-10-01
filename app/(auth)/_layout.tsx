@@ -1,7 +1,10 @@
 import { AppLoader } from '@/src/components/ui/AppLoader';
+import { GlobalSnackbar } from '@/src/components/ui/GlobalSnackbar';
 import { useAuthGuard } from '@/src/hooks/useAuthGuard';
 import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
 /**
  * Auth layout group - no header, screens stack on top of each other.
@@ -19,7 +22,7 @@ export default function AuthLayout() {
     }
 
     return (
-        <>
+        <View style={styles.container}>
             <StatusBar style="dark" />
             <Stack
                 screenOptions={{
@@ -29,6 +32,13 @@ export default function AuthLayout() {
             >
                 <Stack.Screen name="login" />
             </Stack>
-        </>
+            <GlobalSnackbar bottomOffset={0} />
+        </View>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+});
