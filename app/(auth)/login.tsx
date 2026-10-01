@@ -1,6 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { fetchApiMe, loginWithApi, logoutFromApi } from '@/src/api/authApi';
 import { registerPushNotifications } from '@/src/services/pushNotificationService';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -33,7 +33,6 @@ export default function LoginScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'error' as const });
 
     const { control, handleSubmit } = useForm<LoginFormData>({
         resolver: zodResolver(loginSchema),
@@ -70,7 +69,7 @@ export default function LoginScreen() {
             router.replace('/(app)/home' as never);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Error inesperado al iniciar sesión.';
-            setSnackbar({ visible: true, message, type: 'error' });
+            showSnackbar(message, 'error');
         } finally {
             setIsLoading(false);
         }
@@ -154,12 +153,6 @@ export default function LoginScreen() {
                 </View>
             </ScrollView>
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
         </KeyboardAvoidingView>
     );
 }

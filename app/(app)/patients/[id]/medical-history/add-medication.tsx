@@ -1,6 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { DateField } from '@/src/components/ui/DateField';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { MedicationFormData } from '@/src/types/medicalHistory.types';
@@ -39,7 +39,6 @@ export default function AddMedicationScreen() {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   const isEditing = Boolean(medicationId);
   const existingItem = isEditing ? medications.find((m) => m.id === medicationId) : null;
@@ -79,22 +78,22 @@ export default function AddMedicationScreen() {
       if (isEditing && medicationId) {
         const ok = await updateMedication(Number(id), Number(medicationId), formData);
         if (ok) {
-          setSnackbar({ visible: true, message: 'Medicamento actualizado ✓', type: 'success' });
-          setTimeout(() => router.back(), 1200);
+          showSnackbar('Medicamento actualizado ✓', 'success');
+          router.back();
         } else {
-          setSnackbar({ visible: true, message: 'Error al actualizar medicamento', type: 'error' });
+          showSnackbar('Error al actualizar medicamento', 'error');
         }
       } else {
         const result = await addMedication(Number(id), formData);
         if (result) {
-          setSnackbar({ visible: true, message: 'Medicamento registrado ✓', type: 'success' });
-          setTimeout(() => router.back(), 1200);
+          showSnackbar('Medicamento registrado ✓', 'success');
+          router.back();
         } else {
-          setSnackbar({ visible: true, message: 'Error al registrar medicamento', type: 'error' });
+          showSnackbar('Error al registrar medicamento', 'error');
         }
       }
     } catch {
-      setSnackbar({ visible: true, message: `Error al ${isEditing ? 'actualizar' : 'registrar'} medicamento`, type: 'error' });
+      showSnackbar(`Error al ${isEditing ? 'actualizar' : 'registrar'} medicamento`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -133,7 +132,6 @@ export default function AddMedicationScreen() {
         </View>
       </ScrollView>
 
-      <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
     </KeyboardAvoidingView>
   );
 }

@@ -1,6 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { DateField } from '@/src/components/ui/DateField';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 import type { PathologyFormData } from '@/src/types/medicalHistory.types';
@@ -35,7 +35,6 @@ export default function AddPathologyScreen() {
   const { addPathology, updatePathology, pathologies } = useMedicalHistoryStore();
   const [diagnosisDate, setDiagnosisDate] = useState<Date | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   const isEditing = Boolean(pathologyId);
   const existingItem = isEditing ? pathologies.find((p) => p.id === pathologyId) : null;
@@ -72,22 +71,22 @@ export default function AddPathologyScreen() {
       if (isEditing && pathologyId) {
         const ok = await updatePathology(Number(id), Number(pathologyId), formData);
         if (ok) {
-          setSnackbar({ visible: true, message: 'Patología actualizada ✓', type: 'success' });
-          setTimeout(() => router.back(), 1200);
+          showSnackbar('Patología actualizada ✓', 'success');
+          router.back();
         } else {
-          setSnackbar({ visible: true, message: 'Error al actualizar patología', type: 'error' });
+          showSnackbar('Error al actualizar patología', 'error');
         }
       } else {
         const result = await addPathology(Number(id), formData);
         if (result) {
-          setSnackbar({ visible: true, message: 'Patología registrada ✓', type: 'success' });
-          setTimeout(() => router.back(), 1200);
+          showSnackbar('Patología registrada ✓', 'success');
+          router.back();
         } else {
-          setSnackbar({ visible: true, message: 'Error al registrar patología', type: 'error' });
+          showSnackbar('Error al registrar patología', 'error');
         }
       }
     } catch {
-      setSnackbar({ visible: true, message: `Error al ${isEditing ? 'actualizar' : 'registrar'} patología`, type: 'error' });
+      showSnackbar(`Error al ${isEditing ? 'actualizar' : 'registrar'} patología`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -132,12 +131,6 @@ export default function AddPathologyScreen() {
         </View>
       </ScrollView>
 
-      <AppSnackbar
-        visible={snackbar.visible}
-        message={snackbar.message}
-        type={snackbar.type}
-        onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-      />
     </KeyboardAvoidingView>
   );
 }

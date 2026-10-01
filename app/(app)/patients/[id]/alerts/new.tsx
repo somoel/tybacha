@@ -9,7 +9,7 @@ import { createApiAlert } from '@/src/api/alertsApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import type { AlertType, AlertChannel } from '@/src/types/apiAlert.types';
 
 const alertSchema = z.object({
@@ -38,8 +38,6 @@ export default function NewAlertScreen() {
     const [tipoAlerta, setTipoAlerta] = useState<AlertType>('recordatorio_ejercicio');
     const [canal, setCanal] = useState<AlertChannel>('push');
     const [isSaving, setIsSaving] = useState(false);
-    const [snackVisible, setSnackVisible] = useState(false);
-    const [snackMessage, setSnackMessage] = useState('');
 
     const { control, handleSubmit } = useForm<AlertFormData>({
         resolver: zodResolver(alertSchema),
@@ -58,8 +56,7 @@ export default function NewAlertScreen() {
             });
             router.back();
         } catch {
-            setSnackMessage('Error al crear la alerta');
-            setSnackVisible(true);
+            showSnackbar('Error al crear la alerta', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -128,12 +125,6 @@ export default function NewAlertScreen() {
                 onPress={handleSubmit(onSubmit)}
                 loading={isSaving}
                 disabled={isSaving}
-            />
-
-            <AppSnackbar
-                visible={snackVisible}
-                onDismiss={() => setSnackVisible(false)}
-                message={snackMessage}
             />
         </ScrollView>
     );

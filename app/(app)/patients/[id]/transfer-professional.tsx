@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { transferOlderAdult } from '@/src/services/patientService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
@@ -17,7 +17,6 @@ export default function TransferProfessionalScreen() {
     const [error, setError] = useState('');
     const [pendingEmail, setPendingEmail] = useState('');
     const [confirmVisible, setConfirmVisible] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'info' as 'success' | 'error' | 'info' });
 
     const handleTransfer = () => {
         const normalizedEmail = email.trim().toLowerCase();
@@ -46,11 +45,7 @@ export default function TransferProfessionalScreen() {
             router.replace('/(app)/patients' as never);
         } catch (transferError) {
             console.error('[transfer-professional] error en transferencia', transferError);
-            setSnackbar({
-                visible: true,
-                message: transferError instanceof Error ? transferError.message : 'Error realizando la transferencia',
-                type: 'error',
-            });
+            showSnackbar(transferError instanceof Error ? transferError.message : 'Error realizando la transferencia', 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -90,12 +85,6 @@ export default function TransferProfessionalScreen() {
                     console.log('[transfer-professional] transferencia cancelada');
                     setConfirmVisible(false);
                 }}
-            />
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((current) => ({ ...current, visible: false }))}
             />
         </View>
     );

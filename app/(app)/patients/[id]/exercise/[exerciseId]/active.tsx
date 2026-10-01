@@ -3,7 +3,7 @@ import { RepCounter } from '@/src/components/tests/RepCounter';
 import { TimerDisplay } from '@/src/components/tests/TimerDisplay';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { EffortPainScale } from '@/src/components/ui/EffortPainScale';
 import { OfflineBanner } from '@/src/components/ui/OfflineBanner';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
@@ -61,7 +61,6 @@ export default function ActiveExerciseScreen() {
     const [currentSetDuration, setCurrentSetDuration] = useState(0);
     const [allSetsDone, setAllSetsDone] = useState(false);
     const [savedSummary, setSavedSummary] = useState<SaveResult | null>(null);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [exitDialogVisible, setExitDialogVisible] = useState(false);
     const [skipDialogVisible, setSkipDialogVisible] = useState(false);
     const [saveMode, setSaveMode] = useState<SaveMode | null>(null);
@@ -303,11 +302,7 @@ export default function ActiveExerciseScreen() {
                 status: mode === 'completed' ? 'completado' : 'omitido',
             });
         } catch (error) {
-            setSnackbar({
-                visible: true,
-                message: error instanceof Error ? error.message : 'Error guardando',
-                type: 'error',
-            });
+            showSnackbar(error instanceof Error ? error.message : 'Error guardando', 'error');
         } finally {
             setSaveMode(null);
         }
@@ -671,13 +666,6 @@ export default function ActiveExerciseScreen() {
                     </View>
                 </View>
             </StickyBottomBar>
-
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar({ visible: false, message: '', type: 'success' })}
-            />
 
             <Portal>
                 <Dialog visible={exitDialogVisible} onDismiss={handleCancelExit}>

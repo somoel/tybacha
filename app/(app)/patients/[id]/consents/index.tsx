@@ -9,7 +9,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { ConsentsListSkeleton } from '@/src/components/ui/PatientDetailSkeletons';
 import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import type { ApiConsent, ApiConsentStatusResponse } from '@/src/types/apiConsent.types';
 import { Text, useTheme } from 'react-native-paper';
@@ -44,10 +44,6 @@ export default function ConsentsScreen() {
     const [revokeTarget, setRevokeTarget] = useState<number | null>(null);
     const [isRevoking, setIsRevoking] = useState(false);
 
-    const [snackVisible, setSnackVisible] = useState(false);
-    const [snackMessage, setSnackMessage] = useState('');
-    const [snackType, setSnackType] = useState<'success' | 'error'>('success');
-
     const load = useCallback(async () => {
         if (!id) return;
         try {
@@ -77,15 +73,11 @@ export default function ConsentsScreen() {
         setIsRevoking(true);
         try {
             await revokeApiConsent(revokeTarget);
-            setSnackMessage('Consentimiento revocado exitosamente');
-            setSnackType('success');
-            setSnackVisible(true);
+            showSnackbar('Consentimiento revocado exitosamente', 'success');
             setRevokeTarget(null);
             await load();
         } catch {
-            setSnackMessage('Error al revocar el consentimiento');
-            setSnackType('error');
-            setSnackVisible(true);
+            showSnackbar('Error al revocar el consentimiento', 'error');
         } finally {
             setIsRevoking(false);
         }
@@ -221,13 +213,6 @@ export default function ConsentsScreen() {
                 loading={isRevoking}
                 onConfirm={handleRevoke}
                 onCancel={() => setRevokeTarget(null)}
-            />
-
-            <AppSnackbar
-                visible={snackVisible}
-                onDismiss={() => setSnackVisible(false)}
-                message={snackMessage}
-                type={snackType}
             />
         </View>
     );

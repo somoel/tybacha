@@ -3,7 +3,7 @@ import { ExercisePlanForm, type ExercisePlanFormData } from '@/src/components/re
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchExercisePlans, generateExercisePlan, logExerciseCompletion } from '@/src/services/exercisePlanService';
 import { useAuthStore } from '@/src/stores/authStore';
@@ -39,7 +39,6 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
     const [formData, setFormData] = useState<ExercisePlanFormData | null>(null);
     const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
     const [aiError, setAiError] = useState<string | null>(null);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const hasStaffAccess = isAdmin || isProfessional;
 
@@ -99,10 +98,10 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
             await logExerciseCompletion(plans[0].id, exerciseIndex, user.id, {
                 completed: true,
             });
-            setSnackbar({ visible: true, message: 'Ejercicio registrado', type: 'success' });
+            showSnackbar('Ejercicio registrado', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error registrando.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         }
     };
 
@@ -236,12 +235,6 @@ export function ExercisePlanSection({ patientId, battery, forceCreatePlan, onPla
                 />
             )}
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
         </View>
     );
 }

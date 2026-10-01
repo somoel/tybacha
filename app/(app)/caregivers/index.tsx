@@ -1,6 +1,6 @@
 import { CaregiverCard } from '@/src/components/caregivers/CaregiverCard';
 import { PatientsListSkeleton } from '@/src/components/ui/PatientsListSkeleton';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { fetchCaregivers, type CaregiverSummary } from '@/src/services/caregiverService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,7 +21,6 @@ export default function CaregiversListScreen() {
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
         if (mode === 'refresh') {
@@ -34,11 +33,7 @@ export default function CaregiversListScreen() {
             const data = await fetchCaregivers(searchQuery.length >= 2 ? searchQuery : undefined);
             setCaregivers(data);
         } catch (error) {
-            setSnackbar({
-                visible: true,
-                message: error instanceof Error ? error.message : 'Error cargando cuidadores',
-                type: 'error',
-            });
+            showSnackbar(error instanceof Error ? error.message : 'Error cargando cuidadores', 'error');
         } finally {
             if (mode === 'refresh') {
                 setIsRefreshing(false);
@@ -136,12 +131,6 @@ export default function CaregiversListScreen() {
                 </Pressable>
             )}
 
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
         </View>
     );
 }

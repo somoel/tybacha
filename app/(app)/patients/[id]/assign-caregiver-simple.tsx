@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { assignCaregiver, fetchAssignedCaregiver, searchCaregivers, unassignCaregiver } from '@/src/services/patientService';
 import { useAuthStore } from '@/src/stores/authStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,7 +34,6 @@ export default function AssignCaregiverScreen() {
     const [assignedCaregiver, setAssignedCaregiver] = useState<AssignedCaregiver | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     useEffect(() => {
         const loadAssigned = async () => {
@@ -53,11 +52,7 @@ export default function AssignCaregiverScreen() {
 
     const handleSearch = async () => {
         if (emailInput.length < 2) {
-            setSnackbar({ 
-                visible: true, 
-                message: 'Escribe al menos 2 caracteres para buscar', 
-                type: 'error' 
-            });
+            showSnackbar('Escribe al menos 2 caracteres para buscar', 'error');
             return;
         }
         
@@ -69,16 +64,12 @@ export default function AssignCaregiverScreen() {
             setSearchResults(data);
             
             if (data.length === 0) {
-                setSnackbar({ 
-                    visible: true, 
-                    message: 'No se encontraron cuidadores con ese nombre o email', 
-                    type: 'error' 
-                });
+                showSnackbar('No se encontraron cuidadores con ese nombre o email', 'error');
             }
         } catch (error) {
             console.error('Search error:', error);
             const msg = error instanceof Error ? error.message : 'Error buscando cuidadores.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setIsSearching(false);
         }
@@ -86,18 +77,14 @@ export default function AssignCaregiverScreen() {
 
     const handleAssign = async (caregiverId: string) => {
         if (!id || !user) {
-            setSnackbar({ 
-                visible: true, 
-                message: 'Error: datos de sesión incompletos', 
-                type: 'error' 
-            });
+            showSnackbar('Error: datos de sesión incompletos', 'error');
             return;
         }
         
         try {
             console.log('Assigning caregiver:', caregiverId, 'to patient:', id, 'by:', user.id);
             await assignCaregiver(caregiverId, id, user.id);
-            setSnackbar({ visible: true, message: 'Cuidador asignado correctamente ✓', type: 'success' });
+            showSnackbar('Cuidador asignado correctamente ✓', 'success');
             
             // Refresh assigned caregiver
             const data = await fetchAssignedCaregiver(id);
@@ -109,17 +96,13 @@ export default function AssignCaregiverScreen() {
         } catch (error) {
             console.error('Assignment error:', error);
             const msg = error instanceof Error ? error.message : 'Error asignando cuidador.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         }
     };
 
     const handleUnassign = async () => {
         if (!id || !user) {
-            setSnackbar({ 
-                visible: true, 
-                message: 'Error: datos de sesión incompletos', 
-                type: 'error' 
-            });
+            showSnackbar('Error: datos de sesión incompletos', 'error');
             return;
         }
         
@@ -127,11 +110,11 @@ export default function AssignCaregiverScreen() {
             console.log('Unassigning caregiver from patient:', id);
             await unassignCaregiver('', id);
             setAssignedCaregiver(null);
-            setSnackbar({ visible: true, message: 'Cuidador desasignado correctamente ✓', type: 'success' });
+            showSnackbar('Cuidador desasignado correctamente ✓', 'success');
         } catch (error) {
             console.error('Unassignment error:', error);
             const msg = error instanceof Error ? error.message : 'Error desasignando cuidador.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         }
     };
 
@@ -201,12 +184,6 @@ export default function AssignCaregiverScreen() {
                 <Text style={styles.emptyText}>No hay un cuidador asignado a este adulto mayor.</Text>
             )}
 
-            <AppSnackbar 
-                visible={snackbar.visible} 
-                message={snackbar.message} 
-                type={snackbar.type} 
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} 
-            />
         </View>
     );
 }

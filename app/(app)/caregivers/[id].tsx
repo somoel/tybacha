@@ -2,7 +2,7 @@ import { PatientCard } from '@/src/components/patients/PatientCard';
 import { CaregiverStats } from '@/src/components/caregivers/CaregiverStats';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppLoader } from '@/src/components/ui/AppLoader';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { fetchApiPatientsSummary } from '@/src/api/olderAdultsApi';
 import { fetchPatientThumbnails } from '@/src/services/patientService';
@@ -40,7 +40,6 @@ export default function CaregiverDetailScreen() {
     const [activePlanMap, setActivePlanMap] = useState<Record<string, boolean>>({});
     const [batteryCounts, setBatteryCounts] = useState<Record<string, number>>({});
     const [exerciseData, setExerciseData] = useState<Record<string, WeeklyExerciseData>>({});
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const load = useCallback(async () => {
         if (!id) return;
@@ -78,11 +77,7 @@ export default function CaregiverDetailScreen() {
                 setPhotoThumbnails(thumbnails);
             }
         } catch (error) {
-            setSnackbar({
-                visible: true,
-                message: error instanceof Error ? error.message : 'Error cargando cuidador',
-                type: 'error',
-            });
+            showSnackbar(error instanceof Error ? error.message : 'Error cargando cuidador', 'error');
         } finally {
             setIsLoading(false);
         }
@@ -198,13 +193,6 @@ export default function CaregiverDetailScreen() {
                 }}
                 contentContainerStyle={styles.list}
                 showsVerticalScrollIndicator={false}
-            />
-
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
             />
         </View>
     );

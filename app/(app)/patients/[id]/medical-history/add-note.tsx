@@ -1,6 +1,6 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { useMedicalHistoryStore } from '@/src/stores/medicalHistoryStore';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +33,6 @@ export default function AddMedicalNoteScreen() {
   const navigation = useNavigation();
   const { addMedicalNote, updateMedicalNote, medicalNotes } = useMedicalHistoryStore();
   const [isSaving, setIsSaving] = useState(false);
-  const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
   const isEditing = Boolean(noteId);
   const existingItem = isEditing ? medicalNotes.find((n) => n.id === noteId) : null;
@@ -62,22 +61,22 @@ export default function AddMedicalNoteScreen() {
       if (isEditing && noteId) {
         const ok = await updateMedicalNote(Number(id), Number(noteId), data);
         if (ok) {
-          setSnackbar({ visible: true, message: 'Nota actualizada ✓', type: 'success' });
-          setTimeout(() => router.back(), 1200);
+          showSnackbar('Nota actualizada ✓', 'success');
+          router.back();
         } else {
-          setSnackbar({ visible: true, message: 'Error al actualizar nota', type: 'error' });
+          showSnackbar('Error al actualizar nota', 'error');
         }
       } else {
         const result = await addMedicalNote(Number(id), data);
         if (result) {
-          setSnackbar({ visible: true, message: 'Nota registrada ✓', type: 'success' });
-          setTimeout(() => router.back(), 1200);
+          showSnackbar('Nota registrada ✓', 'success');
+          router.back();
         } else {
-          setSnackbar({ visible: true, message: 'Error al registrar nota', type: 'error' });
+          showSnackbar('Error al registrar nota', 'error');
         }
       }
     } catch {
-      setSnackbar({ visible: true, message: `Error al ${isEditing ? 'actualizar' : 'registrar'} nota`, type: 'error' });
+      showSnackbar(`Error al ${isEditing ? 'actualizar' : 'registrar'} nota`, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -107,7 +106,6 @@ export default function AddMedicalNoteScreen() {
         </View>
       </ScrollView>
 
-      <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
     </KeyboardAvoidingView>
   );
 }

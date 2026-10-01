@@ -4,11 +4,11 @@ import { DateField } from '@/src/components/ui/DateField';
 import { AppInput } from '@/src/components/ui/AppInput';
 import { AppLoader } from '@/src/components/ui/AppLoader';
 import { PatientAvatar } from '@/src/components/ui/PatientAvatar';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
 import { deletePatient, deletePatientPhoto, fetchPatientById, updatePatient, uploadPatientPhoto } from '@/src/services/patientService';
 import { usePatientsStore } from '@/src/stores/patientsStore';
 import { useSyncStore } from '@/src/stores/syncStore';
 import type { Patient } from '@/src/types/patient.types';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -44,7 +44,6 @@ export default function EditPatientScreen() {
     const [isSaving, setIsSaving] = useState(false);
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [currentPhotoData, setCurrentPhotoData] = useState<string | null>(null);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [confirmType, setConfirmType] = useState<'delete' | 'deletePhoto' | null>(null);
     const [showAgeWarning, setShowAgeWarning] = useState(false);
     const [pendingFormData, setPendingFormData] = useState<EditFormValues | null>(null);
@@ -80,11 +79,13 @@ export default function EditPatientScreen() {
         try {
             const updated = await updatePatient(id, { ...data, birth_date: birthDate }, isOnline);
             updateStore(updated);
-            setSnackbar({ visible: true, message: 'Adulto mayor actualizado ✓', type: 'success' });
-            setTimeout(() => router.back(), 1500);
+            showSnackbar('Adulto mayor actualizado ✓', 'success');
+            router.back();
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Error al actualizar.';
-            setSnackbar({ visible: true, message, type: 'error' });
+            showSnackbar(
+                error instanceof Error ? error.message : 'Error al actualizar.',
+                'error',
+            );
         } finally {
             setIsSaving(false);
         }
@@ -125,7 +126,7 @@ export default function EditPatientScreen() {
             router.replace('/(app)/patients' as never);
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al eliminar.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setConfirmType(null);
         }
@@ -134,7 +135,7 @@ export default function EditPatientScreen() {
     const handlePickPhoto = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            setSnackbar({ visible: true, message: 'Se necesita permiso para acceder a las fotos.', type: 'error' });
+            showSnackbar('Se necesita permiso para acceder a las fotos.', 'error');
             return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -154,10 +155,10 @@ export default function EditPatientScreen() {
             await uploadPatientPhoto(id, photoUri);
             setCurrentPhotoData(null);
             setPhotoUri(null);
-            setSnackbar({ visible: true, message: 'Foto actualizada ✓', type: 'success' });
+            showSnackbar('Foto actualizada ✓', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al subir foto.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         }
     };
 
@@ -171,10 +172,10 @@ export default function EditPatientScreen() {
             await deletePatientPhoto(id);
             setCurrentPhotoData(null);
             setPhotoUri(null);
-            setSnackbar({ visible: true, message: 'Foto eliminada ✓', type: 'success' });
+            showSnackbar('Foto eliminada ✓', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al eliminar foto.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setConfirmType(null);
         }
@@ -281,7 +282,6 @@ export default function EditPatientScreen() {
                 onConfirm={handleAgeWarningConfirm}
                 onCancel={handleAgeWarningCancel}
             />
-            <AppSnackbar visible={snackbar.visible} message={snackbar.message} type={snackbar.type} onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))} />
         </KeyboardAvoidingView>
     );
 }

@@ -2,7 +2,7 @@ import { ApiError, isNetworkError } from '@/src/api/httpClient';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppDialogActions } from '@/src/components/ui/AppDialogActions';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { StickyBottomBar } from '@/src/components/ui/StickyBottomBar';
 import { SFT_TESTS } from '@/src/constants/sftTests';
 import { usePermissions } from '@/src/hooks/usePermissions';
@@ -44,7 +44,6 @@ export default function BatterySummaryScreen() {
         setNotes,
     } = useBatteryStore();
     const [savingAction, setSavingAction] = useState<FinalAction | null>(null);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
     const [patient, setPatient] = useState<Patient | null>(null);
     const [confirmDialogVisible, setConfirmDialogVisible] = useState(false);
     const [pendingAction, setPendingAction] = useState<FinalAction | null>(null);
@@ -109,7 +108,7 @@ export default function BatterySummaryScreen() {
             return true;
         } catch (error) {
             console.error('Error al encolar la batería en el dispositivo:', error);
-            setSnackbar({ visible: true, message: 'No se pudo guardar la batería en este dispositivo. Reintenta.', type: 'error' });
+            showSnackbar('No se pudo guardar la batería en este dispositivo. Reintenta.', 'error');
             setSavingAction(null);
             return false;
         }
@@ -117,7 +116,7 @@ export default function BatterySummaryScreen() {
 
     const finalizeAndNavigate = async (action: FinalAction) => {
         if (!user || !id || !activeBatteryId || !isComplete) {
-            setSnackbar({ visible: true, message: 'Completa y guarda un valor para cada prueba antes de finalizar.', type: 'error' });
+            showSnackbar('Completa y guarda un valor para cada prueba antes de finalizar.', 'error');
             return;
         }
 
@@ -154,7 +153,7 @@ export default function BatterySummaryScreen() {
                 if (!isTransient) {
                     // 4xx = validación/permiso: no se encola y la sesión queda intacta.
                     const message = error instanceof Error ? error.message : 'Error al guardar la batería.';
-                    setSnackbar({ visible: true, message, type: 'error' });
+                    showSnackbar(message, 'error');
                     setSavingAction(null);
                     return;
                 }
@@ -169,11 +168,9 @@ export default function BatterySummaryScreen() {
             const message = action === 'plan'
                 ? 'Batería guardada en este dispositivo. Sin conexión: el plan de ejercicios podrás generarlo después desde el detalle del adulto mayor.'
                 : 'Batería guardada en este dispositivo. Se sincronizará automáticamente al recuperar la conexión.';
-            setSnackbar({ visible: true, message, type: 'success' });
+            showSnackbar(message, 'success');
             clearSession();
-            setTimeout(() => {
-                leaveBatteryFlow();
-            }, 2000);
+            leaveBatteryFlow();
             return;
         }
 
@@ -186,10 +183,8 @@ export default function BatterySummaryScreen() {
                     ? `Batería guardada. La generación del plan falló: ${error.message}. Reintenta desde el detalle.`
                     : 'Batería guardada. La generación del plan falló. Reintenta desde el detalle.';
                 console.error('Error generando plan tras persistir batería:', error);
-                setSnackbar({ visible: true, message, type: 'error' });
-                setTimeout(() => {
-                    leaveBatteryFlow();
-                }, 2000);
+                showSnackbar(message, 'error');
+                leaveBatteryFlow();
                 return;
             }
         }
@@ -306,13 +301,6 @@ export default function BatterySummaryScreen() {
                     accessibilityLabel={canCreatePlan ? 'Crear plan de ejercicios' : 'Volver al adulto mayor'}
                 />
             </StickyBottomBar>
-
-            <AppSnackbar
-                visible={snackbar.visible}
-                message={snackbar.message}
-                type={snackbar.type}
-                onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
-            />
 
             <Portal>
                 <Dialog visible={confirmDialogVisible} onDismiss={() => setConfirmDialogVisible(false)}>

@@ -10,7 +10,7 @@ import { createApiConsent } from '@/src/api/consentsApi';
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppInput } from '@/src/components/ui/AppInput';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { DateField } from '@/src/components/ui/DateField';
 import type { ApiConsentType } from '@/src/types/apiConsent.types';
 
@@ -39,8 +39,6 @@ export default function NewConsentScreen() {
     const [fechaOtorgamiento, setFechaOtorgamiento] = useState(new Date());
     const [fechaVencimiento, setFechaVencimiento] = useState<Date | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [snackVisible, setSnackVisible] = useState(false);
-    const [snackMessage, setSnackMessage] = useState('');
 
     const { control, handleSubmit } = useForm<ConsentFormData>({
         resolver: zodResolver(consentSchema),
@@ -64,8 +62,7 @@ export default function NewConsentScreen() {
             });
             router.back();
         } catch {
-            setSnackMessage('Error al registrar el consentimiento');
-            setSnackVisible(true);
+            showSnackbar('Error al registrar el consentimiento', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -155,13 +152,6 @@ export default function NewConsentScreen() {
                 onPress={handleSubmit(onSubmit)}
                 loading={isSaving}
                 disabled={isSaving}
-            />
-
-            <AppSnackbar
-                visible={snackVisible}
-                onDismiss={() => setSnackVisible(false)}
-                message={snackMessage}
-                type="error"
             />
         </ScrollView>
     );

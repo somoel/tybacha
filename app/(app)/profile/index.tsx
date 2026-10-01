@@ -1,7 +1,7 @@
 import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import { AppConfirmDialog } from '@/src/components/ui/AppConfirmDialog';
-import { AppSnackbar } from '@/src/components/ui/AppSnackbar';
+import { showSnackbar } from '@/src/stores/snackbarStore';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import { useSyncQueue } from '@/src/hooks/useSyncQueue';
 import { fetchCaregiverAssignments, unassignCaregiver } from '@/src/services/patientService';
@@ -59,7 +59,6 @@ export default function ProfileScreen() {
     const { isOnline, isSyncing, pendingCount, syncNow } = useSyncQueue();
 
     const [assignments, setAssignments] = useState<Assignment[]>([]);
-    const [snackbar, setSnackbar] = useState({ visible: false, message: '', type: 'success' as 'success' | 'error' });
 
     const [confirmDialog, setConfirmDialog] = useState<{ visible: boolean; type: 'unlink' | 'logout'; assignment?: Assignment }>({
         visible: false,
@@ -122,10 +121,10 @@ export default function ProfileScreen() {
             });
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setEditingSection(null);
-            setSnackbar({ visible: true, message: 'Perfil actualizado exitosamente', type: 'success' });
+            showSnackbar('Perfil actualizado exitosamente', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al actualizar el perfil.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setIsSaving(false);
         }
@@ -151,15 +150,15 @@ export default function ProfileScreen() {
 
     const saveEmail = async () => {
         if (!editNuevoCorreo.trim() || !editEmailContrasena.trim()) {
-            setSnackbar({ visible: true, message: 'Todos los campos son requeridos', type: 'error' });
+            showSnackbar('Todos los campos son requeridos', 'error');
             return;
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editNuevoCorreo.trim())) {
-            setSnackbar({ visible: true, message: 'Correo inválido', type: 'error' });
+            showSnackbar('Correo inválido', 'error');
             return;
         }
         if (editEmailContrasena.length < 8) {
-            setSnackbar({ visible: true, message: 'La contraseña debe tener al menos 8 caracteres', type: 'error' });
+            showSnackbar('La contraseña debe tener al menos 8 caracteres', 'error');
             return;
         }
         setEmailConfirmVisible(true);
@@ -176,10 +175,10 @@ export default function ProfileScreen() {
             setEditingSection(null);
             setEditNuevoCorreo('');
             setEditEmailContrasena('');
-            setSnackbar({ visible: true, message: 'Correo actualizado exitosamente', type: 'success' });
+            showSnackbar('Correo actualizado exitosamente', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al cambiar el correo.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setIsSavingEmail(false);
         }
@@ -207,15 +206,15 @@ export default function ProfileScreen() {
 
     const savePassword = async () => {
         if (!editContrasenaActual.trim() || !editNuevaContrasena.trim() || !editConfirmarContrasena.trim()) {
-            setSnackbar({ visible: true, message: 'Todos los campos son requeridos', type: 'error' });
+            showSnackbar('Todos los campos son requeridos', 'error');
             return;
         }
         if (editNuevaContrasena.length < 8) {
-            setSnackbar({ visible: true, message: 'La nueva contraseña debe tener al menos 8 caracteres', type: 'error' });
+            showSnackbar('La nueva contraseña debe tener al menos 8 caracteres', 'error');
             return;
         }
         if (editNuevaContrasena !== editConfirmarContrasena) {
-            setSnackbar({ visible: true, message: 'Las contraseñas no coinciden', type: 'error' });
+            showSnackbar('Las contraseñas no coinciden', 'error');
             return;
         }
         setIsSavingPassword(true);
@@ -228,10 +227,10 @@ export default function ProfileScreen() {
             setEditContrasenaActual('');
             setEditNuevaContrasena('');
             setEditConfirmarContrasena('');
-            setSnackbar({ visible: true, message: 'Contraseña actualizada exitosamente', type: 'success' });
+            showSnackbar('Contraseña actualizada exitosamente', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al cambiar la contraseña.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setIsSavingPassword(false);
         }
@@ -247,10 +246,10 @@ export default function ProfileScreen() {
         try {
             await unassignCaregiver(user.id, assignment.patient_id);
             setAssignments((prev) => prev.filter((a) => a.id !== assignment.id));
-            setSnackbar({ visible: true, message: 'Desasociado exitosamente', type: 'success' });
+            showSnackbar('Desasociado exitosamente', 'success');
         } catch (error) {
             const msg = error instanceof Error ? error.message : 'Error al desasociar.';
-            setSnackbar({ visible: true, message: msg, type: 'error' });
+            showSnackbar(msg, 'error');
         } finally {
             setConfirmDialog((prev) => ({ ...prev, visible: false }));
         }
@@ -268,11 +267,11 @@ export default function ProfileScreen() {
     const handleManualSync = async () => {
         const result = await syncNow();
         if (result.error) {
-            setSnackbar({ visible: true, message: result.error, type: 'error' });
+            showSnackbar(result.error, 'error');
         } else if (result.synced > 0) {
-            setSnackbar({ visible: true, message: `${result.synced} registros sincronizados`, type: 'success' });
+            showSnackbar(`${result.synced} registros sincronizados`, 'success');
         } else {
-            setSnackbar({ visible: true, message: 'No hay registros pendientes', type: 'success' });
+            showSnackbar('No hay registros pendientes', 'success');
         }
     };
 
@@ -628,12 +627,6 @@ export default function ProfileScreen() {
                     destructive={false}
                     onConfirm={() => { setConfirmDialog((prev) => ({ ...prev, visible: false })); void performLogout(); }}
                     onCancel={() => setConfirmDialog((prev) => ({ ...prev, visible: false }))}
-                />
-                <AppSnackbar
-                    visible={snackbar.visible}
-                    message={snackbar.message}
-                    type={snackbar.type}
-                    onDismiss={() => setSnackbar((s) => ({ ...s, visible: false }))}
                 />
             </ScrollView>
         </KeyboardAvoidingView>
