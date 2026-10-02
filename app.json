@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tybacha",
     "slug": "tybacha",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tybacha",
@@ -18,7 +18,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.somoel.tybacha"
+      "package": "com.somoel.tybacha",
+      "versionCode": 2
     },
     "web": {
       "output": "single",
