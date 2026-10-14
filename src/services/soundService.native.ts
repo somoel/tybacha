@@ -27,6 +27,8 @@ async function ensureAudioMode(): Promise<void> {
             playsInSilentMode: false,
             interruptionMode: 'mixWithOthers',
             shouldPlayInBackground: false,
+            allowsRecording: false,
+            shouldRouteThroughEarpiece: false,
         });
     } catch {
         // Web and some platforms may not support every option; safe to ignore.

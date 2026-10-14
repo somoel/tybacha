@@ -8,7 +8,7 @@ import { parseApiDate } from '@/src/lib/dates';
 import { fetchPatientById } from '@/src/services/patientService';
 import { usePermissions } from '@/src/hooks/usePermissions';
 import type { BatteryWithResults } from '@/src/types/battery.types';
-import type { Patient } from '@/src/types/database.types';
+import type { Patient } from '@/src/types/patient.types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -134,7 +134,7 @@ export default function BatteryDetailScreen() {
                     <AppCard style={styles.chartCard}>
                         <ResultChart
                             results={battery.results}
-                            patientGender={patient?.gender === 'M' ? 'M' : patient?.gender === 'F' ? 'F' : undefined}
+                            patientGender={patient?.gender === 'male' ? 'M' : patient?.gender === 'female' ? 'F' : undefined}
                             patientBirthDate={patient?.birth_date}
                         />
                     </AppCard>

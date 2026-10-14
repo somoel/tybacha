@@ -49,3 +49,5 @@ app-example
 # Agents
 .agents
 skills-lock.json
+# Cobertura de tests (Vitest)
+coverage/

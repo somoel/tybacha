@@ -1,4 +1,7 @@
 import type { EncouragementCue, SoundVariant, TimerMode } from '@/src/types/battery.types';
+// Metro resuelve `soundService` a `soundService.native.ts` / `soundService.web.ts`;
+// el resolver de eslint no entiende los sufijos de plataforma, por eso se omite la regla.
+// eslint-disable-next-line import/no-unresolved
 import { playCue, preloadCue, setMuted } from '@/src/services/soundService';
 import * as Haptics from 'expo-haptics';
 import React, { useCallback, useEffect, useRef, useState } from 'react';

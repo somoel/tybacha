@@ -2,7 +2,7 @@ import { AppButton } from '@/src/components/ui/AppButton';
 import { AppCard } from '@/src/components/ui/AppCard';
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Text, TextInput, useTheme } from 'react-native-paper';
+import { Text, TextInput } from 'react-native-paper';
 
 interface BodyMetricsInputProps {
     onConfirm: (pesoKg: number, estaturaCm: number) => void;
@@ -16,7 +16,6 @@ function getImcCategory(imc: number): { label: string; color: string } {
 }
 
 export function BodyMetricsInput({ onConfirm }: BodyMetricsInputProps) {
-    const theme = useTheme();
     const [peso, setPeso] = useState('');
     const [estatura, setEstatura] = useState('');
     const [error, setError] = useState('');

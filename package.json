@@ -12,7 +12,13 @@
     "ios": "expo run:ios",
     "build": "npx expo export --platform web",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:api": "npm --prefix api run test",
+    "test:all": "npm test && npm run test:api"
   },
   "dependencies": {
     "@expo-google-fonts/montserrat": "^0.4.2",
@@ -70,10 +76,13 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@types/node": "^26.6.5",
     "@types/react": "~19.1.0",
+    "@vitest/coverage-v8": "^5.0.4",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^5.0.4"
   },
   "private": true
 }

@@ -1,12 +1,12 @@
 import { borderRadius } from '@/src/constants/theme';
 import React from 'react';
-import { StyleSheet, type ViewStyle } from 'react-native';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { Card } from 'react-native-paper';
 
 interface AppCardProps {
     children: React.ReactNode;
     onPress?: () => void;
-    style?: ViewStyle;
+    style?: StyleProp<ViewStyle>;
     elevation?: 0 | 1 | 2 | 3 | 4 | 5;
     accessibilityLabel?: string;
 }

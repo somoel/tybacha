@@ -241,20 +241,22 @@ export function getPerformanceCategory(
     range: NormativeRange,
     higherIsBetter: boolean,
 ): 'Bajo promedio' | 'Promedio' | 'Por encima del promedio' | 'Excelente' {
+    const { low, high } = range;
+
     if (higherIsBetter) {
-        const { low, high } = range;
         const rangeSize = high - low;
         if (value < low) return 'Bajo promedio';
         if (value <= high) return 'Promedio';
         if (value <= high + rangeSize * 0.5) return 'Por encima del promedio';
         return 'Excelente';
     }
-    // Inverse: lower is better (e.g., up_and_go)
-    const { low, high } = range;
-    const rangeSize = low - high;
-    if (value > low) return 'Bajo promedio';
-    if (value >= high) return 'Promedio';
-    if (value >= high - rangeSize * 0.5) return 'Por encima del promedio';
+
+    // Inverse: lower is better (e.g., up_and_go).
+    // `low` sigue siendo el percentil 25 (el valor rapido) y `high` el 75.
+    const rangeSize = high - low;
+    if (value > high) return 'Bajo promedio';
+    if (value >= low) return 'Promedio';
+    if (value >= low - rangeSize * 0.5) return 'Por encima del promedio';
     return 'Excelente';
 }
 
@@ -272,15 +274,16 @@ export function calculateNormativePercentage(
     if (higherIsBetter) {
         const rangeSize = high - low;
         if (rangeSize <= 0) return 50;
-        if (value < low) return Math.max(0, ((value - low) / rangeSize) * 25);
+        if (value < low) return Math.max(0, 25 + ((value - low) / rangeSize) * 25);
         if (value <= high) return 25 + ((value - low) / rangeSize) * 50;
         return Math.min(100, 75 + ((value - high) / (rangeSize * 0.5)) * 25);
     }
 
-    // Inverse: lower is better
-    const rangeSize = low - high;
+    // Inverse: lower is better. `low` = p25 (rapido), `high` = p75 (lento),
+    // asi que el porcentaje debe decrecer a medida que crece el tiempo.
+    const rangeSize = high - low;
     if (rangeSize <= 0) return 50;
-    if (value > low) return Math.max(0, ((low - value) / rangeSize) * 25);
-    if (value >= high) return 25 + ((low - value) / rangeSize) * 50;
-    return Math.min(100, 75 + ((high - value) / (rangeSize * 0.5)) * 25);
+    if (value > high) return Math.max(0, 25 + ((high - value) / rangeSize) * 25);
+    if (value >= low) return 25 + ((high - value) / rangeSize) * 50;
+    return Math.min(100, 75 + ((low - value) / (rangeSize * 0.5)) * 25);
 }
